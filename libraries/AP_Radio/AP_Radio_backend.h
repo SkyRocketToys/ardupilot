@@ -30,9 +30,15 @@ public:
     // init - initialise radio
     virtual bool init(void) = 0;
 
+    // init - reset radio
+    virtual bool reset(void) = 0;
+    
     // send a packet
     virtual bool send(const uint8_t *pkt, uint16_t len) = 0;
 
+    // receive a packet
+    virtual uint8_t recv(uint8_t *pkt, uint16_t len) = 0;
+    
 private:
     AP_Radio &radio;
 };

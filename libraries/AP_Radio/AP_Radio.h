@@ -26,10 +26,16 @@ class AP_Radio
 {
 public:
     // init - initialise radio
-    void init(void);
+    bool init(void);
 
+    // reset the radio
+    bool reset(void);
+    
     // send a packet
     bool send(const uint8_t *pkt, uint16_t len);
+
+    // receive a packet
+    uint8_t recv(uint8_t *pkt, uint16_t maxlen);
     
 private:
     AP_Radio_backend *driver;

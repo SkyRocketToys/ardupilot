@@ -5,13 +5,23 @@
 
 extern const AP_HAL::HAL& hal;
 
-void AP_Radio::init(void)
+bool AP_Radio::init(void)
 {
     driver = new AP_Radio_cypress(*this);
-    driver->init();
+    return driver->init();
+}
+
+bool AP_Radio::reset(void)
+{
+    return driver->reset();
 }
 
 bool AP_Radio::send(const uint8_t *pkt, uint16_t len)
 {
     return driver->send(pkt, len);
+}
+
+uint8_t AP_Radio::recv(uint8_t *pkt, uint16_t len)
+{
+    return driver->recv(pkt, len);
 }
