@@ -15,22 +15,22 @@
 #pragma once
 
 /*
- * base class for direct attached radios
+ * AP_Radio implementation for Cypress 2.4GHz radio
  */
 
-#include <AP_HAL/AP_HAL.h>
+#include "AP_Radio_backend.h"
 
-class AP_Radio_backend;
-
-class AP_Radio
+class AP_Radio_cypress : public AP_Radio_backend
 {
 public:
+    AP_Radio_cypress(AP_Radio &radio);
+    
     // init - initialise radio
-    void init(void);
+    bool init(void) override;
 
     // send a packet
-    bool send(const uint8_t *pkt, uint16_t len);
-    
+    bool send(const uint8_t *pkt, uint16_t len) override;
+
 private:
-    AP_Radio_backend *driver;
+    AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
 };

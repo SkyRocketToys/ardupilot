@@ -1,16 +1,17 @@
+#include <AP_HAL/AP_HAL.h>
 #include "AP_Radio.h"
-#include <utility>
-#include <stdio.h>
+#include "AP_Radio_backend.h"
+#include "AP_Radio_cypress.h"
 
 extern const AP_HAL::HAL& hal;
 
 void AP_Radio::init(void)
 {
-    dev = std::move(hal.spi->get_device("external0m3"));    
+    driver = new AP_Radio_cypress(*this);
+    driver->init();
 }
 
 bool AP_Radio::send(const uint8_t *pkt, uint16_t len)
 {
-    printf("Sending '%*.*s'\n", (int)len, (int)len, (const char *)pkt);
-    return true;
+    return driver->send(pkt, len);
 }

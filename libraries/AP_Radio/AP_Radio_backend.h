@@ -15,22 +15,24 @@
 #pragma once
 
 /*
- * base class for direct attached radios
+ * backend class for direct attached radios
  */
 
 #include <AP_HAL/AP_HAL.h>
+#include "AP_Radio.h"
 
-class AP_Radio_backend;
-
-class AP_Radio
+class AP_Radio_backend
 {
 public:
+    AP_Radio_backend(AP_Radio &radio);
+    virtual ~AP_Radio_backend();
+    
     // init - initialise radio
-    void init(void);
+    virtual bool init(void) = 0;
 
     // send a packet
-    bool send(const uint8_t *pkt, uint16_t len);
-    
+    virtual bool send(const uint8_t *pkt, uint16_t len) = 0;
+
 private:
-    AP_Radio_backend *driver;
+    AP_Radio &radio;
 };
