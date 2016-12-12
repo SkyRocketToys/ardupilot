@@ -55,6 +55,8 @@ private:
     void write_register(uint8_t reg, uint8_t value);
     void write_multiple(uint8_t reg, uint8_t n, const uint8_t *data);
 
+    void wait_irq(void);
+    
     struct config {
         uint8_t reg;
         uint8_t value;
@@ -62,25 +64,9 @@ private:
     static const struct config radio_config[];
 
     static const uint8_t PnCode[];
-    
-    
-    enum op_status {
-        OP_IN_PROGRESS,
-        OP_ERROR,
-        OP_OK
-    };
-    
-    /*
-      state of an in-progress transmit
-     */
-    struct transmit_state {
-        const uint8_t *data;
-        uint8_t length;
-        volatile enum op_status status;
-        sem_t sem;
-        uint32_t start_us;
-    } state, *tx_state;
-    
+
+    sem_t irq_sem;
+
     /*
       transmit a packet of length bytes, blocking until it is complete
      */

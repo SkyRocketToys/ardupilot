@@ -719,7 +719,7 @@ void AP_Radio_cypress::radio_init(void)
     debug("radio_init done\n");
 
     // setup handler for rising edge of IRQ pin
-    //stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
+    //
 }
 
 void AP_Radio_cypress::dump_registers(uint8_t n)
@@ -779,55 +779,43 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
         return false;
     }
 
-    sem_init(&state.sem, 0, 0);
-
+    debug("starting send of %u\n", length);
+        
     uint8_t n = MIN(length, 16);
-    state.data = data + n;
-    state.length = length - n;
-    state.status = OP_IN_PROGRESS;
 
     // pre-fill TX FIFO with up to 16 bytes
     write_register(TX_LENGTH_ADR, length);
     write_register(TX_CTRL_ADR, TX_CLR);
-
     if (n > 0) {
         write_multiple(TX_BUFFER_ADR, n, data);
     }
+    data += n;
+    length -= n;
 
-    debug("starting send of %u sent n=%u\n", length, n);
-    
     uint8_t irq_bits = TX_GO | TXC_IRQ | TXE_IRQ | TXBERR_IRQ;
-    if (state.length > 0) {
+    if (length > 0) {
         // ask for an interrupt when we can fit more bytes into FIFO
         irq_bits |= TXB0_IRQ | TXB8_IRQ | TXB15_IRQ;
     }
 
-    state.start_us = AP_HAL::micros();
-    debug("setting up tx_state at %u\n", state.start_us);
-
     write_register(TX_CTRL_ADR, irq_bits);
 
-    tx_state = &state;
-
+    bool ret = false;
+    
     while (true) {
+        wait_irq();
         uint8_t tx_status = read_status_debounced(TX_IRQ_STATUS_ADR);
         if (tx_status & (TXE_IRQ | TXBERR_IRQ | TXC_IRQ | TXB0_IRQ | TXB8_IRQ | TXB15_IRQ)) {
-            //debug("tx_status=0x%02x at %u\n", (unsigned)tx_status, AP_HAL::micros() - tx_state->start_us);
             if (tx_status & (TXE_IRQ | TXBERR_IRQ)) {
                 // got an error
                 write_register(TX_CTRL_ADR, TX_CLR);
-                debug("tx error tx_status=0x%02x at %u\n", (unsigned)tx_status, AP_HAL::micros() - tx_state->start_us);
-                tx_state->status = OP_ERROR;
+                debug("tx error tx_status=0x%02x\n", (unsigned)tx_status);
                 goto done;
             }
 
             if (tx_status & TXC_IRQ) {
                 write_register(TX_CTRL_ADR, TX_CLR);
-#if 1
-                debug("tx DONE tx_status=0x%02x rem=%u at %u\n",
-                       (unsigned)tx_status, tx_state->length, AP_HAL::micros() - tx_state->start_us);
-#endif
-                tx_state->status = OP_OK;
+                ret = true;
                 goto done;
             }
             
@@ -840,19 +828,18 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
                 } else {
                     space = 1;
                 }
-                n = MIN(tx_state->length, space);
+                n = MIN(length, space);
                 
                 if (n == 0) {
                     // clear interrupt bits to stop us getting interrupted
                     write_register(TX_CTRL_ADR, TXC_IRQ | TXE_IRQ | TXBERR_IRQ);
                 } else {
-                    write_multiple(TX_BUFFER_ADR, n, tx_state->data);
+                    write_multiple(TX_BUFFER_ADR, n, data);
                     
-                    //debug("added %u bytes at %u\n", n, AP_HAL::micros() - tx_state->start_us);
-                    tx_state->length -= n;
-                    tx_state->data += n;
+                    length -= n;
+                    data += n;
                     
-                    if (tx_state->length == 0) {
+                    if (length == 0) {
                         write_register(TX_CTRL_ADR, TXC_IRQ | TXE_IRQ | TXBERR_IRQ);
                     }
                 }
@@ -864,82 +851,24 @@ done:
     debug("TX finished at %u\n", AP_HAL::micros() - state.start_us);
     
     dev->get_semaphore()->give();
-    tx_state = nullptr;
 
-    return state.status == OP_OK;
+    return ret;
 }
 
-/*
-  handle radio interrupt
- */
-void AP_Radio_cypress::irq_handler(void)
-{
-    uint8_t tx_status = read_status_debounced(TX_IRQ_STATUS_ADR);
-    (void)read_status_debounced(RX_IRQ_STATUS_ADR);
-    if (tx_state == nullptr) {
-        //debug("NULL tx_status=0x%02x at %u\n", (unsigned)tx_status);
-        return;
-    }
-    while (tx_status & (TXE_IRQ | TXBERR_IRQ | TXC_IRQ | TXB0_IRQ | TXB8_IRQ | TXB15_IRQ)) {
-        //debug("tx_status=0x%02x at %u\n", (unsigned)tx_status, AP_HAL::micros() - tx_state->start_us);
-        if (tx_status & (TXE_IRQ | TXBERR_IRQ)) {
-            // got an error
-            write_register(TX_CTRL_ADR, TX_CLR);
-            debug("tx error tx_status=0x%02x at %u\n", (unsigned)tx_status, AP_HAL::micros() - tx_state->start_us);
-            tx_state->status = OP_ERROR;
-            sem_post(&tx_state->sem);
-            return;
-        }
-
-        if (tx_status & TXC_IRQ) {
-            write_register(TX_CTRL_ADR, TX_CLR);
-#if 1
-            debug("tx DONE tx_status=0x%02x rem=%u at %u\n",
-                   (unsigned)tx_status, tx_state->length, AP_HAL::micros() - tx_state->start_us);
-#endif
-            tx_state->status = OP_OK;
-            sem_post(&tx_state->sem);
-            return;
-        }
-
-        if (tx_status & (TXB0_IRQ|TXB8_IRQ|TXB15_IRQ)) {
-            uint8_t space;
-            if (tx_status & TXB0_IRQ) {
-                space = 16;
-            } else if (tx_status & TXB8_IRQ) {
-                space = 8;
-            } else {
-                space = 1;
-            }
-            uint8_t n = MIN(tx_state->length, space);
-
-            if (n == 0) {
-                // clear interrupt bits to stop us getting interrupted
-                write_register(TX_CTRL_ADR, TXC_IRQ | TXE_IRQ | TXBERR_IRQ);
-            } else {
-                write_multiple(TX_BUFFER_ADR, n, tx_state->data);
-
-                //debug("added %u bytes at %u\n", n, AP_HAL::micros() - tx_state->start_us);
-                tx_state->length -= n;
-                tx_state->data += n;
-
-                if (tx_state->length == 0) {
-                    write_register(TX_CTRL_ADR, TXC_IRQ | TXE_IRQ | TXBERR_IRQ);
-                }
-            }
-        }
-        tx_status = read_status_debounced(TX_IRQ_STATUS_ADR);
-    }
-}
 
 uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
 {
     uint8_t *data0 = data;
     uint8_t maxlen0 = maxlen;
-    write_register(RX_CTRL_ADR, RX_GO);
+    uint8_t irq_bits = RXC_IRQ | RXE_IRQ | RXOW_IRQ | RXBERR_IRQ;
+    if (maxlen > 16) {
+        irq_bits |= RXB16_IRQ | RXB8_IRQ | RXB1_IRQ;
+    }
+    write_register(RX_CTRL_ADR, RX_GO | irq_bits);
     uint8_t rx_status;
     uint8_t ret = 0;
     while (true) {
+        wait_irq();
         rx_status = read_status_debounced(RX_IRQ_STATUS_ADR);
         if (rx_status == 0) {
             continue;
@@ -973,7 +902,7 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
             data = data0;
             maxlen = maxlen0;
             ret = 0;
-            write_register(RX_CTRL_ADR, RX_GO);
+            write_register(RX_CTRL_ADR, RX_GO | irq_bits);
             continue;
         }
     }
@@ -1004,11 +933,22 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
 }
 
 /*
+  wait for an interrupt from the radio
+ */
+void AP_Radio_cypress::wait_irq(void)
+{
+    sem_init(&irq_sem, 0, 0);
+    stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
+    sem_wait(&irq_sem);
+}
+
+
+/*
   called on rising edge of radio IRQ pin
  */
 int AP_Radio_cypress::irq_trampoline(int irq, void *context)
 {
-    radio_instance->irq_handler();
+    stm32_gpiosetevent(GPIO_GPIO4_INPUT, false, false, false, nullptr);
+    sem_post(&radio_instance->irq_sem);
     return 0;
 }
-
