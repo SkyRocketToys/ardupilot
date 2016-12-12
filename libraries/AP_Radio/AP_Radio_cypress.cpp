@@ -804,7 +804,6 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
 
     state.start_us = AP_HAL::micros();
     debug("setting up tx_state at %u\n", state.start_us);
-    hal.scheduler->delay(10);
 
     write_register(TX_CTRL_ADR, irq_bits);
 
