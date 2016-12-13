@@ -31,6 +31,7 @@
 #include "AP_Baro_BMP280.h"
 #include "AP_Baro_HIL.h"
 #include "AP_Baro_MS5611.h"
+#include "AP_Baro_ICM20789.h"
 #include "AP_Baro_PX4.h"
 #include "AP_Baro_qflight.h"
 #include "AP_Baro_QURT.h"
@@ -389,6 +390,10 @@ void AP_Baro::init(void)
     case AP_BoardConfig::PX4_BOARD_PHMINI:
     case AP_BoardConfig::PX4_BOARD_AUAV21:
     case AP_BoardConfig::PX4_BOARD_PH2SLIM:
+#if 1
+        ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
+                                            std::move(hal.i2c_mgr->get_device(1, 0x63))));
+#endif
         ADD_BACKEND(AP_Baro_MS56XX::probe(*this,
                                           std::move(hal.spi->get_device(HAL_BARO_MS5611_NAME))));
         break;
