@@ -17,7 +17,7 @@ void setup()
     radio.init();
 }
 
-static const uint8_t num_pad = 2;
+static const uint8_t num_pad = 8;
 
 struct PACKED test_packet {
     uint32_t seq;
@@ -31,7 +31,7 @@ bool packet_ok(const struct test_packet &pkt)
         return false;
     }
     for (uint8_t i=0; i<num_pad; i++) {
-        if (pkt.pad[i] != pkt.seq + 100) {
+        if (pkt.pad[i] != pkt.seq + 100*(i+1)) {
             return false;
         }
     }
@@ -43,7 +43,7 @@ void packet_create(struct test_packet &pkt, uint32_t seq)
     pkt.seq = seq;
     pkt.not_seq = ~seq;
     for (uint8_t i=0; i<num_pad; i++) {
-        pkt.pad[i] = pkt.seq + 100;
+        pkt.pad[i] = pkt.seq + 100*(i+1);
     }
 }
 
@@ -52,7 +52,7 @@ void loop()
     static struct test_packet pkt;
     static uint32_t counter;
     static uint32_t last_print_ms;
-#if 1
+#if 0
     static uint32_t recv_fail_count;
     static uint32_t corrupt_count;
     static uint32_t good_count;
@@ -106,7 +106,7 @@ void loop()
         printf("%u pps send seq=%u err=%u\n", counter, seq, send_err);
         counter=0;
     }
-    hal.scheduler->delay(1);
+    hal.scheduler->delay_microseconds(250);
 #endif
 }
 

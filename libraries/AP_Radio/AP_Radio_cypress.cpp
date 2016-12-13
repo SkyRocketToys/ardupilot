@@ -805,6 +805,7 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
     while (true) {
         wait_irq();
         uint8_t tx_status = read_status_debounced(TX_IRQ_STATUS_ADR);
+        //printf("tx_status: 0x%08x\n", tx_status);
         if (tx_status & (TXE_IRQ | TXBERR_IRQ | TXC_IRQ | TXB0_IRQ | TXB8_IRQ | TXB15_IRQ)) {
             if (tx_status & (TXE_IRQ | TXBERR_IRQ)) {
                 // got an error
@@ -815,7 +816,11 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
 
             if (tx_status & TXC_IRQ) {
                 write_register(TX_CTRL_ADR, TX_CLR);
-                ret = true;
+                if (length == 0) {
+                    ret = true;
+                } else {
+                    debug("tx finished with %u left\n", length);
+                }
                 goto done;
             }
             
@@ -848,7 +853,7 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
     }
 
 done:
-    debug("TX finished at %u\n", AP_HAL::micros() - state.start_us);
+    debug("TX finished at %u\n", AP_HAL::micros());
     
     dev->get_semaphore()->give();
 
@@ -862,7 +867,7 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
     uint8_t maxlen0 = maxlen;
     uint8_t irq_bits = RXC_IRQ | RXE_IRQ | RXOW_IRQ | RXBERR_IRQ;
     if (maxlen > 16) {
-        irq_bits |= RXB16_IRQ | RXB8_IRQ | RXB1_IRQ;
+        irq_bits |= RXB16_IRQ | RXB8_IRQ;
     }
     write_register(RX_CTRL_ADR, RX_GO | irq_bits);
     uint8_t rx_status;
@@ -873,18 +878,22 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
         if (rx_status == 0) {
             continue;
         }
-        //debug("rx_status 0x%02x\n", rx_status);
+        //printf("rx_status 0x%02x\n", rx_status);
         if (rx_status & RXOW_IRQ) {
             write_register(RX_IRQ_STATUS_ADR, RXOW_IRQ);
         }
-        if ((rx_status & (RXB16_IRQ | RXB8_IRQ | RXB1_IRQ)) && maxlen > 16) {
+        if ((rx_status & (RXB16_IRQ | RXB8_IRQ))) {
             uint8_t avail;
             if (rx_status & RXB16_IRQ) {
                 avail = 16;
             } else if (rx_status & RXB8_IRQ) {
                 avail = 8;
             } else {
-                avail = 1;
+                // don't try and read single bytes here. The read
+                // overhead is high enough for a single byte that we
+                // are much better off waiting for at least 8 bytes to
+                // be in the FIFO
+                avail = 0;
             }
             uint8_t n = MIN(maxlen, avail);
             if (n > 0) {
@@ -898,14 +907,28 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
             break;
         }
         if (rx_status & (RXBERR_IRQ | RXE_IRQ)) {
-            debug("rx_status=0x%02x clearing %u bytes\n", rx_status, ret);
+            if (ret > 0) {
+                debug("rx_status=0x%02x clearing %u bytes\n", rx_status, ret);
+            }
+            // discard the partial packet, if any
             data = data0;
             maxlen = maxlen0;
             ret = 0;
+
+            // when we get a buffer error we don't really know why it
+            // happened. To maximise the chances of clearing the error
+            // we read the complete FIFO length to ensure the FIFO is
+            // clear
+            uint8_t tmp[16];
+            dev->read_registers(RX_BUFFER_ADR, tmp, 16);
+            rx_status = read_status_debounced(RX_IRQ_STATUS_ADR);
+
+            // restart the receive
             write_register(RX_CTRL_ADR, RX_GO | irq_bits);
             continue;
         }
     }
+
     uint8_t rlen = read_register(RX_LENGTH_ADR);
 #if RADIO_DEBUG
     uint8_t rem = read_register(RX_COUNT_ADR);
@@ -926,7 +949,7 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
         write_register(XACT_CFG_ADR, FRC_END_STATE);
         // Wait for FORCE_END to complete
         hal.scheduler->delay_microseconds(100);
-    } while ((read_register(XACT_CFG_ADR) & FRC_END_STATE) != 0);
+    } while ((read_register(XACT_CFG_ADR) & FRC_END_STATE) != 0);    
     
     debug("receive ret=%u ret0=%u rlen=%u rem=%u rx_status=0x%02x\n", ret, ret0, rlen, rem, rx_status);
     return ret;
@@ -939,7 +962,14 @@ void AP_Radio_cypress::wait_irq(void)
 {
     sem_init(&irq_sem, 0, 0);
     stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
-    sem_wait(&irq_sem);
+    if (!stm32_gpioread(GPIO_GPIO4_INPUT)) {
+        sem_wait(&irq_sem);
+    } else {
+        // we've hit a race condition where the IRQ may have been
+        // raised before irq_trampoline was setup. Just clear the
+        // handler
+        stm32_gpiosetevent(GPIO_GPIO4_INPUT, false, false, false, nullptr);
+    }
 }
 
 
