@@ -222,6 +222,7 @@ extern const AP_HAL::HAL& hal;
 #define MPU_WHOAMI_6500			0x70
 #define MPU_WHOAMI_MPU9250      0x71
 #define MPU_WHOAMI_MPU9255      0x73
+#define MPU_WHOAMI_ICM20789     0x02
 
 #define BIT_READ_FLAG                           0x80
 #define BIT_I2C_SLVX_EN                         0x80
@@ -404,6 +405,10 @@ void AP_InertialSensor_Invensense::start()
     default:
         gdev = DEVTYPE_GYR_MPU6000;
         adev = DEVTYPE_ACC_MPU6000;
+        break;
+    case Invensense_ICM20789:
+        gdev = DEVTYPE_INS_ICM20789;
+        adev = DEVTYPE_INS_ICM20789;
         break;
     }
     _gyro_instance = _imu.register_gyro(1000, _dev->get_bus_id_devtype(gdev));
@@ -717,7 +722,7 @@ void AP_InertialSensor_Invensense::_read_fifo()
     }
 
     if (need_reset) {
-        //debug("fifo reset n_samples %u", bytes_read/MPU_SAMPLE_SIZE);
+        debug("fifo reset n_samples %u", bytes_read/MPU_SAMPLE_SIZE);
         _fifo_reset();
     }
     
@@ -794,7 +799,7 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
         config |= BITS_DLPF_CFG_188HZ;
     }
 
-    config |= MPUREG_CONFIG_FIFO_MODE_STOP;
+    //config |= MPUREG_CONFIG_FIFO_MODE_STOP;
     _register_write(MPUREG_CONFIG, config, true);
 
 	if (_mpu_type != Invensense_MPU6000) {
@@ -802,7 +807,7 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
             // setup for 4kHz accels
             _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_FCHOICE_B, true);
         } else {
-            _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_DLPF_CFG_218HZ, true);
+            _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_DLPF_CFG_218HZ | 0x40, true);
         }
     }
 }
@@ -829,6 +834,9 @@ bool AP_InertialSensor_Invensense::_check_whoami(void)
         return true;
     case MPU_WHOAMI_20602:
         _mpu_type = Invensense_ICM20602;
+        return true;
+    case MPU_WHOAMI_ICM20789:
+        _mpu_type = Invensense_ICM20789;
         return true;
     }
     // not a value WHOAMI result
