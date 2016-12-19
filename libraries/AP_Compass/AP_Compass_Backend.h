@@ -56,6 +56,7 @@ public:
         DEVTYPE_LIS3MDL = 0x08,
         DEVTYPE_AK09916 = 0x09,
         DEVTYPE_IST8310 = 0x0A,
+        DEVTYPE_MMC3416 = 0x0B,
     };
     
     

@@ -17,6 +17,7 @@
 #include "AP_Compass_qflight.h"
 #include "AP_Compass_LIS3MDL.h"
 #include "AP_Compass_AK09916.h"
+#include "AP_Compass_MMC3416.h"
 #include "AP_Compass.h"
 
 extern AP_HAL::HAL& hal;
@@ -531,6 +532,11 @@ void Compass::_detect_backends(void)
         ADD_BACKEND(AP_Compass_AK09916::probe(*this, hal.i2c_mgr->get_device(0, HAL_COMPASS_AK09916_I2C_ADDR),
                                               both_i2c_external, both_i2c_external?ROTATION_YAW_270:ROTATION_NONE),
                      AP_Compass_AK09916::name, both_i2c_external);
+
+        // MMC3416
+        ADD_BACKEND(AP_Compass_MMC3416::probe(*this, hal.i2c_mgr->get_device(1, HAL_COMPASS_MMC3416_I2C_ADDR),
+                                               true, ROTATION_NONE),
+                     AP_Compass_AK09916::name, true);
     }
     if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK) {
         ADD_BACKEND(AP_Compass_HMC5843::probe(*this, hal.spi->get_device(HAL_COMPASS_HMC5843_NAME),
