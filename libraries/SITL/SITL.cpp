@@ -111,6 +111,7 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
     AP_GROUPINFO("WIND_DIR_Z",  10, SITL,  wind_dir_z,     0),
     AP_GROUPINFO("MOT_RPM",     11, SITL,  motor_rpm,      0),
     AP_GROUPINFO("MOT_VIBE",    12, SITL,  motor_vibe,     0),
+    AP_GROUPINFO("MOT_FAIL",    13, SITL,  mot_fail, 0),
     AP_GROUPEND
 };
     

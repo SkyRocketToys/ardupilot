@@ -44,12 +44,16 @@ public:
     uint64_t last_change_usec;
     float last_roll_value, last_pitch_value;
 
+    SITL * _sitl; // we need parameters...
+
     Motor(uint8_t _servo, float _angle, float _yaw_factor, uint8_t _display_order) :
         servo(_servo), // what servo output drives this motor
         angle(_angle), // angle in degrees from front
         yaw_factor(_yaw_factor), // positive is clockwise
         display_order(_display_order) // order for clockwise display
-    {}
+    {
+        _sitl = (SITL *)AP_Param::find_object("SIM_");
+    }
 
     /*
       alternative constructor for tiltable motors
@@ -67,8 +71,11 @@ public:
         pitch_servo(_pitch_servo),
         pitch_min(_pitch_min),
         pitch_max(_pitch_max)
-    {}
+    {
+        _sitl = (SITL *)AP_Param::find_object("SIM_");
+    }
 
+    bool dead();
     void calculate_forces(const Aircraft::sitl_input &input,
                           float thrust_scale,
                           uint8_t motor_offset,

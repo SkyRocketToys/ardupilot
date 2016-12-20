@@ -125,6 +125,8 @@ public:
     AP_Float speedup; // simulation speedup
     AP_Int8  odom_enable; // enable visual odomotry data
     
+    AP_Int16 mot_fail; // mask of failed motors
+
     // wind control
     float wind_speed_active;
     float wind_direction_active;

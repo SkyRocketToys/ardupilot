@@ -34,6 +34,9 @@ void Motor::calculate_forces(const Aircraft::sitl_input &input,
 
     // get motor speed from 0 to 1
     float motor_speed = constrain_float((input.servos[motor_offset+servo]-1100)/900.0, 0, 1);
+    if (dead()) {
+        motor_speed = 0.0f;
+    }
 
     // the yaw torque of the motor
     Vector3f rotor_torque(0, 0, yaw_factor * motor_speed * yaw_scale);
@@ -81,6 +84,14 @@ void Motor::calculate_forces(const Aircraft::sitl_input &input,
 
     // scale the thrust
     thrust = thrust * thrust_scale;
+}
+
+bool Motor::dead()
+{
+    if (_sitl->mot_fail & servo) {
+        return true;
+    }
+    return false;
 }
 
 /*
