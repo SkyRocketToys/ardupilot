@@ -27,6 +27,7 @@
 #include "AP_RangeFinder_MAVLink.h"
 #include "AP_RangeFinder_LeddarOne.h"
 #include "AP_RangeFinder_uLanding.h"
+#include "AP_RangeFinder_Baro.h"
 #include <AP_BoardConfig/AP_BoardConfig.h>
 
 extern const AP_HAL::HAL &hal;
@@ -668,6 +669,9 @@ void RangeFinder::detect_instance(uint8_t instance)
             state[instance].instance = instance;
             drivers[instance] = new AP_RangeFinder_analog(*this, instance, state[instance]);
         }
+        break;
+    case RangeFinder_TYPE_BARO:
+        _add_backend(AP_RangeFinder_Baro::detect(*this, instance, state[instance]));
         break;
     default:
         break;
