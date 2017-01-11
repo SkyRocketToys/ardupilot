@@ -17,6 +17,7 @@ void setup()
     radio.init();
 }
 
+#if 1
 /**
  * Convert normal radio transmitter to channel outputs
  */
@@ -37,6 +38,7 @@ static void convert_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool i
 
     hal.uartA->begin(115200);
 }
+#endif
 
 extern uint8_t rf_chan;
 
@@ -68,19 +70,21 @@ void loop()
         hal.console->printf("len=%u size=%u\n", len, sizeof(pkt));
     } else {
         lost_count = 0;
+#if 1
         hal.console->printf("PKT[%02X,%02X]: ", chan, rf_chan);
         for (uint8_t i=0; i<2; i++) {
             hal.console->printf("%02x ", pkt[i]);
         }
-        const uint8_t num_channels = 8;
-        int16_t channels[num_channels] {};
+        const uint8_t num_channels = 14;
+        static int16_t channels[num_channels] {};
         convert_radio_to_channels(&pkt[2], num_channels, true, channels);
         for (uint8_t i=0; i<num_channels; i++) {
-            hal.console->printf("%u:%02x ", i, channels[i]);
+            hal.console->printf("%u:%4u ", i+1, channels[i]);
         }
         hal.console->printf("dt=%u", dt);
-        last_pkt_us = now;
         hal.console->printf("\n");
+#endif
+        last_pkt_us = now;
         counter++;
     }
     if (now - last_print_us > 1000*1000U) {
