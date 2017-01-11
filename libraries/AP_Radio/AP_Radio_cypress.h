@@ -37,7 +37,7 @@ public:
     bool send(const uint8_t *pkt, uint16_t len) override;
 
     // receive a packet
-    uint8_t recv(uint8_t *pkt, uint16_t len) override;
+    uint8_t recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec) override;
 
     // go to next channel
     void next_channel(void) override;
@@ -58,7 +58,7 @@ private:
     void write_register(uint8_t reg, uint8_t value);
     void write_multiple(uint8_t reg, uint8_t n, const uint8_t *data);
 
-    void wait_irq(void);
+    void wait_irq(uint32_t timeout_usec);
     
     struct config {
         uint8_t reg;
@@ -77,10 +77,10 @@ private:
     /*
       transmit a packet of length bytes, blocking until it is complete
      */
-    bool streaming_transmit(const uint8_t *data, uint8_t length);    
+    bool streaming_transmit(const uint8_t *data, uint8_t length);
 
     // receive a packet
-    uint8_t streaming_receive(uint8_t *pkt, uint8_t len);
+    uint8_t streaming_receive(uint8_t *pkt, uint8_t len, uint32_t timeout_usec);
     
     void irq_handler(void);
     static int irq_trampoline(int irq, void *context);
@@ -94,6 +94,8 @@ private:
         uint8_t sop_col;
         uint8_t data_col;
         bool is_dsm2 = false;
+        uint8_t last_sop_code[8];
+        uint8_t last_data_code[16];
     } dsm;
     
     // DSM specific functions

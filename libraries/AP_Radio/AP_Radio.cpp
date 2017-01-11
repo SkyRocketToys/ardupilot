@@ -21,9 +21,9 @@ bool AP_Radio::send(const uint8_t *pkt, uint16_t len)
     return driver->send(pkt, len);
 }
 
-uint8_t AP_Radio::recv(uint8_t *pkt, uint16_t len)
+uint8_t AP_Radio::recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec)
 {
-    return driver->recv(pkt, len);
+    return driver->recv(pkt, len, timeout_usec);
 }
 
 void AP_Radio::next_channel(void)

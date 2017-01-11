@@ -35,7 +35,7 @@ public:
     bool send(const uint8_t *pkt, uint16_t len);
 
     // receive a packet
-    uint8_t recv(uint8_t *pkt, uint16_t maxlen);
+    uint8_t recv(uint8_t *pkt, uint16_t maxlen, uint32_t timeout_usec=0);
 
     // go to next channel
     void next_channel(void);

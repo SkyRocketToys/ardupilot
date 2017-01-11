@@ -37,7 +37,7 @@ public:
     virtual bool send(const uint8_t *pkt, uint16_t len) = 0;
 
     // receive a packet
-    virtual uint8_t recv(uint8_t *pkt, uint16_t len) = 0;
+    virtual uint8_t recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec) = 0;
 
     // go to next channel
     virtual void next_channel(void) = 0;

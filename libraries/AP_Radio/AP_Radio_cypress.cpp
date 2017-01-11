@@ -15,7 +15,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define RADIO_DEBUG 1
+#define RADIO_DEBUG 0
 #if RADIO_DEBUG
 #define debug(fmt, args...)   printf(fmt, ##args)
 #else
@@ -270,12 +270,12 @@ bool AP_Radio_cypress::send(const uint8_t *pkt, uint16_t len)
 /*
   receive up to maxlen bytes as one packet, return the packet length
  */
-uint8_t AP_Radio_cypress::recv(uint8_t *pkt, uint16_t maxlen)
+uint8_t AP_Radio_cypress::recv(uint8_t *pkt, uint16_t maxlen, uint32_t timeout_usec)
 {
     if (!dev->get_semaphore()->take(0)) {
         return false;
     }
-    uint8_t len = streaming_receive(pkt, maxlen);
+    uint8_t len = streaming_receive(pkt, maxlen, timeout_usec);
     dev->get_semaphore()->give();
     return len;
 }
@@ -375,7 +375,7 @@ const AP_Radio_cypress::config AP_Radio_cypress::cyrf_transfer_config[] = {
 		{CYRF_TX_CFG, CYRF_DATA_CODE_LENGTH | CYRF_DATA_MODE_8DR | CYRF_PA_4},	// Enable 64 chip codes, 8DR mode and amplifier +4dBm
 		{CYRF_FRAMING_CFG, CYRF_SOP_EN | CYRF_SOP_LEN | CYRF_LEN_EN | 0xE},		// Set SOP CODE enable, SOP CODE to 64 chips, Packet length enable, and SOP Correlator Threshold to 0xE
 		{CYRF_TX_OVERRIDE, 0x00},												// Reset TX overrides
-		{CYRF_RX_OVERRIDE, 0x00},												// Reset RX overrides
+		{CYRF_RX_OVERRIDE, CYRF_DIS_RXCRC},										// Reset RX overrides
 };
 
 /*
@@ -549,7 +549,7 @@ bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
     bool ret = false;
     
     while (true) {
-        wait_irq();
+        wait_irq(0);
         uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
         //printf("tx_status: 0x%08x\n", tx_status);
         if (tx_status & (CYRF_TXE_IRQ | CYRF_TXBERR_IRQ | CYRF_TXC_IRQ | CYRF_TXB0_IRQ | CYRF_TXB8_IRQ | CYRF_TXB15_IRQ)) {
@@ -607,8 +607,9 @@ done:
 }
 
 
-uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
+uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen, uint32_t timeout_usec)
 {
+    uint32_t tstart_us = AP_HAL::micros();
     uint8_t *data0 = data;
     uint8_t maxlen0 = maxlen;
     uint8_t irq_bits = CYRF_RXC_IRQ | CYRF_RXE_IRQ | CYRF_RXOW_IRQ | CYRF_RXBERR_IRQ;
@@ -619,7 +620,13 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
     uint8_t rx_status;
     uint8_t ret = 0;
     while (true) {
-        wait_irq();
+        uint32_t now = AP_HAL::micros();
+        if (now - tstart_us > timeout_usec) {
+            write_register(CYRF_XACT_CFG, CYRF_FRC_END);
+            return 0;
+        }
+        hal.scheduler->delay_microseconds(300);
+        //wait_irq();
         rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
         if (rx_status == 0) {
             continue;
@@ -704,7 +711,7 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen)
 /*
   wait for an interrupt from the radio
  */
-void AP_Radio_cypress::wait_irq(void)
+void AP_Radio_cypress::wait_irq(uint32_t timeout_usec)
 {
     sem_init(&irq_sem, 0, 0);
     stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
@@ -742,11 +749,17 @@ void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t so
 	write_register(CYRF_CRC_SEED_MSB, crc_seed >> 8);
 
     // set start of packet code
-    write_multiple(CYRF_SOP_CODE, sizeof(pn_codes[0][0]), pn_codes[pn_row][sop_col]);
+    if (memcmp(dsm.last_sop_code, pn_codes[pn_row][sop_col], 8) != 0) {
+        write_multiple(CYRF_SOP_CODE, 8, pn_codes[pn_row][sop_col]);
+        memcpy(dsm.last_sop_code, pn_codes[pn_row][sop_col], 8);
+    }
 
     // set data code
-    write_multiple(CYRF_DATA_CODE, sizeof(pn_codes[0][0]), pn_codes[pn_row][data_col]);
-
+    if (memcmp(dsm.last_data_code, pn_codes[pn_row][data_col], 16) != 0) {
+        write_multiple(CYRF_DATA_CODE, 16, pn_codes[pn_row][data_col]);
+        memcpy(dsm.last_data_code, pn_codes[pn_row][data_col], 16);
+    }
+    
 	// Change channel
 	set_channel(channel);
 }
@@ -826,6 +839,8 @@ void AP_Radio_cypress::dsm_setup_transfer_dsmx(void)
     dsm_set_next_channel();
 }
 
+uint8_t rf_chan;
+
 /*
   move to the next DSM channnel
  */
@@ -833,6 +848,7 @@ void AP_Radio_cypress::dsm_set_next_channel(void)
 {
 	dsm.current_channel = dsm.is_dsm2? (dsm.current_channel+1) % 2 : (dsm.current_channel+1) % 23;
 	dsm.crc_seed		= ~dsm.crc_seed;
+    rf_chan = dsm.channels[dsm.current_channel];
 	dsm_set_channel(dsm.channels[dsm.current_channel], dsm.is_dsm2,
                     dsm.sop_col, dsm.data_col, dsm.crc_seed);
 }

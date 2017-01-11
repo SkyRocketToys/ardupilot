@@ -12,33 +12,82 @@ static AP_Radio radio;
 
 void setup()
 {
-    printf("RADIO init\n");
+    hal.console->printf("RADIO init\n");
     hal.scheduler->delay(1000);
     radio.init();
 }
 
+/**
+ * Convert normal radio transmitter to channel outputs
+ */
+static void convert_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool is_11bit, int16_t* channels)
+{
+	int i;
+	uint8_t bit_shift = (is_11bit)? 11:10;
+	int16_t value_max = (is_11bit)? 0x07FF: 0x03FF;
+
+	for (i=0; i<7; i++) {
+		const int16_t tmp = ((data[2*i]<<8) + data[2*i+1]) & 0x7FFF;
+		const uint8_t chan = (tmp >> bit_shift) & 0x0F;
+		const int16_t val  = (tmp&value_max);
+
+		if(chan < nb_channels)
+			channels[chan] = val;
+	}
+
+    hal.uartA->begin(115200);
+}
+
+extern uint8_t rf_chan;
+
 void loop()
 {
+    static uint8_t chan;
     static uint32_t counter;
-    static uint32_t last_print_ms;
+    static uint32_t last_print_us;
+    static uint32_t last_pkt_us;
+    static uint8_t lost_count;
     uint8_t pkt[16];
     
-    uint8_t len = radio.recv(pkt, sizeof(pkt));
-    if (len != sizeof(pkt)) {
-        printf("len=%u size=%u\n", len, sizeof(pkt));
+    uint8_t len = radio.recv(pkt, sizeof(pkt), 7000);
+    uint32_t now = AP_HAL::micros();
+    if (len == 0) {
+        lost_count++;
+    } else if (len != sizeof(pkt)) {
+        hal.console->printf("len=%u size=%u\n", len, sizeof(pkt));
     } else {
+        lost_count = 0;
+        hal.console->printf("PKT[%02X,%02X]: ", chan, rf_chan);
+#if 1
+        for (uint8_t i=0; i<len; i++) {
+            hal.console->printf("%02x ", pkt[i]);
+        }
+#endif
+        const uint8_t num_channels = 8;
+        int16_t channels[num_channels] {};
+        convert_radio_to_channels(&pkt[2], num_channels, true, channels);
+#if 1
+        for (uint8_t i=0; i<num_channels; i++) {
+            hal.console->printf("%u:%02x ", i, channels[i]);
+        }
+#endif
+        hal.console->printf("dt=%u", now - last_pkt_us);
+        last_pkt_us = now;
+        hal.console->printf("\n");
         counter++;
     }
-    uint32_t now = AP_HAL::millis();
-    if (now - last_print_ms > 1000) {
-        if (last_print_ms != 0) {
-            printf("pps:%u counter=%u\n", (1000 * counter) / (last_print_ms - now), counter);
+    if (now - last_print_us > 1000*1000U) {
+        if (last_print_us != 0) {
+            hal.console->printf("pps:%.1f counter=%u\n", (1.0e6 * counter) / (last_print_us - now), counter);
         }
-        last_print_ms = now;
+        last_print_us = now;
         counter = 0;
     }
 
-    radio.next_channel();
+    if (lost_count < 3) {
+        radio.next_channel();
+        chan = (chan+1) % 23;
+    }
 }
 
 AP_HAL_MAIN();
