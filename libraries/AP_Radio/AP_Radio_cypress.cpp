@@ -275,7 +275,12 @@ uint8_t AP_Radio_cypress::recv(uint8_t *pkt, uint16_t maxlen, uint32_t timeout_u
     if (!dev->get_semaphore()->take(0)) {
         return false;
     }
-    uint8_t len = streaming_receive(pkt, maxlen, timeout_usec);
+    uint8_t len;
+    if (maxlen == 16) {
+        len = receive16(pkt, timeout_usec);
+    } else {
+        len = streaming_receive(pkt, maxlen, timeout_usec);
+    }
     dev->get_semaphore()->give();
     return len;
 }
@@ -706,6 +711,54 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen, uint3
 
     debug("receive ret=%u ret0=%u rlen=%u rem=%u rx_status=0x%02x\n", ret, ret0, rlen, rem, rx_status);
     return ret;
+}
+
+
+/*
+  special case receive for 16 bytes, the most common packet length
+ */
+uint8_t AP_Radio_cypress::receive16(uint8_t *data, uint32_t timeout_usec)
+{
+    uint32_t tstart_us = AP_HAL::micros();
+
+    write_register(CYRF_RX_IRQ_STATUS, CYRF_RXOW_IRQ);
+    write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN);
+    
+    uint8_t rx_status;
+    while (true) {
+        uint32_t now = AP_HAL::micros();
+        if (now - tstart_us > timeout_usec) {
+            write_register(CYRF_XACT_CFG, CYRF_FRC_END);
+            return 0;
+        }
+        hal.scheduler->delay_microseconds(300);
+        //wait_irq();
+        rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
+        if (rx_status == 0) {
+            continue;
+        }
+        if (rx_status & (CYRF_RXC_IRQ | CYRF_RXE_IRQ)) {
+            break;
+        }
+    }
+
+    uint8_t rlen = read_register(CYRF_RX_COUNT);
+    if (rlen > 16) {
+        rlen = 16;
+    }
+    dev->read_registers(CYRF_RX_BUFFER, data, rlen);
+
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
+    write_register(CYRF_RX_ABORT, 0);
+
+    // invert crc_seed on bad CRC
+    rx_status = read_register(CYRF_RX_STATUS);
+    if (rx_status & CYRF_BAD_CRC) {
+        dsm.crc_seed = ~dsm.crc_seed;
+        return 0;
+    }
+    
+    return rlen;
 }
 
 /*

@@ -81,6 +81,9 @@ private:
 
     // receive a packet
     uint8_t streaming_receive(uint8_t *pkt, uint8_t len, uint32_t timeout_usec);
+
+    // special 16 byte receive
+    uint8_t receive16(uint8_t *pkt, uint32_t timeout_usec);
     
     void irq_handler(void);
     static int irq_trampoline(int irq, void *context);

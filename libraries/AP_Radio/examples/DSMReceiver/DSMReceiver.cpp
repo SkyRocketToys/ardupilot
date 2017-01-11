@@ -47,10 +47,21 @@ void loop()
     static uint32_t last_print_us;
     static uint32_t last_pkt_us;
     static uint8_t lost_count;
+    static bool next_packet_fast;
     uint8_t pkt[16];
     
-    uint8_t len = radio.recv(pkt, sizeof(pkt), 7000);
+    uint8_t len = radio.recv(pkt, sizeof(pkt), next_packet_fast?5000:8000);
     uint32_t now = AP_HAL::micros();
+
+    uint32_t dt = now - last_pkt_us;
+
+    if (dt < 4800) {
+        // this packet was fast, next one won't be
+        next_packet_fast = false;
+    } else {
+        next_packet_fast = !next_packet_fast;
+    }
+    
     if (len == 0) {
         lost_count++;
     } else if (len != sizeof(pkt)) {
@@ -58,27 +69,23 @@ void loop()
     } else {
         lost_count = 0;
         hal.console->printf("PKT[%02X,%02X]: ", chan, rf_chan);
-#if 1
-        for (uint8_t i=0; i<len; i++) {
+        for (uint8_t i=0; i<2; i++) {
             hal.console->printf("%02x ", pkt[i]);
         }
-#endif
         const uint8_t num_channels = 8;
         int16_t channels[num_channels] {};
         convert_radio_to_channels(&pkt[2], num_channels, true, channels);
-#if 1
         for (uint8_t i=0; i<num_channels; i++) {
             hal.console->printf("%u:%02x ", i, channels[i]);
         }
-#endif
-        hal.console->printf("dt=%u", now - last_pkt_us);
+        hal.console->printf("dt=%u", dt);
         last_pkt_us = now;
         hal.console->printf("\n");
         counter++;
     }
     if (now - last_print_us > 1000*1000U) {
         if (last_print_us != 0) {
-            hal.console->printf("pps:%.1f counter=%u\n", (1.0e6 * counter) / (last_print_us - now), counter);
+            hal.console->printf("pps:%.1f counter=%u\n", (1.0e6 * counter) / (now - last_print_us), counter);
         }
         last_print_us = now;
         counter = 0;
