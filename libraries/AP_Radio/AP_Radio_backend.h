@@ -38,6 +38,9 @@ public:
 
     // receive a packet
     virtual uint8_t recv(uint8_t *pkt, uint16_t len) = 0;
+
+    // go to next channel
+    virtual void next_channel(void) = 0;
     
 private:
     AP_Radio &radio;

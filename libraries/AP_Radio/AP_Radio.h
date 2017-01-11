@@ -36,6 +36,9 @@ public:
 
     // receive a packet
     uint8_t recv(uint8_t *pkt, uint16_t maxlen);
+
+    // go to next channel
+    void next_channel(void);
     
 private:
     AP_Radio_backend *driver;

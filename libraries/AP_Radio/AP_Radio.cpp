@@ -25,3 +25,8 @@ uint8_t AP_Radio::recv(uint8_t *pkt, uint16_t len)
 {
     return driver->recv(pkt, len);
 }
+
+void AP_Radio::next_channel(void)
+{
+    return driver->next_channel();
+}
