@@ -4,6 +4,7 @@
 #include "AP_Radio_cypress.h"
 #include <utility>
 #include <stdio.h>
+#include <drivers/drv_hrt.h>
 
 /*
   driver for CYRF6936 radio
@@ -367,6 +368,7 @@ const AP_Radio_cypress::config AP_Radio_cypress::cyrf_config[] = {
         {CYRF_TX_CFG, CYRF_DATA_CODE_LENGTH | CYRF_DATA_MODE_SDR | CYRF_PA_4},  // Enable 64 chip codes, SDR mode and amplifier +4dBm
         {CYRF_DATA64_THOLD, 0x0E},                                              // From manual, typical configuration
         {CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX},                                    // Set in Synth RX mode (again, really needed?)
+        {CYRF_IO_CFG, CYRF_IRQ_POL},                                            // IRQ active high
 };
 
 const AP_Radio_cypress::config AP_Radio_cypress::cyrf_bind_config[] = {
@@ -630,8 +632,7 @@ uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen, uint3
             write_register(CYRF_XACT_CFG, CYRF_FRC_END);
             return 0;
         }
-        hal.scheduler->delay_microseconds(300);
-        //wait_irq();
+        wait_irq(timeout_usec - (now - tstart_us));
         rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
         if (rx_status == 0) {
             continue;
@@ -731,8 +732,7 @@ uint8_t AP_Radio_cypress::receive16(uint8_t *data, uint32_t timeout_usec)
             write_register(CYRF_XACT_CFG, CYRF_FRC_END);
             return 0;
         }
-        hal.scheduler->delay_microseconds(300);
-        //wait_irq();
+        wait_irq(timeout_usec - (now - tstart_us));
         rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
         if (rx_status == 0) {
             continue;
@@ -769,7 +769,11 @@ void AP_Radio_cypress::wait_irq(uint32_t timeout_usec)
     sem_init(&irq_sem, 0, 0);
     stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
     if (!stm32_gpioread(GPIO_GPIO4_INPUT)) {
+        struct hrt_call wait_call;
+        memset(&wait_call, 0, sizeof(wait_call));
+        hrt_call_after(&wait_call, timeout_usec, (hrt_callout)sem_post, &irq_sem);
         sem_wait(&irq_sem);
+        hrt_cancel(&wait_call);
     } else {
         // we've hit a race condition where the IRQ may have been
         // raised before irq_trampoline was setup. Just clear the
