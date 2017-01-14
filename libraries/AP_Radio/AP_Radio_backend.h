@@ -41,6 +41,9 @@ public:
 
     // go to next channel
     virtual void next_channel(void) = 0;
+
+    // start bind procedure
+    virtual void start_bind(void) = 0;
     
 private:
     AP_Radio &radio;

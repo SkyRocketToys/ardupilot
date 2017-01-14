@@ -41,6 +41,9 @@ public:
 
     // go to next channel
     void next_channel(void) override;
+
+    // start bind procedure
+    void start_bind(void) override;
     
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
@@ -91,14 +94,16 @@ private:
     // dsm config data and status
     struct {
         uint8_t channels[23];
-        uint8_t mfg_id[4] {0xA5, 0xAA, 0x55, 0x0C};
+        uint8_t mfg_id[4] {0xA5, 0xA7, 0x55, 0x0C};
         uint8_t current_channel;
+        uint8_t current_rf_channel;
         uint16_t crc_seed;
         uint8_t sop_col;
         uint8_t data_col;
         bool is_dsm2 = false;
         uint8_t last_sop_code[8];
         uint8_t last_data_code[16];
+        bool in_bind;
     } dsm;
     
     // DSM specific functions

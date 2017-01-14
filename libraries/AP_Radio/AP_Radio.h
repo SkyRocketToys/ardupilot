@@ -39,6 +39,8 @@ public:
 
     // go to next channel
     void next_channel(void);
+
+    void start_bind(void);
     
 private:
     AP_Radio_backend *driver;

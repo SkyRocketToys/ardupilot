@@ -30,3 +30,8 @@ void AP_Radio::next_channel(void)
 {
     return driver->next_channel();
 }
+
+void AP_Radio::start_bind(void)
+{
+    return driver->start_bind();
+}

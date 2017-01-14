@@ -210,6 +210,8 @@ enum {
 #define FLAG_WRITE      0x80
 #define FLAG_AUTO_INC   0x40
 
+#define DSM_MAX_CHANNEL 0x4F
+
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
 
@@ -427,11 +429,16 @@ void AP_Radio_cypress::force_initial_state(void)
     }
 }
 
+uint8_t rf_chan;
+
+
 /*
   set desired channel
  */
 void AP_Radio_cypress::set_channel(uint8_t channel)
 {
+    //printf("RF Channel %u\n", channel);
+    rf_chan = channel;
     write_register(CYRF_CHANNEL, channel);
 }
 
@@ -469,7 +476,7 @@ void AP_Radio_cypress::radio_init(void)
     write_register(CYRF_XTAL_CTRL,0x80);  // XOUT=BitSerial
     force_initial_state();
     write_register(CYRF_PWR_CTRL,0x20);   // Disable PMU
-    debug("radio_init done\n");
+    printf("radio_init done\n");
 
     // setup handler for rising edge of IRQ pin
     //
@@ -751,11 +758,14 @@ uint8_t AP_Radio_cypress::receive16(uint8_t *data, uint32_t timeout_usec)
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
 
+    //printf("rx_status: 0x%02x\n", rx_status);
+    
     // invert crc_seed on bad CRC
     rx_status = read_register(CYRF_RX_STATUS);
     if (rx_status & CYRF_BAD_CRC) {
         dsm.crc_seed = ~dsm.crc_seed;
-        return 0;
+        //printf("bad CRC\n");
+        return rlen;
     }
     
     return rlen;
@@ -798,6 +808,8 @@ int AP_Radio_cypress::irq_trampoline(int irq, void *context)
  */
 void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed)
 {
+    //printf("dsm_set_channel: %u\n", channel);
+    
     uint8_t pn_row;
     pn_row = is_dsm2? channel % 5 : (channel-2) % 5;
 
@@ -896,16 +908,49 @@ void AP_Radio_cypress::dsm_setup_transfer_dsmx(void)
     dsm_set_next_channel();
 }
 
-uint8_t rf_chan;
-
 /*
   move to the next DSM channnel
  */
 void AP_Radio_cypress::dsm_set_next_channel(void)
 {
-    dsm.current_channel = dsm.is_dsm2? (dsm.current_channel+1) % 2 : (dsm.current_channel+1) % 23;
-    dsm.crc_seed        = ~dsm.crc_seed;
-    rf_chan = dsm.channels[dsm.current_channel];
-    dsm_set_channel(dsm.channels[dsm.current_channel], dsm.is_dsm2,
-                    dsm.sop_col, dsm.data_col, dsm.crc_seed);
+    if (dsm.in_bind) {
+        dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
+        set_channel(dsm.current_rf_channel);
+    } else {
+        dsm.current_channel = dsm.is_dsm2? (dsm.current_channel+1) % 2 : (dsm.current_channel+1) % 23;
+        dsm.crc_seed        = ~dsm.crc_seed;
+        dsm.current_rf_channel = dsm.channels[dsm.current_channel];
+        dsm_set_channel(dsm.current_rf_channel, dsm.is_dsm2,
+                        dsm.sop_col, dsm.data_col, dsm.crc_seed);
+    }
+}
+
+/*
+  setup radio for bind
+ */
+void AP_Radio_cypress::start_bind(void)
+{
+    printf("start_bind called\n");
+    dsm.in_bind = true;
+    hal.scheduler->delay(500);
+    radio_set_config(cyrf_bind_config, ARRAY_SIZE(cyrf_bind_config));
+
+    hal.scheduler->delay(500);
+
+    write_register(CYRF_CRC_SEED_LSB, 0);
+    write_register(CYRF_CRC_SEED_MSB, 0);
+
+    write_multiple(CYRF_SOP_CODE, 8, pn_codes[0][0]);
+
+    uint8_t data_code[16];
+	memcpy(data_code, pn_codes[0][8], 8);
+	memcpy(&data_code[8], pn_bind, 8);
+    write_multiple(CYRF_DATA_CODE, 16, data_code);
+
+    dsm.current_rf_channel = 1;
+    dsm_set_next_channel();
+
+    hal.scheduler->delay(500);
+    
+    printf("Setup for bind\n");
 }
