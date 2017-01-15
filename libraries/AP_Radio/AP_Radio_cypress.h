@@ -75,8 +75,8 @@ private:
 
     enum {
         STATE_RECV,
-        STATE_BIND_WAIT,
-        STATE_SEND_WAIT
+        STATE_BIND,
+        STATE_SEND
     } state;
     
     struct config {
@@ -126,7 +126,6 @@ private:
         bool is_dsm2 = false;
         uint8_t last_sop_code[8];
         uint8_t last_data_code[16];
-        bool in_bind;
 
         uint32_t receive_start_us;
         uint32_t receive_timeout_usec;
@@ -134,6 +133,7 @@ private:
         uint32_t last_recv_us;
         uint32_t last_recv_chan;
         uint32_t last_crc_seed;
+        uint32_t last_chan_change_us;
         uint8_t num_channels;
         uint16_t pwm_channels[max_channels];
     } dsm;
@@ -157,6 +157,9 @@ private:
 
     // process an incoming packet
     void process_packet(const uint8_t *pkt, uint8_t len);
+
+    // process an incoming bind packet
+    void process_bind(const uint8_t *pkt, uint8_t len);
     
 };
 

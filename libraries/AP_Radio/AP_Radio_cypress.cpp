@@ -432,7 +432,7 @@ uint8_t rf_chan;
  */
 void AP_Radio_cypress::set_channel(uint8_t channel)
 {
-    //printf("RF Channel %u\n", channel);
+    //printf("chan %u\n", channel);
     rf_chan = channel;
     write_register(CYRF_CHANNEL, channel);
 }
@@ -558,6 +558,62 @@ void AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 }
 
 /*
+  process an incoming bind packet
+ */
+void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
+{
+    if (len != 16) {
+        return;
+    }
+    bool ok = (len==16 && pkt[0] == pkt[4] && pkt[1] == pkt[5] && pkt[2] == pkt[6] && pkt[3] == pkt[7]);
+
+    // Calculate the first sum
+    uint16_t bind_sum = 384 - 0x10;
+    for (uint8_t i = 0; i < 8; i++) {
+        bind_sum += pkt[i];
+    }
+
+    // Check the first sum
+    if (pkt[8] != bind_sum >> 8 || pkt[9] != (bind_sum & 0xFF)) {
+        printf("bind sum1 bad\n");
+        ok = false;
+    }
+
+    // Calculate second sum
+    for (uint8_t i = 8; i < 14; i++) {
+        bind_sum += pkt[i];
+    }
+
+    // Check the second sum
+    if (pkt[14] != bind_sum >> 8 || pkt[15] != (bind_sum & 0xFF)) {
+        printf("bind sum2 bad\n");
+        ok = false;
+    }
+
+    if (ok) {
+        uint8_t mfg_id[4] = {uint8_t(~pkt[0]), uint8_t(~pkt[1]), uint8_t(~pkt[2]), uint8_t(~pkt[3])};
+        uint8_t num_chan = pkt[11];
+        uint8_t protocol = pkt[12];
+        
+        printf("BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x\n",
+               mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
+               num_chan,
+               protocol);
+
+        // change to normal receive
+        memcpy(dsm.mfg_id, mfg_id, 4);
+        state = STATE_RECV;
+
+        radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
+
+        dsm_setup_transfer_dsmx();
+        dsm.last_crc_seed = dsm.crc_seed;
+    } else {
+        printf("bad bind pkt\n");
+    }
+}
+
+/*
   process an incoming packet
  */
 void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
@@ -598,7 +654,11 @@ void AP_Radio_cypress::start_receive(void)
     write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN);
 
     dsm.receive_start_us = AP_HAL::micros();
-    dsm.receive_timeout_usec = 9000;
+    if (state == STATE_BIND) {
+        dsm.receive_timeout_usec = 15000;
+    } else {
+        dsm.receive_timeout_usec = 9000;
+    }
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
 
@@ -632,11 +692,16 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
         write_register(CYRF_RX_ABORT, 0);
         stats.recv_errors++;
     } else if (rx_status & CYRF_RXC_IRQ) {
-        process_packet(pkt, rlen);
+        if (state == STATE_RECV) {
+            process_packet(pkt, rlen);
+        } else {
+            process_bind(pkt, rlen);
+        }
     }
 
     start_receive();
 }
+
 
 /*
   IRQ handler
@@ -653,9 +718,10 @@ void AP_Radio_cypress::irq_handler(void)
 
     switch (state) {
     case STATE_RECV:
+    case STATE_BIND:
         irq_handler_recv(rx_status);
         break;
-
+        
     default:
         break;
     }
@@ -670,7 +736,6 @@ void AP_Radio_cypress::irq_timeout(void)
     stats.timeouts++;
     if (!dev->get_semaphore()->take_nonblocking()) {
         // schedule a new timeout
-        printf("sem error\n");
         hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
         return;
     }
@@ -808,7 +873,7 @@ void AP_Radio_cypress::dsm_setup_transfer_dsmx(void)
  */
 void AP_Radio_cypress::dsm_set_next_channel(void)
 {
-    if (dsm.in_bind) {
+    if (state == STATE_BIND) {
         dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
         set_channel(dsm.current_rf_channel);
     } else {
@@ -830,6 +895,15 @@ void AP_Radio_cypress::dsm_choose_channel(void)
     
     const uint32_t cycle_time = 11000;
     uint8_t next_channel;
+
+    if (state == STATE_BIND) {
+        if (now - dsm.last_chan_change_us > 15000) {
+            dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
+            dsm.last_chan_change_us = now;
+        }
+        set_channel(dsm.current_rf_channel);
+        return;
+    }
     
     if (dt < 1000) {
         // normal channel advance
@@ -854,6 +928,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
 
     dsm.current_channel = next_channel % (dsm.is_dsm2?2:23);
     dsm.current_rf_channel = dsm.channels[dsm.current_channel];
+
     dsm_set_channel(dsm.current_rf_channel, dsm.is_dsm2,
                     dsm.sop_col, dsm.data_col, dsm.crc_seed);
 }
@@ -863,9 +938,20 @@ void AP_Radio_cypress::dsm_choose_channel(void)
  */
 void AP_Radio_cypress::start_recv_bind(void)
 {
+    if (!dev->get_semaphore()->take(0)) {
+        // shouldn't be possible
+        return;
+    }
+
     printf("start_bind called\n");
-    dsm.in_bind = true;
+
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
+    write_register(CYRF_RX_ABORT, 0);
+    
+    state = STATE_BIND;
+
     hal.scheduler->delay(500);
+    
     radio_set_config(cyrf_bind_config, ARRAY_SIZE(cyrf_bind_config));
 
     hal.scheduler->delay(500);
@@ -880,10 +966,13 @@ void AP_Radio_cypress::start_recv_bind(void)
     memcpy(&data_code[8], pn_bind, 8);
     write_multiple(CYRF_DATA_CODE, 16, data_code);
 
-    dsm.current_rf_channel = 1;
-    dsm_set_next_channel();
-
     hal.scheduler->delay(500);
+    
+    dsm.current_rf_channel = 1;
+
+    start_receive();
+
+    dev->get_semaphore()->give();
 
     printf("Setup for bind\n");
 }
