@@ -132,6 +132,8 @@ private:
         uint32_t receive_timeout_usec;
 
         uint32_t last_recv_us;
+        uint32_t last_recv_chan;
+        uint32_t last_crc_seed;
         uint8_t num_channels;
         uint16_t pwm_channels[max_channels];
     } dsm;
@@ -148,6 +150,8 @@ private:
     // move to next DSM channel
     void dsm_set_next_channel(void);
 
+    void dsm_choose_channel(void);
+    
     // parse DSM channels from a packet
     void parse_dsm_channels(const uint8_t *data);
 

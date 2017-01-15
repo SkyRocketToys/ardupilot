@@ -32,10 +32,11 @@ void loop()
     hal.scheduler->delay(1000);
 
     AP_Radio::stats new_stats = radio.get_stats();
-    printf("recv:%3u bad:%3u timeouts:%3u N:%2u %4u %4u %4u %4u\n",
+    printf("recv:%3u bad:%3u to:%3u re:%u N:%2u %4u %4u %4u %4u\n",
            new_stats.recv_packets - stats.recv_packets,
            new_stats.bad_packets - stats.bad_packets,
            new_stats.timeouts - stats.timeouts,
+           new_stats.recv_errors - stats.recv_errors,
            radio.num_channels(),
            radio.read(0), radio.read(1), radio.read(2), radio.read(3));
     stats = new_stats;

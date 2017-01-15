@@ -48,6 +48,7 @@ public:
 
     struct stats {
         uint32_t bad_packets;
+        uint32_t recv_errors;
         uint32_t recv_packets;
         uint32_t lost_packets;
         uint32_t timeouts;
