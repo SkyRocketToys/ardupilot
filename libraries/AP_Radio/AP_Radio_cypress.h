@@ -15,12 +15,18 @@
 #pragma once
 
 /*
- * AP_Radio implementation for Cypress 2.4GHz radio
+  AP_Radio implementation for Cypress 2.4GHz radio. 
+
+  With thanks to the SuperBitRF project
+  See http://wiki.paparazziuav.org/wiki/SuperbitRF
+
+  This implementation uses the DSMX protocol on a CYRF6936
  */
 
 #include "AP_Radio_backend.h"
 #include <nuttx/arch.h>
 #include <systemlib/systemlib.h>
+#include <drivers/drv_hrt.h>
 
 class AP_Radio_cypress : public AP_Radio_backend
 {
@@ -36,14 +42,20 @@ public:
     // send a packet
     bool send(const uint8_t *pkt, uint16_t len) override;
 
-    // receive a packet
-    uint8_t recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec) override;
+    // start bind process as a receiver
+    void start_recv_bind(void) override;
 
-    // go to next channel
-    void next_channel(void) override;
+    // return time in microseconds of last received R/C packet
+    uint32_t last_recv_us(void) override;
 
-    // start bind procedure
-    void start_bind(void) override;
+    // return number of input channels
+    uint8_t num_channels(void) override;
+
+    // return current PWM of a channel
+    uint16_t read(uint8_t chan) override;
+
+    // get radio statistics structure
+    const AP_Radio::stats &get_stats(void) override;
     
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
@@ -61,7 +73,11 @@ private:
     void write_register(uint8_t reg, uint8_t value);
     void write_multiple(uint8_t reg, uint8_t n, const uint8_t *data);
 
-    void wait_irq(uint32_t timeout_usec);
+    enum {
+        STATE_RECV,
+        STATE_BIND_WAIT,
+        STATE_SEND_WAIT
+    } state;
     
     struct config {
         uint8_t reg;
@@ -75,22 +91,29 @@ private:
     
     sem_t irq_sem;
 
+    struct hrt_call wait_call;
+
     void radio_set_config(const struct config *config, uint8_t size);
-    
-    /*
-      transmit a packet of length bytes, blocking until it is complete
-     */
-    bool streaming_transmit(const uint8_t *data, uint8_t length);
 
-    // receive a packet
-    uint8_t streaming_receive(uint8_t *pkt, uint8_t len, uint32_t timeout_usec);
-
-    // special 16 byte receive
-    uint8_t receive16(uint8_t *pkt, uint32_t timeout_usec);
+    void start_receive(void);
     
+    // main IRQ handler
     void irq_handler(void);
-    static int irq_trampoline(int irq, void *context);
 
+    // IRQ handler for packet receive
+    void irq_handler_recv(uint8_t rx_status);
+
+    // handle timeout IRQ
+    void irq_timeout(void);
+    
+    // trampoline functions to take us from static IRQ function to class functions
+    static int irq_radio_trampoline(int irq, void *context);
+    static int irq_timeout_trampoline(int irq, void *context);
+
+    static const uint8_t max_channels = 16;
+
+    AP_Radio::stats stats;
+    
     // dsm config data and status
     struct {
         uint8_t channels[23];
@@ -104,6 +127,13 @@ private:
         uint8_t last_sop_code[8];
         uint8_t last_data_code[16];
         bool in_bind;
+
+        uint32_t receive_start_us;
+        uint32_t receive_timeout_usec;
+
+        uint32_t last_recv_us;
+        uint8_t num_channels;
+        uint16_t pwm_channels[max_channels];
     } dsm;
     
     // DSM specific functions
@@ -117,5 +147,12 @@ private:
 
     // move to next DSM channel
     void dsm_set_next_channel(void);
+
+    // parse DSM channels from a packet
+    void parse_dsm_channels(const uint8_t *data);
+
+    // process an incoming packet
+    void process_packet(const uint8_t *pkt, uint8_t len);
+    
 };
 

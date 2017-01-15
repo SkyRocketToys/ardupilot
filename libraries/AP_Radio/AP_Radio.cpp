@@ -21,17 +21,22 @@ bool AP_Radio::send(const uint8_t *pkt, uint16_t len)
     return driver->send(pkt, len);
 }
 
-uint8_t AP_Radio::recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec)
+void AP_Radio::start_recv_bind(void)
 {
-    return driver->recv(pkt, len, timeout_usec);
+    return driver->start_recv_bind();
 }
 
-void AP_Radio::next_channel(void)
+const AP_Radio::stats &AP_Radio::get_stats(void)
 {
-    return driver->next_channel();
+    return driver->get_stats();
 }
 
-void AP_Radio::start_bind(void)
+uint8_t AP_Radio::num_channels(void)
 {
-    return driver->start_bind();
+    return driver->num_channels();
+}
+
+uint16_t AP_Radio::read(uint8_t chan)
+{
+    return driver->read(chan);
 }

@@ -36,14 +36,20 @@ public:
     // send a packet
     virtual bool send(const uint8_t *pkt, uint16_t len) = 0;
 
-    // receive a packet
-    virtual uint8_t recv(uint8_t *pkt, uint16_t len, uint32_t timeout_usec) = 0;
+    // start bind process as a receiver
+    virtual void start_recv_bind(void) = 0;
 
-    // go to next channel
-    virtual void next_channel(void) = 0;
+    // return time in microseconds of last received R/C packet
+    virtual uint32_t last_recv_us(void) = 0;
 
-    // start bind procedure
-    virtual void start_bind(void) = 0;
+    // return number of input channels
+    virtual uint8_t num_channels(void) = 0;
+
+    // return current PWM of a channel
+    virtual uint16_t read(uint8_t chan) = 0;
+
+    // get radio statistics structure
+    virtual const AP_Radio::stats &get_stats(void) = 0;
     
 private:
     AP_Radio &radio;

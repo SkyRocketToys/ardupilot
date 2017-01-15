@@ -34,13 +34,27 @@ public:
     // send a packet
     bool send(const uint8_t *pkt, uint16_t len);
 
-    // receive a packet
-    uint8_t recv(uint8_t *pkt, uint16_t maxlen, uint32_t timeout_usec=0);
+    // start bind process as a receiver
+    void start_recv_bind(void);
 
-    // go to next channel
-    void next_channel(void);
+    // return time in microseconds of last received R/C packet
+    uint32_t last_recv_us(void);
 
-    void start_bind(void);
+    // return number of input channels
+    uint8_t num_channels(void);
+
+    // return current PWM of a channel
+    uint16_t read(uint8_t chan);
+
+    struct stats {
+        uint32_t bad_packets;
+        uint32_t recv_packets;
+        uint32_t lost_packets;
+        uint32_t timeouts;
+    };
+
+    // get packet statistics
+    const struct stats &get_stats(void);
     
 private:
     AP_Radio_backend *driver;

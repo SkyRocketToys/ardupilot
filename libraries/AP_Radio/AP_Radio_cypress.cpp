@@ -4,7 +4,6 @@
 #include "AP_Radio_cypress.h"
 #include <utility>
 #include <stdio.h>
-#include <drivers/drv_hrt.h>
 
 /*
   driver for CYRF6936 radio
@@ -262,40 +261,36 @@ bool AP_Radio_cypress::reset(void)
     return true;
 }
 
+const AP_Radio::stats &AP_Radio_cypress::get_stats(void)
+{
+    return stats;
+}
+
+uint16_t AP_Radio_cypress::read(uint8_t chan)
+{
+    if (chan >= max_channels) {
+        return 0;
+    }
+    return dsm.pwm_channels[chan];
+}
+
+uint8_t AP_Radio_cypress::num_channels(void)
+{
+    return dsm.num_channels;
+}
+
+uint32_t AP_Radio_cypress::last_recv_us(void)
+{
+    return dsm.last_recv_us;
+}
+
 /*
   send len bytes as a single packet
  */
 bool AP_Radio_cypress::send(const uint8_t *pkt, uint16_t len)
 {
-    return streaming_transmit(pkt, len);
+    return false;
 }
-
-/*
-  receive up to maxlen bytes as one packet, return the packet length
- */
-uint8_t AP_Radio_cypress::recv(uint8_t *pkt, uint16_t maxlen, uint32_t timeout_usec)
-{
-    if (!dev->get_semaphore()->take(0)) {
-        return false;
-    }
-    uint8_t len;
-    if (maxlen == 16) {
-        len = receive16(pkt, timeout_usec);
-    } else {
-        len = streaming_receive(pkt, maxlen, timeout_usec);
-    }
-    dev->get_semaphore()->give();
-    return len;
-}
-
-/*
-  go to next channel
- */
-void AP_Radio_cypress::next_channel(void)
-{
-    dsm_set_next_channel();
-}
-
 
 /* The PN codes */
 const uint8_t AP_Radio_cypress::pn_codes[5][9][8] = {
@@ -467,8 +462,10 @@ void AP_Radio_cypress::radio_init(void)
         hal.scheduler->delay(10);
     }
 
+    // base config
     radio_set_config(cyrf_config, ARRAY_SIZE(cyrf_config));
 
+    // start with receive config
     radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
 
     dsm_setup_transfer_dsmx();
@@ -476,10 +473,21 @@ void AP_Radio_cypress::radio_init(void)
     write_register(CYRF_XTAL_CTRL,0x80);  // XOUT=BitSerial
     force_initial_state();
     write_register(CYRF_PWR_CTRL,0x20);   // Disable PMU
+
+    hal.scheduler->delay(100);
+
+    // start channel hopping
+    dsm_set_next_channel();
+
+    // start in RECV state
+    state = STATE_RECV;
+
     printf("radio_init done\n");
 
+    start_receive();
+    
     // setup handler for rising edge of IRQ pin
-    //
+    stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_radio_trampoline);
 }
 
 void AP_Radio_cypress::dump_registers(uint8_t n)
@@ -529,277 +537,157 @@ void AP_Radio_cypress::write_register(uint8_t reg, uint8_t value)
 
 
 /*
-  transmit a packet of length bytes, blocking until it is complete
-*/
-bool AP_Radio_cypress::streaming_transmit(const uint8_t *data, uint8_t length)
+  parse channels from a packet
+ */
+void AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 {
-    //struct transmit_state state;
+    const bool is_11bit = true;
+	uint8_t bit_shift = (is_11bit)? 11:10;
+	int16_t value_max = (is_11bit)? 0x07FF: 0x03FF;
 
-    if (!dev->get_semaphore()->take(0)) {
-        return false;
-    }
+	for (uint8_t i=0; i<7; i++) {
+		const int16_t tmp = ((data[2*i]<<8) + data[2*i+1]) & 0x7FFF;
+		const uint8_t chan = (tmp >> bit_shift) & 0x0F;
+		const int16_t val  = (tmp & value_max);
 
-    debug("starting send of %u\n", length);
-
-    uint8_t n = MIN(length, 16);
-
-    // pre-fill TX FIFO with up to 16 bytes
-    write_register(CYRF_TX_LENGTH, length);
-    write_register(CYRF_TX_CTRL, CYRF_TX_CLR);
-    if (n > 0) {
-        write_multiple(CYRF_TX_BUFFER, n, data);
-    }
-    data += n;
-    length -= n;
-
-    uint8_t irq_bits = CYRF_TX_GO | CYRF_TXC_IRQ | CYRF_TXE_IRQ | CYRF_TXBERR_IRQ;
-    if (length > 0) {
-        // ask for an interrupt when we can fit more bytes into FIFO
-        irq_bits |= CYRF_TXB0_IRQ | CYRF_TXB8_IRQ | CYRF_TXB15_IRQ;
-    }
-
-    write_register(CYRF_TX_CTRL, irq_bits);
-
-    bool ret = false;
-
-    while (true) {
-        wait_irq(0);
-        uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
-        //printf("tx_status: 0x%08x\n", tx_status);
-        if (tx_status & (CYRF_TXE_IRQ | CYRF_TXBERR_IRQ | CYRF_TXC_IRQ | CYRF_TXB0_IRQ | CYRF_TXB8_IRQ | CYRF_TXB15_IRQ)) {
-            if (tx_status & (CYRF_TXE_IRQ | CYRF_TXBERR_IRQ)) {
-                // got an error
-                write_register(CYRF_TX_CTRL, CYRF_TX_CLR);
-                debug("tx error tx_status=0x%02x\n", (unsigned)tx_status);
-                goto done;
-            }
-
-            if (tx_status & CYRF_TXC_IRQ) {
-                write_register(CYRF_TX_CTRL, CYRF_TX_CLR);
-                if (length == 0) {
-                    ret = true;
-                } else {
-                    debug("tx finished with %u left\n", length);
-                }
-                goto done;
-            }
-
-            if (tx_status & (CYRF_TXB0_IRQ|CYRF_TXB8_IRQ|CYRF_TXB15_IRQ)) {
-                uint8_t space;
-                if (tx_status & CYRF_TXB0_IRQ) {
-                    space = 16;
-                } else if (tx_status & CYRF_TXB8_IRQ) {
-                    space = 8;
-                } else {
-                    space = 1;
-                }
-                n = MIN(length, space);
-
-                if (n == 0) {
-                    // clear interrupt bits to stop us getting interrupted
-                    write_register(CYRF_TX_CTRL, CYRF_TXC_IRQ | CYRF_TXE_IRQ | CYRF_TXBERR_IRQ);
-                } else {
-                    write_multiple(CYRF_TX_BUFFER, n, data);
-
-                    length -= n;
-                    data += n;
-
-                    if (length == 0) {
-                        write_register(CYRF_TX_CTRL, CYRF_TXC_IRQ | CYRF_TXE_IRQ | CYRF_TXBERR_IRQ);
-                    }
-                }
+		if (chan < max_channels) {
+			dsm.pwm_channels[chan] = val;
+            if (chan >= dsm.num_channels) {
+                dsm.num_channels = chan+1;
             }
         }
-    }
-
-done:
-    debug("TX finished at %u\n", AP_HAL::micros());
-
-    dev->get_semaphore()->give();
-
-    return ret;
+	}
+    dsm.last_recv_us = AP_HAL::micros();
 }
 
-
-uint8_t AP_Radio_cypress::streaming_receive(uint8_t *data, uint8_t maxlen, uint32_t timeout_usec)
+/*
+  process an incoming packet
+ */
+void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
 {
-    uint32_t tstart_us = AP_HAL::micros();
-    uint8_t *data0 = data;
-    uint8_t maxlen0 = maxlen;
-    uint8_t irq_bits = CYRF_RXC_IRQ | CYRF_RXE_IRQ | CYRF_RXOW_IRQ | CYRF_RXBERR_IRQ;
-    if (maxlen > 16) {
-        irq_bits |= CYRF_RXB16_IRQ | CYRF_RXB8_IRQ;
+    if (len == 16) {
+        bool ok;
+        const uint8_t *id = dsm.mfg_id;
+        if (dsm.is_dsm2) {
+            ok = (pkt[0] == ((~id[2])&0xFF) && pkt[1] == (~id[3]&0xFF));
+        } else {
+            ok = (pkt[0] == id[2] && pkt[1] == id[3]);
+        }
+        if (ok) {
+            parse_dsm_channels(&pkt[2]);
+            dsm_set_next_channel();
+            stats.recv_packets++;
+        } else {
+            stats.bad_packets++;
+        }
+    } else {
+            stats.bad_packets++;
     }
-    write_register(CYRF_RX_CTRL, CYRF_RX_GO | irq_bits);
-    uint8_t rx_status;
-    uint8_t ret = 0;
-    while (true) {
-        uint32_t now = AP_HAL::micros();
-        if (now - tstart_us > timeout_usec) {
-            write_register(CYRF_XACT_CFG, CYRF_FRC_END);
-            return 0;
-        }
-        wait_irq(timeout_usec - (now - tstart_us));
-        rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-        if (rx_status == 0) {
-            continue;
-        }
-        //printf("rx_status 0x%02x\n", rx_status);
-        if (rx_status & CYRF_RXOW_IRQ) {
-            write_register(CYRF_RX_IRQ_STATUS, CYRF_RXOW_IRQ);
-        }
-        if ((rx_status & (CYRF_RXB16_IRQ | CYRF_RXB8_IRQ))) {
-            uint8_t avail;
-            if (rx_status & CYRF_RXB16_IRQ) {
-                avail = 16;
-            } else if (rx_status & CYRF_RXB8_IRQ) {
-                avail = 8;
-            } else {
-                // don't try and read single bytes here. The read
-                // overhead is high enough for a single byte that we
-                // are much better off waiting for at least 8 bytes to
-                // be in the FIFO
-                avail = 0;
-            }
-            uint8_t n = MIN(maxlen, avail);
-            if (n > 0) {
-                dev->read_registers(CYRF_RX_BUFFER, data, n);
-                data += n;
-                maxlen -= n;
-                ret += n;
-            }
-        }
-        if (rx_status & CYRF_RXC_IRQ) {
-            break;
-        }
-        if (rx_status & (CYRF_RXBERR_IRQ | CYRF_RXE_IRQ)) {
-            if (ret > 0) {
-                debug("rx_status=0x%02x clearing %u bytes\n", rx_status, ret);
-            }
-            // discard the partial packet, if any
-            data = data0;
-            maxlen = maxlen0;
-            ret = 0;
-
-            // when we get a buffer error we don't really know why it
-            // happened. To maximise the chances of clearing the error
-            // we read the complete FIFO length to ensure the FIFO is
-            // clear
-            uint8_t tmp[16];
-            dev->read_registers(CYRF_RX_BUFFER, tmp, 16);
-            rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-
-            // restart the receive
-            write_register(CYRF_RX_CTRL, CYRF_RX_GO | irq_bits);
-            continue;
-        }
-    }
-
-    uint8_t rlen = read_register(CYRF_RX_LENGTH);
-#if RADIO_DEBUG
-    uint8_t rem = read_register(CYRF_RX_COUNT);
-    uint8_t ret0 = ret;
-#endif
-
-    uint8_t n = rlen - ret;
-    if (n > maxlen) {
-        n = maxlen;
-    }
-    if (n > 0) {
-        dev->read_registers(CYRF_RX_BUFFER, data, n);
-        ret += n;
-    }
-
-    // Write desired End State using FORCE_END_STATE feature
-    do {
-        write_register(CYRF_XACT_CFG, CYRF_FRC_END);
-        // Wait for FORCE_END to complete
-        hal.scheduler->delay_microseconds(100);
-    } while ((read_register(CYRF_XACT_CFG) & CYRF_FRC_END) != 0);
-
-    debug("receive ret=%u ret0=%u rlen=%u rem=%u rx_status=0x%02x\n", ret, ret0, rlen, rem, rx_status);
-    return ret;
 }
 
 
 /*
-  special case receive for 16 bytes, the most common packet length
+  start packet receive
  */
-uint8_t AP_Radio_cypress::receive16(uint8_t *data, uint32_t timeout_usec)
+void AP_Radio_cypress::start_receive(void)
 {
-    uint32_t tstart_us = AP_HAL::micros();
-
     write_register(CYRF_RX_IRQ_STATUS, CYRF_RXOW_IRQ);
     write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN);
-    
-    uint8_t rx_status;
-    while (true) {
-        uint32_t now = AP_HAL::micros();
-        if (now - tstart_us > timeout_usec) {
-            write_register(CYRF_XACT_CFG, CYRF_FRC_END);
-            return 0;
-        }
-        wait_irq(timeout_usec - (now - tstart_us));
-        rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-        if (rx_status == 0) {
-            continue;
-        }
-        if (rx_status & (CYRF_RXC_IRQ | CYRF_RXE_IRQ)) {
-            break;
-        }
+
+    dsm.receive_start_us = AP_HAL::micros();
+    if (dsm.crc_seed != ((dsm.mfg_id[0] << 8) + dsm.mfg_id[1])) {
+        dsm.receive_timeout_usec = 8000;
+    } else {
+        dsm.receive_timeout_usec = 5000;
+    }
+    hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
+}
+
+/*
+  handle a receive IRQ
+ */
+void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
+{
+    if ((rx_status & (CYRF_RXC_IRQ | CYRF_RXE_IRQ)) == 0) {
+        // nothing interesting yet
+        return;
     }
 
+    uint8_t pkt[16];
     uint8_t rlen = read_register(CYRF_RX_COUNT);
     if (rlen > 16) {
         rlen = 16;
     }
-    dev->read_registers(CYRF_RX_BUFFER, data, rlen);
+    if (rlen > 0) {
+        dev->read_registers(CYRF_RX_BUFFER, pkt, rlen);
+    }
 
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
 
-    //printf("rx_status: 0x%02x\n", rx_status);
-    
-    // invert crc_seed on bad CRC
-    rx_status = read_register(CYRF_RX_STATUS);
-    if (rx_status & CYRF_BAD_CRC) {
-        dsm.crc_seed = ~dsm.crc_seed;
-        //printf("bad CRC\n");
-        return rlen;
+    if (rx_status & CYRF_RXE_IRQ) {
+        uint8_t reason = read_register(CYRF_RX_STATUS);
+        if (reason & CYRF_BAD_CRC) {
+            // flip crc seed, this allows us to resync with transmitter
+            dsm.crc_seed = ~dsm.crc_seed;
+        }
+    } else if (rx_status & CYRF_RXC_IRQ) {
+        process_packet(pkt, rlen);
     }
-    
-    return rlen;
+
+    start_receive();
 }
 
 /*
-  wait for an interrupt from the radio
+  IRQ handler
  */
-void AP_Radio_cypress::wait_irq(uint32_t timeout_usec)
+void AP_Radio_cypress::irq_handler(void)
 {
-    sem_init(&irq_sem, 0, 0);
-    stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_trampoline);
-    if (!stm32_gpioread(GPIO_GPIO4_INPUT)) {
-        struct hrt_call wait_call;
-        memset(&wait_call, 0, sizeof(wait_call));
-        hrt_call_after(&wait_call, timeout_usec, (hrt_callout)sem_post, &irq_sem);
-        sem_wait(&irq_sem);
-        hrt_cancel(&wait_call);
-    } else {
-        // we've hit a race condition where the IRQ may have been
-        // raised before irq_trampoline was setup. Just clear the
-        // handler
-        stm32_gpiosetevent(GPIO_GPIO4_INPUT, false, false, false, nullptr);
+    if (!dev->get_semaphore()->take_nonblocking()) {
+        // we have to wait for timeout instead
+        return;
     }
+    // always read both rx and tx status. This ensure IRQ is cleared
+    uint8_t rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
+    read_status_debounced(CYRF_TX_IRQ_STATUS);
+    
+    switch (state) {
+    case STATE_RECV:
+        irq_handler_recv(rx_status);
+        break;
+
+    default:
+        break;
+    }
+    dev->get_semaphore()->give();
+}
+
+/*
+  called on radio timeout
+ */
+void AP_Radio_cypress::irq_timeout(void)
+{
+    stats.timeouts++;
+    start_receive();
 }
 
 
 /*
   called on rising edge of radio IRQ pin
  */
-int AP_Radio_cypress::irq_trampoline(int irq, void *context)
+int AP_Radio_cypress::irq_radio_trampoline(int irq, void *context)
 {
-    stm32_gpiosetevent(GPIO_GPIO4_INPUT, false, false, false, nullptr);
-    sem_post(&radio_instance->irq_sem);
+    radio_instance->irq_handler();
+    return 0;
+}
+
+
+/*
+  called on HRT timeout
+ */
+int AP_Radio_cypress::irq_timeout_trampoline(int irq, void *context)
+{
+    radio_instance->irq_timeout();
     return 0;
 }
 
@@ -900,9 +788,6 @@ void AP_Radio_cypress::dsm_setup_transfer_dsmx(void)
     dsm.sop_col = (dsm.mfg_id[0] + dsm.mfg_id[1] + dsm.mfg_id[2] + 2) & 0x07;
     dsm.data_col = 7 - dsm.sop_col;
 
-    printf("sop_col:%u data_col:%u crc_seed:0x%04x\n",
-           dsm.sop_col, dsm.data_col, dsm.crc_seed);
-
     dsm_generate_channels_dsmx(dsm.mfg_id, dsm.channels);
     dsm.current_channel = 22;
     dsm_set_next_channel();
@@ -928,7 +813,7 @@ void AP_Radio_cypress::dsm_set_next_channel(void)
 /*
   setup radio for bind
  */
-void AP_Radio_cypress::start_bind(void)
+void AP_Radio_cypress::start_recv_bind(void)
 {
     printf("start_bind called\n");
     dsm.in_bind = true;
