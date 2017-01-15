@@ -475,8 +475,6 @@ void AP_Radio_cypress::radio_init(void)
     force_initial_state();
     write_register(CYRF_PWR_CTRL,0x20);   // Disable PMU
 
-    hal.scheduler->delay(100);
-
     // start in RECV state
     state = STATE_RECV;
 
@@ -950,11 +948,7 @@ void AP_Radio_cypress::start_recv_bind(void)
     
     state = STATE_BIND;
 
-    hal.scheduler->delay(500);
-    
     radio_set_config(cyrf_bind_config, ARRAY_SIZE(cyrf_bind_config));
-
-    hal.scheduler->delay(500);
 
     write_register(CYRF_CRC_SEED_LSB, 0);
     write_register(CYRF_CRC_SEED_MSB, 0);
@@ -966,8 +960,6 @@ void AP_Radio_cypress::start_recv_bind(void)
     memcpy(&data_code[8], pn_bind, 8);
     write_multiple(CYRF_DATA_CODE, 16, data_code);
 
-    hal.scheduler->delay(500);
-    
     dsm.current_rf_channel = 1;
 
     start_receive();
