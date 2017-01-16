@@ -4,6 +4,7 @@
 #include "AP_Radio_cypress.h"
 #include <utility>
 #include <stdio.h>
+#include <StorageManager/StorageManager.h>
 
 /*
   driver for CYRF6936 radio
@@ -231,6 +232,8 @@ bool AP_Radio_cypress::init(void)
 {
     dev = std::move(hal.spi->get_device("external0m0"));
 
+    load_bind_info();
+    
     return reset();
 }
 
@@ -258,6 +261,11 @@ bool AP_Radio_cypress::reset(void)
 
     radio_init();
     dev->get_semaphore()->give();
+
+    if (dsm.protocol == DSM_NONE) {
+        start_recv_bind();
+    }
+    
     return true;
 }
 
@@ -268,6 +276,9 @@ const AP_Radio::stats &AP_Radio_cypress::get_stats(void)
 
 uint16_t AP_Radio_cypress::read(uint8_t chan)
 {
+    if (dsm.need_bind_save) {
+        save_bind_info();
+    }
     if (chan >= max_channels) {
         return 0;
     }
@@ -606,6 +617,9 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
         dsm_setup_transfer_dsmx();
         dsm.last_crc_seed = dsm.crc_seed;
+        dsm.protocol = (enum dsm_protocol)protocol;
+
+        dsm.need_bind_save = true;
     } else {
         printf("bad bind pkt\n");
     }
@@ -655,7 +669,7 @@ void AP_Radio_cypress::start_receive(void)
     if (state == STATE_BIND) {
         dsm.receive_timeout_usec = 15000;
     } else {
-        dsm.receive_timeout_usec = 9000;
+        dsm.receive_timeout_usec = 23000;
     }
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
@@ -967,4 +981,37 @@ void AP_Radio_cypress::start_recv_bind(void)
     dev->get_semaphore()->give();
 
     printf("Setup for bind\n");
+}
+
+/*
+  save bind info
+ */
+void AP_Radio_cypress::save_bind_info(void)
+{
+    // access to storage for bind information
+    StorageAccess bind_storage(StorageManager::StorageBindInfo);
+    struct bind_info info;
+
+    info.magic = bind_magic;
+    memcpy(info.mfg_id, dsm.mfg_id, sizeof(info.mfg_id));
+    info.protocol = dsm.protocol;
+
+    if (bind_storage.write_block(0, &info, sizeof(info))) {
+        dsm.need_bind_save = false;
+    }
+}
+
+/*
+  load bind info
+ */
+void AP_Radio_cypress::load_bind_info(void)
+{
+    // access to storage for bind information
+    StorageAccess bind_storage(StorageManager::StorageBindInfo);
+    struct bind_info info;
+
+    if (bind_storage.read_block(&info, 0, sizeof(info)) && info.magic == bind_magic) {
+        memcpy(dsm.mfg_id, info.mfg_id, sizeof(info.mfg_id));
+        dsm.protocol = info.protocol;
+    }
 }

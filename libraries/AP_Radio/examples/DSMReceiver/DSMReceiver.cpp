@@ -13,7 +13,7 @@ const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 static AP_Radio radio;
 
-static bool do_bind = true;
+static bool do_bind = false;
 
 void setup()
 {

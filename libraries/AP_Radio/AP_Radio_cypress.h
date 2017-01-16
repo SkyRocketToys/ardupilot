@@ -113,11 +113,20 @@ private:
     static const uint8_t max_channels = 16;
 
     AP_Radio::stats stats;
-    
+
+    enum dsm_protocol {
+        DSM_NONE   = 0,      // not bound yet
+        DSM_DSM2_1 = 0x01,   // The original DSM2 protocol with 1 packet of data
+        DSM_DSM2_2 = 0x02,   // The original DSM2 protocol with 2 packets of data
+        DSM_DSMX_1 = 0xA2,   // The original DSMX protocol with 1 packet of data
+        DSM_DSMX_2 = 0xB2,   // The original DSMX protocol with 2 packets of data
+    };
+
     // dsm config data and status
     struct {
         uint8_t channels[23];
-        uint8_t mfg_id[4] {0xA5, 0xA7, 0x55, 0x0C};
+        enum dsm_protocol protocol;
+        uint8_t mfg_id[4];
         uint8_t current_channel;
         uint8_t current_rf_channel;
         uint16_t crc_seed;
@@ -136,8 +145,17 @@ private:
         uint32_t last_chan_change_us;
         uint8_t num_channels;
         uint16_t pwm_channels[max_channels];
+        bool need_bind_save;
     } dsm;
-    
+
+    // bind structure saved to storage
+    static const uint16_t bind_magic = 0x43F6;
+    struct PACKED bind_info {
+        uint16_t magic;
+        uint8_t  mfg_id[4];
+        enum dsm_protocol protocol;
+    };
+
     // DSM specific functions
     void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 
@@ -160,6 +178,11 @@ private:
 
     // process an incoming bind packet
     void process_bind(const uint8_t *pkt, uint8_t len);
-    
+
+    // load bind info from storage
+    void load_bind_info(void);
+
+    // save bind info to storage
+    void save_bind_info(void);
 };
 
