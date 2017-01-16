@@ -14,6 +14,18 @@
    https://github.com/esden/superbitrf-firmware
  */
 
+#ifndef CYRF_SPI_DEVICE
+# define CYRF_SPI_DEVICE "external0m0"
+#endif
+
+#ifndef CYRF_IRQ_INPUT
+# define CYRF_IRQ_INPUT GPIO_GPIO4_INPUT
+#endif
+
+#ifndef CYRF_RESET_PIN
+# define CYRF_RESET_PIN GPIO_GPIO5_OUTPUT
+#endif
+
 extern const AP_HAL::HAL& hal;
 
 #define RADIO_DEBUG 0
@@ -230,7 +242,7 @@ AP_Radio_cypress::AP_Radio_cypress(AP_Radio &_radio) :
  */
 bool AP_Radio_cypress::init(void)
 {
-    dev = std::move(hal.spi->get_device("external0m0"));
+    dev = std::move(hal.spi->get_device(CYRF_SPI_DEVICE));
 
     load_bind_info();
     
@@ -247,17 +259,16 @@ bool AP_Radio_cypress::reset(void)
     }
 
     /*
-      use AUX6 for reset line for now, hold it high for 0.5s to reset
-      radio then wait 0.5s for it to settle
+      to reset radio hold reset high for 0.5s, then low for 0.5s
      */
-    stm32_configgpio(GPIO_GPIO5_OUTPUT);
-    stm32_gpiowrite(GPIO_GPIO5_OUTPUT, 1);
+    stm32_configgpio(CYRF_RESET_PIN);
+    stm32_gpiowrite(CYRF_RESET_PIN, 1);
     hal.scheduler->delay(500);
-    stm32_gpiowrite(GPIO_GPIO5_OUTPUT, 0);
+    stm32_gpiowrite(CYRF_RESET_PIN, 0);
     hal.scheduler->delay(500);
 
     // use AUX5 as radio IRQ pin
-    stm32_configgpio(GPIO_GPIO4_INPUT);
+    stm32_configgpio(CYRF_IRQ_INPUT);
 
     radio_init();
     dev->get_semaphore()->give();
@@ -269,11 +280,17 @@ bool AP_Radio_cypress::reset(void)
     return true;
 }
 
+/*
+  return statistics structure from radio
+ */
 const AP_Radio::stats &AP_Radio_cypress::get_stats(void)
 {
     return stats;
 }
 
+/*
+  read one pwm channel from radio
+ */
 uint16_t AP_Radio_cypress::read(uint8_t chan)
 {
     if (dsm.need_bind_save) {
@@ -285,11 +302,17 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
     return dsm.pwm_channels[chan];
 }
 
+/*
+  return number of active channels
+ */
 uint8_t AP_Radio_cypress::num_channels(void)
 {
     return dsm.num_channels;
 }
 
+/*
+  return time of last receive in microseconds
+ */
 uint32_t AP_Radio_cypress::last_recv_us(void)
 {
     return dsm.last_recv_us;
@@ -300,6 +323,7 @@ uint32_t AP_Radio_cypress::last_recv_us(void)
  */
 bool AP_Radio_cypress::send(const uint8_t *pkt, uint16_t len)
 {
+    // disabled for now
     return false;
 }
 
@@ -435,16 +459,12 @@ void AP_Radio_cypress::force_initial_state(void)
     }
 }
 
-uint8_t rf_chan;
-
-
 /*
   set desired channel
  */
 void AP_Radio_cypress::set_channel(uint8_t channel)
 {
     //printf("chan %u\n", channel);
-    rf_chan = channel;
     write_register(CYRF_CHANNEL, channel);
 }
 
@@ -461,7 +481,7 @@ void AP_Radio_cypress::radio_set_config(const struct config *conf, uint8_t size)
  */
 void AP_Radio_cypress::radio_init(void)
 {
-    printf("radio_init starting\n");
+    printf("Cypress: radio_init starting\n");
 
     // wait for radio to settle
     while (true) {
@@ -489,12 +509,12 @@ void AP_Radio_cypress::radio_init(void)
     // start in RECV state
     state = STATE_RECV;
 
-    printf("radio_init done\n");
+    printf("Cypress: radio_init done\n");
 
     start_receive();
 
     // setup handler for rising edge of IRQ pin
-    stm32_gpiosetevent(GPIO_GPIO4_INPUT, true, false, false, irq_radio_trampoline);
+    stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
 }
 
 void AP_Radio_cypress::dump_registers(uint8_t n)
@@ -584,7 +604,6 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
     // Check the first sum
     if (pkt[8] != bind_sum >> 8 || pkt[9] != (bind_sum & 0xFF)) {
-        printf("bind sum1 bad\n");
         ok = false;
     }
 
@@ -595,7 +614,6 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
     // Check the second sum
     if (pkt[14] != bind_sum >> 8 || pkt[15] != (bind_sum & 0xFF)) {
-        printf("bind sum2 bad\n");
         ok = false;
     }
 
@@ -620,8 +638,6 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         dsm.protocol = (enum dsm_protocol)protocol;
 
         dsm.need_bind_save = true;
-    } else {
-        printf("bad bind pkt\n");
     }
 }
 
@@ -680,7 +696,6 @@ void AP_Radio_cypress::start_receive(void)
 void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
 {
     if ((rx_status & (CYRF_RXC_IRQ | CYRF_RXE_IRQ)) == 0) {
-        printf("rx_status: 0x%02x\n", rx_status);
         // nothing interesting yet
         return;
     }
@@ -861,9 +876,6 @@ void AP_Radio_cypress::dsm_generate_channels_dsmx(uint8_t mfg_id[4], uint8_t cha
             channels[idx++] = next_ch;
         }
     }
-
-    printf("DSM generated channels for %02x:%02x:%02x:%02x\n",
-           dsm.mfg_id[0], dsm.mfg_id[1], dsm.mfg_id[2], dsm.mfg_id[3]);
 }
 
 /*
@@ -955,7 +967,7 @@ void AP_Radio_cypress::start_recv_bind(void)
         return;
     }
 
-    printf("start_bind called\n");
+    printf("Cypress: start_recv_bind\n");
 
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
@@ -979,8 +991,6 @@ void AP_Radio_cypress::start_recv_bind(void)
     start_receive();
 
     dev->get_semaphore()->give();
-
-    printf("Setup for bind\n");
 }
 
 /*
