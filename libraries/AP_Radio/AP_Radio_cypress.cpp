@@ -577,8 +577,11 @@ void AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
         const uint8_t chan = (tmp >> bit_shift) & 0x0F;
         const int16_t val  = (tmp & value_max);
 
+        /* scale to normal PWM output range */
+		uint16_t value = ((((int32_t)val - 1024) * 1000) / 1700) + 1500;
+
         if (chan < max_channels) {
-            dsm.pwm_channels[chan] = val;
+            dsm.pwm_channels[chan] = value;
             if (chan >= dsm.num_channels) {
                 dsm.num_channels = chan+1;
             }
