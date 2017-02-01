@@ -1,7 +1,6 @@
 #include "Copter.h"
 
-
-#define TOY_GPS_MODE POSHOLD
+#define TOY_GPS_MODE LOITER
 #define TOY_NON_GPS_MODE ALT_HOLD
 
 /*
