@@ -72,7 +72,7 @@ extern const AP_HAL::HAL& hal;
 #elif CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #define COMPASS_CALIBRATOR_OFS_MAX 2000
 #else
-#define COMPASS_CALIBRATOR_OFS_MAX 1000
+#define COMPASS_CALIBRATOR_OFS_MAX 2000
 #endif
 
 CompassCalibrator::CompassCalibrator():
