@@ -3,6 +3,11 @@
 #define TOY_GPS_MODE LOITER
 #define TOY_NON_GPS_MODE ALT_HOLD
 
+// times in 0.1s units
+#define TOY_ARM_COUNT 5
+#define TOY_LAND_COUNT 15
+#define TOY_COMMMAND_DELAY 15
+
 /*
   special mode handling for toys
  */
@@ -21,7 +26,7 @@ void Copter::toy_input_check()
     } else {
         ch6_counter = 0;
     }
-    if (ch6_counter > 10 && !motors->armed()) {
+    if (ch6_counter > TOY_ARM_COUNT && !motors->armed()) {
         // 1 second for arming.
         if (gps_enable && arming.pre_arm_gps_checks(false)) {
             // we want GPS and checks are passing, arm and enable fence
@@ -32,7 +37,7 @@ void Copter::toy_input_check()
                 if (!motors->armed()) {
                     AP_Notify::events.arming_failed = true;
                 }
-                ch6_counter = -20;
+                ch6_counter = -TOY_COMMMAND_DELAY;
             }
         } else if (gps_enable) {
             // notify of arming fail
@@ -43,20 +48,20 @@ void Copter::toy_input_check()
             fence.enable(false);
             if (control_mode == TOY_NON_GPS_MODE) {
                 init_arm_motors(false);
-                ch6_counter = -20;
+                ch6_counter = -TOY_COMMMAND_DELAY;
                 if (!motors->armed()) {
                     AP_Notify::events.arming_failed = true;
                 }
             }
         }
     }
-    if (ch6_counter > 20 && motors->armed() && !ap.land_complete) {
+    if (ch6_counter > TOY_LAND_COUNT && motors->armed() && !ap.land_complete) {
         set_mode(LAND, MODE_REASON_TX_COMMAND);        
-        ch6_counter = -20;
+        ch6_counter = -TOY_COMMMAND_DELAY;
     }
-    if (ch6_counter > 20 && motors->armed() && ap.land_complete) {
+    if (ch6_counter > TOY_LAND_COUNT && motors->armed() && ap.land_complete) {
         init_disarm_motors();
-        ch6_counter = -20;
+        ch6_counter = -TOY_COMMMAND_DELAY;
     }
 
     if (mode_change) {
