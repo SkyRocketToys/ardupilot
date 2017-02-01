@@ -7,47 +7,6 @@
 
 static uint32_t auto_disarm_begin;
 
-/*
-  check for special ch6 handling
- */
-void Copter::ch6_input_check()
-{
-    static int32_t ch6_counter;
-    if (hal.rcin->read(CH_6) > 1700) {
-        ch6_counter++;
-    } else {
-        ch6_counter = 0;
-    }
-    if (ch6_counter > 10 && !motors->armed()) {
-        // 1 second for arming. Force either LOITER (if EKF is good)
-        // or ALT_HOLD
-        if (arming.pre_arm_gps_checks(false)) {
-            set_mode(LOITER, MODE_REASON_TX_COMMAND);
-            fence.enable(true);
-        } else {
-            set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);
-            fence.enable(false);
-        }
-        if (control_mode == LOITER || control_mode == ALT_HOLD) {
-            init_arm_motors(false);
-            if (!motors->armed()) {
-                fence.enable(false);
-                set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);                
-                init_arm_motors(false);
-            }
-        }
-        ch6_counter = -20;
-    }
-    if (ch6_counter > 20 && motors->armed() && !ap.land_complete) {
-        set_mode(LAND, MODE_REASON_TX_COMMAND);        
-        ch6_counter = -20;
-    }
-    if (ch6_counter > 20 && motors->armed() && ap.land_complete) {
-        init_disarm_motors();
-        ch6_counter = -20;
-    }
-}
-
 // arm_motors_check - checks for pilot input to arm or disarm the copter
 // called at 10hz
 void Copter::arm_motors_check()
