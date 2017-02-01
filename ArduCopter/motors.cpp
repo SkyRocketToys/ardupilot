@@ -21,21 +21,18 @@ void Copter::ch6_input_check()
     if (ch6_counter > 10 && !motors->armed()) {
         // 1 second for arming. Force either LOITER (if EKF is good)
         // or ALT_HOLD
-        set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);
-        set_mode(LOITER, MODE_REASON_TX_COMMAND);
-#if 0
-        if (control_mode == LOITER) {
+        if (arming.pre_arm_gps_checks(false)) {
+            set_mode(LOITER, MODE_REASON_TX_COMMAND);
             fence.enable(true);
-        }
-#endif
-        if (control_mode == ALT_HOLD) {
+        } else {
+            set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);
             fence.enable(false);
         }
         if (control_mode == LOITER || control_mode == ALT_HOLD) {
             init_arm_motors(false);
             if (!motors->armed()) {
-                set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);                
                 fence.enable(false);
+                set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);                
                 init_arm_motors(false);
             }
         }
