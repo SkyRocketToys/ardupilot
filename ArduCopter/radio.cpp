@@ -96,6 +96,7 @@ void Copter::enable_motor_output()
     motors->output_min();
 }
 
+
 void Copter::read_radio()
 {
     uint32_t tnow_ms = millis();
@@ -104,6 +105,8 @@ void Copter::read_radio()
         ap.new_radio_frame = true;
         RC_Channels::set_pwm_all();
 
+        toy_chan_fix();
+        
         set_throttle_and_failsafe(channel_throttle->get_radio_in());
         set_throttle_zero_flag(channel_throttle->get_control_in());
 
