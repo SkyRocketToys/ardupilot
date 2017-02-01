@@ -23,9 +23,11 @@ void Copter::ch6_input_check()
         // or ALT_HOLD
         set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND);
         set_mode(LOITER, MODE_REASON_TX_COMMAND);
+#if 0
         if (control_mode == LOITER) {
             fence.enable(true);
         }
+#endif
         if (control_mode == ALT_HOLD) {
             fence.enable(false);
         }
