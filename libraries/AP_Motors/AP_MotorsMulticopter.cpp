@@ -86,7 +86,7 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // @Values: 0:Normal,1:OneShot,2:OneShot125,3:Brushed16kHz
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("PWM_TYPE", 15, AP_MotorsMulticopter, _pwm_type, PWM_TYPE_NORMAL),
+    AP_GROUPINFO("PWM_TYPE", 15, AP_MotorsMulticopter, _pwm_type, 3),
 
     // @Param: PWM_MIN
     // @DisplayName: PWM output miniumum

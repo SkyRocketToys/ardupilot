@@ -143,8 +143,6 @@ void Copter::init_ardupilot()
     // Init RSSI
     rssi.init();
     
-    barometer.init();
-
     // we start by assuming USB connected, as we initialed the serial
     // port with SERIAL0_BAUD. check_usb_mux() fixes this if need be.
     ap.usb_connected = true;
@@ -292,6 +290,9 @@ void Copter::init_ardupilot()
 
     startup_INS_ground();
 
+    barometer.init();
+    hal.scheduler->delay(50);
+    
     // set landed flags
     set_land_complete(true);
     set_land_complete_maybe(true);
