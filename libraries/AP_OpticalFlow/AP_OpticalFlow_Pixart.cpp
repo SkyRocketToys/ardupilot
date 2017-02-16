@@ -29,7 +29,7 @@
 #include "AP_OpticalFlow_Pixart_SROM.h"
 #include <stdio.h>
 
-#define debug(fmt, args ...)  do {hal.console->printf(fmt, ## args); } while(0)
+#define debug(fmt, args ...)  do {printf(fmt, ## args); } while(0)
 
 extern const AP_HAL::HAL& hal;
 
@@ -83,7 +83,7 @@ extern const AP_HAL::HAL& hal;
 AP_OpticalFlow_Pixart::AP_OpticalFlow_Pixart(OpticalFlow &_frontend) :
     OpticalFlow_backend(_frontend)
 {
-    _dev = std::move(hal.spi->get_device("external0m3"));
+    _dev = std::move(hal.spi->get_device("pixartflow"));
 }
 
 

@@ -222,7 +222,7 @@ extern const AP_HAL::HAL& hal;
 #define MPU_WHOAMI_6500			0x70
 #define MPU_WHOAMI_MPU9250      0x71
 #define MPU_WHOAMI_MPU9255      0x73
-#define MPU_WHOAMI_ICM20789     0x02
+#define MPU_WHOAMI_ICM20789     0x03
 
 #define BIT_READ_FLAG                           0x80
 #define BIT_I2C_SLVX_EN                         0x80
@@ -358,6 +358,7 @@ void AP_InertialSensor_Invensense::_fifo_reset()
 {
     uint8_t user_ctrl = _last_stat_user_ctrl;
     user_ctrl &= ~(BIT_USER_CTRL_FIFO_RESET | BIT_USER_CTRL_FIFO_EN);
+    user_ctrl &= ~BIT_USER_CTRL_I2C_MST_EN;
     _dev->set_speed(AP_HAL::Device::SPEED_LOW);
     _register_write(MPUREG_FIFO_EN, 0);
     _register_write(MPUREG_USER_CTRL, user_ctrl);
@@ -457,7 +458,10 @@ void AP_InertialSensor_Invensense::start()
 
     // clear interrupt on any read, and hold the data ready pin high
     // until we clear the interrupt
-    _register_write(MPUREG_INT_PIN_CFG, _register_read(MPUREG_INT_PIN_CFG) | BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN);
+    uint8_t v = _register_read(MPUREG_INT_PIN_CFG) | BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN;
+    v &= BIT_BYPASS_EN;
+    printf("Setting INT_PIN_CFG=0x%02x\n", v);
+    _register_write(MPUREG_INT_PIN_CFG, v);
 
     // now that we have initialised, we set the bus speed to high
     _dev->set_speed(AP_HAL::Device::SPEED_HIGH);
@@ -533,7 +537,9 @@ bool AP_InertialSensor_Invensense::_data_ready()
  */
 void AP_InertialSensor_Invensense::_poll_data()
 {
-    _read_fifo();
+//    if (AP_HAL::millis() < 10000) {
+        _read_fifo();
+//    }
 }
 
 bool AP_InertialSensor_Invensense::_accumulate(uint8_t *samples, uint8_t n_samples)
@@ -890,8 +896,9 @@ bool AP_InertialSensor_Invensense::_hardware_init(void)
         /* bus-dependent initialization */
         if ((_dev->bus_type() == AP_HAL::Device::BUS_TYPE_I2C) && (_mpu_type == Invensense_MPU9250)) {
             /* Enable I2C bypass to access internal AK8963 */
-            _register_write(MPUREG_INT_PIN_CFG, BIT_BYPASS_EN);
+            //_register_write(MPUREG_INT_PIN_CFG, BIT_BYPASS_EN);
         }
+
 
         // Wake up device and select GyroZ clock. Note that the
         // Invensense starts up in sleep mode, and it can take some time
@@ -1053,6 +1060,7 @@ void AP_Invensense_AuxiliaryBus::_configure_slaves()
 {
     auto &backend = AP_InertialSensor_Invensense::from(_ins_backend);
 
+    return;
     /* Enable the I2C master to slaves on the auxiliary I2C bus*/
     if (!(backend._last_stat_user_ctrl & BIT_USER_CTRL_I2C_MST_EN)) {
         backend._last_stat_user_ctrl |= BIT_USER_CTRL_I2C_MST_EN;
