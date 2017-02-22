@@ -29,7 +29,7 @@ DeviceBus I2CDevice::businfo[I2CDevice::num_buses];
   constructor for I2C wrapper class
  */    
 PX4_I2C::PX4_I2C(uint8_t bus) :
-  I2C(devname, devpath, map_bus_number(bus), 0, 100000UL)
+  I2C(devname, devpath, map_bus_number(bus), 0, 400000UL)
 {}
 
 /*
