@@ -115,5 +115,6 @@ then
     # if APM startup is successful then nsh will exit
     sh /etc/init.d/rc.APM
 else
+    uorb start
     nshterm /dev/ttyACM0 &
 fi
