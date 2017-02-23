@@ -103,35 +103,11 @@ bool AP_Baro_ICM20789::init()
     dev_icm->set_read_flag(0x80);
     uint8_t whoami = 0;
     dev_icm->read_registers(0x75, &whoami, 1);
+
     printf("20789 SPI whoami: 0x%02x\n", whoami);
 
-    uint8_t r1;
-    uint8_t r2;
-
-    while (true) {
-        dev_icm->read_registers(0x37, &r1, 1);
-        dev_icm->read_registers(0x6A, &r2, 1);
-        printf("ICM20789 r1=0x%x r2=0x%x ******\n", r1, r2);
-
-        dev->set_retries(10);
-        
-        if (send_cmd16(CMD_SOFT_RESET)) {
-            printf("ICM20789: reset OK ******\n");
-        }
-        
-        if (send_cmd16(CMD_READ_ID)) {
-            printf("ICM20789: read ID r1=0x%x r2=0x%x ******\n", r1, r2);
-            uint8_t id[3] {};
-            if (!dev->transfer(nullptr, 0, id, 3)) {
-                printf("ICM20789: failed to read ID\n");        
-            }
-            printf("ICM20789: ID %02x %02x %02x\n", id[0], id[1], id[2]);
-            AP_HAL::panic("OK!!");
-        }
-
-        read_calibration_data();
-        hal.scheduler->delay(3000);
-    }
+    dev_icm->write_register(0x37, 0x00);
+    dev_icm->write_register(0x6A, 0x10);
 
     if (!send_cmd16(CMD_SOFT_RESET)) {
         printf("ICM20789: reset failed\n");
