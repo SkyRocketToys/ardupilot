@@ -4,11 +4,14 @@
 #include <drivers/drv_rc_input.h>
 #include <systemlib/perf_counter.h>
 #include <pthread.h>
+#include <AP_Radio/AP_Radio.h>
 
 
 #ifndef RC_INPUT_MAX_CHANNELS
 #define RC_INPUT_MAX_CHANNELS 18
 #endif
+
+#define HAL_RCINPUT_WITH_AP_RADIO 1
 
 class PX4::PX4RCInput : public AP_HAL::RCInput {
 public:
@@ -35,4 +38,9 @@ private:
     bool _override_valid;
     perf_counter_t _perf_rcin;
     pthread_mutex_t rcin_mutex;
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio radio;
+    uint32_t last_radio_us;
+#endif
 };
