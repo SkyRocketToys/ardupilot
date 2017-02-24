@@ -17,9 +17,9 @@ static bool do_bind = false;
 
 void setup()
 {
+    hal.console->begin(115200);
     hal.console->printf("RADIO init\n");
     hal.scheduler->delay(1000);
-    hal.uartA->begin(115200);
     radio.init();
     if (do_bind) {
         radio.start_recv_bind();
@@ -32,13 +32,13 @@ void loop()
     hal.scheduler->delay(1000);
 
     AP_Radio::stats new_stats = radio.get_stats();
-    printf("recv:%3u bad:%3u to:%3u re:%u N:%2u %4u %4u %4u %4u\n",
-           new_stats.recv_packets - stats.recv_packets,
-           new_stats.bad_packets - stats.bad_packets,
-           new_stats.timeouts - stats.timeouts,
-           new_stats.recv_errors - stats.recv_errors,
-           radio.num_channels(),
-           radio.read(0), radio.read(1), radio.read(2), radio.read(3));
+    hal.console->printf("recv:%3u bad:%3u to:%3u re:%u N:%2u %4u %4u %4u %4u 14:%u\n",
+                        new_stats.recv_packets - stats.recv_packets,
+                        new_stats.bad_packets - stats.bad_packets,
+                        new_stats.timeouts - stats.timeouts,
+                        new_stats.recv_errors - stats.recv_errors,
+                        radio.num_channels(),
+                        radio.read(0), radio.read(1), radio.read(2), radio.read(3), radio.read(13));
     stats = new_stats;
 }
 
