@@ -508,6 +508,8 @@ void Compass::_detect_backends(void)
     case AP_BoardConfig::PX4_BOARD_PIXHAWK2:
     case AP_BoardConfig::PX4_BOARD_PIXRACER: {
         // external i2c bus
+        ADD_BACKEND(AP_Compass_BMM150::probe(*this, hal.i2c_mgr->get_device(0, 0x10)),
+                                             AP_Compass_BMM150::name, false);
         ADD_BACKEND(AP_Compass_BMM150::probe(*this, hal.i2c_mgr->get_device(0, 0x12)),
                                              AP_Compass_BMM150::name, false);
         // lis3mdl - this is disabled for now due to an errata on pixhawk2 GPS unit, pending investigation
