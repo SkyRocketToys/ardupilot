@@ -621,7 +621,9 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
     if (ok) {
         uint8_t mfg_id[4] = {uint8_t(~pkt[0]), uint8_t(~pkt[1]), uint8_t(~pkt[2]), uint8_t(~pkt[3])};
+#if RADIO_DEBUG
         uint8_t num_chan = pkt[11];
+#endif
         uint8_t protocol = pkt[12];
         
         // change to normal receive
