@@ -33,6 +33,8 @@ private:
     void calculate_conversion_constants(const float p_Pa[3], const float p_LUT[3],
                                         float &A, float &B, float &C);
     float get_pressure(uint32_t p_LSB, uint32_t T_LSB);
+
+    bool spi_init(void);
     
     void timer(void);
     

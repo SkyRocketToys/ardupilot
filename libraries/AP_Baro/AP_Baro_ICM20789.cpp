@@ -77,33 +77,10 @@ AP_Baro_Backend *AP_Baro_ICM20789::probe(AP_Baro &baro,
     return sensor;
 }
 
-bool AP_Baro_ICM20789::init()
+
+bool AP_Baro_ICM20789::spi_init(void)
 {
-    if (!dev) {
-        return false;
-    }
-
-    debug("Looking for 20789 baro\n");
-    
-    if (!dev->get_semaphore()->take(0)) {
-        AP_HAL::panic("PANIC: AP_Baro_ICM20789: failed to take serial semaphore for init");
-    }
-
-    /*
-      Pressure sensor data can be accessed in the following mode:
-      Bypass Mode: Set register INT_PIN_CFG (Address: 55 (Decimal); 37 (Hex)) bit 1 to value 1 
-      and I2C_MST_EN bit is 0 Address: 106 (Decimal); 6A (Hex)). 
-      Pressure sensor data can then be accessed using the procedure described in Section 10.
-    */
-    debug("Setting up IMU\n");
-    dev_icm = hal.spi->get_device(HAL_INS_MPU60x0_NAME);
-
-    if (!dev_icm->get_semaphore()->take(0)) {
-        AP_HAL::panic("PANIC: AP_Baro_ICM20789: failed to take serial semaphore ICM");        
-    }
-    
     dev_icm->set_read_flag(0x80);
-
 
     dev_icm->set_speed(AP_HAL::Device::SPEED_LOW);
     uint8_t whoami = 0;
@@ -230,18 +207,48 @@ bool AP_Baro_ICM20789::init()
     
     dev_icm->write_register(0x37, 0x00);
     dev_icm->write_register(0x6A, 0x10);
+    return true;
+}
+
+bool AP_Baro_ICM20789::init()
+{
+    if (!dev) {
+        return false;
+    }
+
+    debug("Looking for 20789 baro\n");
+    
+    if (!dev->get_semaphore()->take(0)) {
+        AP_HAL::panic("PANIC: AP_Baro_ICM20789: failed to take serial semaphore for init");
+    }
+
+    /*
+      Pressure sensor data can be accessed in the following mode:
+      Bypass Mode: Set register INT_PIN_CFG (Address: 55 (Decimal); 37 (Hex)) bit 1 to value 1 
+      and I2C_MST_EN bit is 0 Address: 106 (Decimal); 6A (Hex)). 
+      Pressure sensor data can then be accessed using the procedure described in Section 10.
+    */
+    debug("Setting up IMU\n");
+    dev_icm = hal.spi->get_device(HAL_INS_MPU60x0_NAME);
+
+    if (!dev_icm->get_semaphore()->take(0)) {
+        AP_HAL::panic("PANIC: AP_Baro_ICM20789: failed to take serial semaphore ICM");        
+    }
+
+    if (!spi_init()) {
+        debug("ICM20789: failed to initialise SPI device\n");
+        return false;
+    }
 
     while (true) {
         hal.scheduler->delay(500);
         
-        dev_icm->read_registers(0x75, &whoami, 1);
-        debug("20789 SPI whoami: 0x%02x\n", whoami);
-
         if (!send_cmd16(CMD_SOFT_RESET)) {
             debug("ICM20789: reset failed\n");
             continue;
         }
 
+        // wait for sensor to settle
         hal.scheduler->delay(10);
         
         if (!read_calibration_data()) {
