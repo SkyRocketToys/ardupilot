@@ -951,7 +951,8 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         }
         //hal.console->printf("%u chan=%u\n", AP_HAL::micros(), dsm.current_rf_channel);
         dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
-                        dsm.sop_col, dsm.data_col, dsm.crc_seed);
+                        dsm.sop_col, dsm.data_col,
+                        dsm.sync==DSM2_SYNC_B?~dsm.crc_seed:dsm.crc_seed);
         return;
     }
     
@@ -982,7 +983,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
     dsm.current_rf_channel = dsm.channels[dsm.current_channel];
 
     uint16_t seed = dsm.crc_seed;
-    if (!is_DSM2() && (dsm.current_channel & 1)) {
+    if (dsm.current_channel & 1) {
         seed = ~seed;
     }
 
