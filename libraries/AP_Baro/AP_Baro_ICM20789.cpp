@@ -85,100 +85,7 @@ bool AP_Baro_ICM20789::spi_init(void)
     dev_icm->set_speed(AP_HAL::Device::SPEED_LOW);
     uint8_t whoami = 0;
     uint8_t v;
-    
-    dev_icm->write_register(0x6B, 0x01);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6A, 0x10);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6C, 0x3f);
-    dev_icm->write_register(0xF5, 0x00);
-    dev_icm->write_register(0x19, 0x09);
-    dev_icm->write_register(0xEA, 0x00);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6A, 0x10);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x23, 0x00);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x1D, 0xC0);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x1A, 0xC0);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x38, 0x01);
-    
-    dev_icm->read_registers(0x6A, &v, 1);
-    debug("reg 0x6A=0x%02x\n", v);
-    dev_icm->read_registers(0x6B, &v, 1);
-    debug("reg 0x6B=0x%02x\n", v);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6A, 0x10);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x23, 0x00);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x41);
-    dev_icm->write_register(0x6C, 0x3f);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    dev_icm->read_registers(0x6A, &v, 1);
-    debug("reg 0x6A=0x%02x\n", v);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6A, 0x10);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x23, 0x00);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->read_registers(0x6A, &v, 1);
-    debug("reg 0x6A=0x%02x\n", v);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6A, 0x10);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x01);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x23, 0x00);
-    dev_icm->write_register(0x6B, 0x41);
-    
-    hal.scheduler->delay(1);
-    dev_icm->write_register(0x6B, 0x41);
-    dev_icm->write_register(0x6C, 0x3f);
-    dev_icm->write_register(0x6B, 0x41);
-    
+        
     dev_icm->read_registers(0x6A, &v, 1);
     debug("reg 0x6A=0x%02x\n", v);
     dev_icm->write_register(0x6B, 0x01);
@@ -200,7 +107,6 @@ bool AP_Baro_ICM20789::spi_init(void)
     
     // wait for sensor to settle
     hal.scheduler->delay(100);
-    
     
     dev_icm->read_registers(0x75, &whoami, 1);
     debug("20789 SPI whoami: 0x%02x\n", whoami);
@@ -237,30 +143,26 @@ bool AP_Baro_ICM20789::init()
 
     if (!spi_init()) {
         debug("ICM20789: failed to initialise SPI device\n");
-        return false;
+        goto failed;
     }
 
-    while (true) {
-        hal.scheduler->delay(500);
-        
-        if (!send_cmd16(CMD_SOFT_RESET)) {
-            debug("ICM20789: reset failed\n");
-            continue;
-        }
+    if (!send_cmd16(CMD_SOFT_RESET)) {
+        debug("ICM20789: reset failed\n");
+        goto failed;
+    }
 
-        // wait for sensor to settle
-        hal.scheduler->delay(10);
+    // wait for sensor to settle
+    hal.scheduler->delay(10);
+    
+    if (!read_calibration_data()) {
+        debug("ICM20789: read_calibration_data failed\n");
+        goto failed;
+    }
         
-        if (!read_calibration_data()) {
-            debug("ICM20789: read_calibration_data failed\n");
-            continue;
-        }
-        
-        // start a reading
-        if (send_cmd16(CMD_READ_PT)) {
-            debug("READ OK!!\n");
-            break;
-        }
+    // start a reading
+    if (!send_cmd16(CMD_READ_PT)) {
+        debug("ICM20789: start read failed\n");
+        goto failed;
     }
 
     dev->set_retries(0);
@@ -270,10 +172,17 @@ bool AP_Baro_ICM20789::init()
     dev_icm->get_semaphore()->give();
     dev->get_semaphore()->give();
 
+    debug("ICM20789: startup OK\n");
+    
     // use 10ms to ensure we don't lose samples, with max lag of 10ms
     dev->register_periodic_callback(CONVERSION_INTERVAL/2, FUNCTOR_BIND_MEMBER(&AP_Baro_ICM20789::timer, void));
         
     return true;
+
+ failed:
+    dev_icm->get_semaphore()->give();
+    dev->get_semaphore()->give();
+    return false;
 }
 
 bool AP_Baro_ICM20789::send_cmd16(uint16_t cmd)
