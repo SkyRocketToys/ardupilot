@@ -51,7 +51,7 @@ extern const AP_HAL::HAL &hal;
 #define CMD_SOFT_RESET     0x805D
 #define CMD_READ_ID        0xEFC8
 
-#define debug(fmt, args...)   printf(fmt, ##args)
+#define debug(fmt, args...)   hal.console->printf(fmt, ##args)
 
 /*
   constructor
