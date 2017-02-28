@@ -63,7 +63,7 @@ AP_Baro_ICM20789::AP_Baro_ICM20789(AP_Baro &baro, AP_HAL::OwnPtr<AP_HAL::Device>
 AP_Baro_Backend *AP_Baro_ICM20789::probe(AP_Baro &baro,
                                          AP_HAL::OwnPtr<AP_HAL::Device> dev)
 {
-    printf("Probing for ICM20789 baro\n");
+    hal.console->printf("Probing for ICM20789 baro\n");
     if (!dev) {
         return nullptr;
     }
@@ -81,7 +81,7 @@ bool AP_Baro_ICM20789::init()
         return false;
     }
 
-    printf("Looking for 20789 baro\n");
+    hal.console->printf("Looking for 20789 baro\n");
     
     if (!dev->get_semaphore()->take(0)) {
         AP_HAL::panic("PANIC: AP_Baro_ICM20789: failed to take serial semaphore for init");
@@ -93,7 +93,7 @@ bool AP_Baro_ICM20789::init()
       and I2C_MST_EN bit is 0 Address: 106 (Decimal); 6A (Hex)). 
       Pressure sensor data can then be accessed using the procedure described in Section 10.
     */
-    printf("Setting up IMU\n");
+    hal.console->printf("Setting up IMU\n");
     auto dev_icm = hal.spi->get_device(HAL_INS_MPU60x0_NAME);
 
     if (!dev_icm->get_semaphore()->take(0)) {
@@ -101,24 +101,153 @@ bool AP_Baro_ICM20789::init()
     }
     
     dev_icm->set_read_flag(0x80);
-    uint8_t whoami = 0;
-    dev_icm->read_registers(0x75, &whoami, 1);
 
-    printf("20789 SPI whoami: 0x%02x\n", whoami);
+
+        dev_icm->set_speed(AP_HAL::Device::SPEED_LOW);
+        uint8_t whoami = 0;
+        uint8_t v;
+
+        dev_icm->write_register(0x6B, 0x01);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6C, 0x3f);
+        dev_icm->write_register(0xF5, 0x00);
+        dev_icm->write_register(0x19, 0x09);
+        dev_icm->write_register(0xEA, 0x00);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x23, 0x00);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x1D, 0xC0);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x1A, 0xC0);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x38, 0x01);
+
+        dev_icm->read_registers(0x6A, &v, 1);
+        hal.console->printf("reg 0x6A=0x%02x\n", v);
+        dev_icm->read_registers(0x6B, &v, 1);
+        hal.console->printf("reg 0x6B=0x%02x\n", v);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x23, 0x00);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x41);
+        dev_icm->write_register(0x6C, 0x3f);
+        dev_icm->write_register(0x6B, 0x41);
+
+        dev_icm->read_registers(0x6A, &v, 1);
+        hal.console->printf("reg 0x6A=0x%02x\n", v);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x23, 0x00);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->read_registers(0x6A, &v, 1);
+        hal.console->printf("reg 0x6A=0x%02x\n", v);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x23, 0x00);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x41);
+        dev_icm->write_register(0x6C, 0x3f);
+        dev_icm->write_register(0x6B, 0x41);
+
+        dev_icm->read_registers(0x6A, &v, 1);
+        hal.console->printf("reg 0x6A=0x%02x\n", v);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6A, 0x10);
+        dev_icm->write_register(0x6B, 0x41);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x6B, 0x01);
+
+        hal.scheduler->delay(1);
+        dev_icm->write_register(0x23, 0x00);
+        dev_icm->write_register(0x6B, 0x41);
+
+        // print the WHOAMI
+        dev_icm->read_registers(0x75, &whoami, 1);
+        hal.console->printf("20789 SPI whoami: 0x%02x\n", whoami);
+
+        // wait for sensor to settle
+        hal.scheduler->delay(100);
+    
+
+    dev_icm->read_registers(0x75, &whoami, 1);
+    hal.console->printf("20789 SPI whoami: 0x%02x\n", whoami);
 
     dev_icm->write_register(0x37, 0x00);
     dev_icm->write_register(0x6A, 0x10);
 
-    if (!send_cmd16(CMD_SOFT_RESET)) {
-        printf("ICM20789: reset failed\n");
-    }
 
-    // start a reading
-    if (!send_cmd16(CMD_READ_PT)) {
-        printf("First reading failed\n");
-        dev_icm->get_semaphore()->give();
-        dev->get_semaphore()->give();
-        return false;
+    while (true) {
+        dev_icm->read_registers(0x75, &whoami, 1);
+        hal.console->printf("20789 SPI whoami: 0x%02x\n", whoami);
+
+        if (!send_cmd16(CMD_SOFT_RESET)) {
+            hal.console->printf("ICM20789: reset failed\n");
+        }
+
+        if (!read_calibration_data()) {
+            hal.console->printf("ICM20789: read_calibration_data failed\n");
+        }
+        
+        // start a reading
+        if (send_cmd16(CMD_READ_PT)) {
+            hal.console->printf("READ OK!!\n");
+            break;
+        }
+        hal.scheduler->delay(500);
     }
 
     dev->set_retries(0);
@@ -156,7 +285,7 @@ bool AP_Baro_ICM20789::read_calibration_data(void)
             return false;
         }
         sensor_constants[i] = int16_t((d[0]<<8) | d[1]);
-        printf("sensor_constants[%u]=%d\n", i, sensor_constants[i]);
+        hal.console->printf("sensor_constants[%u]=%d\n", i, sensor_constants[i]);
     }
     return true;
 }

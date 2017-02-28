@@ -268,6 +268,8 @@ void Copter::init_ardupilot()
     //-----------------------------
     init_barometer(true);
 
+    barometer.init();
+    
     // initialise rangefinder
     init_rangefinder();
 
@@ -290,7 +292,6 @@ void Copter::init_ardupilot()
 
     startup_INS_ground();
 
-    barometer.init();
     hal.scheduler->delay(50);
     
     // set landed flags

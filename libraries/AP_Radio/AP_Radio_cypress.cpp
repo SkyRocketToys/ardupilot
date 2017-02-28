@@ -28,7 +28,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define RADIO_DEBUG 0
+#define RADIO_DEBUG 1
 #if RADIO_DEBUG
 #define debug(fmt, args...)   printf(fmt, ##args)
 #else
@@ -481,7 +481,7 @@ void AP_Radio_cypress::radio_set_config(const struct config *conf, uint8_t size)
  */
 void AP_Radio_cypress::radio_init(void)
 {
-    debug("Cypress: radio_init starting\n");
+    printf("Cypress: radio_init starting\n");
 
     // wait for radio to settle
     while (true) {
@@ -500,6 +500,7 @@ void AP_Radio_cypress::radio_init(void)
     radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
 
     dsm_setup_transfer_dsmx();
+    dsm.last_crc_seed = dsm.crc_seed;
 
     write_register(CYRF_XTAL_CTRL,0x80);  // XOUT=BitSerial
     force_initial_state();
@@ -508,7 +509,7 @@ void AP_Radio_cypress::radio_init(void)
     // start in RECV state
     state = STATE_RECV;
 
-    debug("Cypress: radio_init done\n");
+    printf("Cypress: radio_init done\n");
 
     start_receive();
 
@@ -626,6 +627,11 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 #endif
         uint8_t protocol = pkt[12];
         
+        printf("BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x\n",
+               mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
+               num_chan,
+               protocol);
+
         // change to normal receive
         memcpy(dsm.mfg_id, mfg_id, 4);
         state = STATE_RECV;
@@ -633,14 +639,9 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
 
         dsm_setup_transfer_dsmx();
+        dsm.last_crc_seed = dsm.crc_seed;
         dsm.protocol = (enum dsm_protocol)protocol;
 
-        debug("BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
-              mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
-              num_chan,
-              protocol,
-              is_DSM2());
-        
         dsm.need_bind_save = true;
     }
 }
@@ -653,30 +654,15 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
     if (len == 16) {
         bool ok;
         const uint8_t *id = dsm.mfg_id;
-        if (is_DSM2()) {
+        if (dsm.is_dsm2) {
             ok = (pkt[0] == ((~id[2])&0xFF) && pkt[1] == (~id[3]&0xFF));
         } else {
             ok = (pkt[0] == id[2] && pkt[1] == id[3]);
         }
-        if (ok && is_DSM2() && dsm.sync < DSM2_OK) {
-            if (dsm.sync == DSM2_SYNC_A) {
-                dsm.channels[0] = dsm.current_rf_channel;
-                dsm.sync = DSM2_SYNC_B;
-                debug("DSM2 SYNCA chan=%u\n", dsm.channels[0]);
-            } else {
-                if (dsm.current_rf_channel != dsm.channels[0]) {
-                    dsm.channels[1] = dsm.current_rf_channel;
-                    dsm.sync = DSM2_OK;                    
-                    debug("DSM2 SYNCB chan=%u\n", dsm.channels[1]);
-                }
-            }
-        }
         if (ok) {
             dsm.last_recv_chan = dsm.current_channel;
+            dsm.last_crc_seed = dsm.crc_seed;
             dsm.last_recv_us = AP_HAL::micros();
-            if (dsm.crc_errors > 2) {
-                dsm.crc_errors -= 2;
-            }
 
             parse_dsm_channels(&pkt[2]);
 
@@ -706,7 +692,6 @@ void AP_Radio_cypress::start_receive(void)
     } else {
         dsm.receive_timeout_usec = 23000;
     }
-    //dsm.receive_timeout_usec = 45000;
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
 
@@ -731,15 +716,9 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
 
     if (rx_status & CYRF_RXE_IRQ) {
         uint8_t reason = read_register(CYRF_RX_STATUS);
-        //hal.console->printf("reason=%u\n", reason);
         if (reason & CYRF_BAD_CRC) {
-            dsm.crc_errors++;
-            if (dsm.crc_errors > 20) {
-                debug("Flip CRC\n");
-                // flip crc seed, this allows us to resync with transmitter
-                dsm.crc_seed = ~dsm.crc_seed;
-                dsm.crc_errors = 0;
-            }
+            // flip crc seed, this allows us to resync with transmitter
+            dsm.last_crc_seed = ~dsm.last_crc_seed;
         }
         write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
         write_register(CYRF_RX_ABORT, 0);
@@ -761,7 +740,6 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
  */
 void AP_Radio_cypress::irq_handler(void)
 {
-    //hal.console->printf("IRQ\n");
     if (!dev->get_semaphore()->take_nonblocking()) {
         // we have to wait for timeout instead
         return;
@@ -903,8 +881,6 @@ void AP_Radio_cypress::dsm_generate_channels_dsmx(uint8_t mfg_id[4], uint8_t cha
             channels[idx++] = next_ch;
         }
     }
-
-    debug("Generated DSMX channels\n");
 }
 
 /*
@@ -922,6 +898,23 @@ void AP_Radio_cypress::dsm_setup_transfer_dsmx(void)
 }
 
 /*
+  move to the next DSM channnel
+ */
+void AP_Radio_cypress::dsm_set_next_channel(void)
+{
+    if (state == STATE_BIND) {
+        dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
+        set_channel(dsm.current_rf_channel);
+    } else {
+        dsm.current_channel = dsm.is_dsm2? (dsm.current_channel+1) % 2 : (dsm.current_channel+1) % 23;
+        dsm.crc_seed        = ~dsm.crc_seed;
+        dsm.current_rf_channel = dsm.channels[dsm.current_channel];
+        dsm_set_channel(dsm.current_rf_channel, dsm.is_dsm2,
+                        dsm.sop_col, dsm.data_col, dsm.crc_seed);
+    }
+}
+
+/*
   choose channel to receive on
  */
 void AP_Radio_cypress::dsm_choose_channel(void)
@@ -932,11 +925,8 @@ void AP_Radio_cypress::dsm_choose_channel(void)
     const uint32_t cycle_time = 11000;
     uint8_t next_channel;
 
-    
     if (state == STATE_BIND) {
         if (now - dsm.last_chan_change_us > 15000) {
-            // always use odd channel numbers for bind
-            dsm.current_rf_channel |= 1;
             dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
             dsm.last_chan_change_us = now;
         }
@@ -944,6 +934,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         return;
     }
 
+#if 0
     if (is_DSM2() && dsm.sync < DSM2_OK) {
         if (now - dsm.last_chan_change_us > 15000) {
             dsm.current_rf_channel = (dsm.current_rf_channel+1) % DSM_MAX_CHANNEL;
@@ -955,6 +946,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
                         dsm.sync==DSM2_SYNC_B?~dsm.crc_seed:dsm.crc_seed);
         return;
     }
+#endif
     
     if (dt < 1000) {
         // normal channel advance
@@ -971,30 +963,20 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         }
     }
 
-    uint8_t chan_count = is_DSM2()?2:23;
-    dsm.current_channel = next_channel;
-    if (dsm.current_channel >= chan_count) {
-        dsm.current_channel %= chan_count;
-        if (!is_DSM2()) {
-            dsm.crc_seed = ~dsm.crc_seed;
-        }
+    if ((next_channel & 1) != (dsm.current_channel&1)) {
+        dsm.crc_seed = ~dsm.last_crc_seed;
+    } else {
+        dsm.crc_seed = dsm.last_crc_seed;
     }
-    
-    dsm.current_rf_channel = dsm.channels[dsm.current_channel];
 
     uint16_t seed = dsm.crc_seed;
     if (dsm.current_channel & 1) {
         seed = ~seed;
     }
+    dsm.current_channel = next_channel % (dsm.is_dsm2?2:23);
+    dsm.current_rf_channel = dsm.channels[dsm.current_channel];
 
-    if (is_DSM2()) {
-        if (now - dsm.last_recv_us > 5000000) {
-            debug("DSM2 resync\n");
-            dsm.sync = DSM2_SYNC_A;
-        }
-    }
-    
-    dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
+    dsm_set_channel(dsm.current_rf_channel, dsm.is_dsm2,
                     dsm.sop_col, dsm.data_col, seed);
 }
 
@@ -1008,7 +990,7 @@ void AP_Radio_cypress::start_recv_bind(void)
         return;
     }
 
-    debug("Cypress: start_recv_bind\n");
+    printf("Cypress: start_recv_bind\n");
 
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
@@ -1065,9 +1047,4 @@ void AP_Radio_cypress::load_bind_info(void)
         memcpy(dsm.mfg_id, info.mfg_id, sizeof(info.mfg_id));
         dsm.protocol = info.protocol;
     }
-}
-
-bool AP_Radio_cypress::is_DSM2(void)
-{
-    return dsm.protocol == DSM_DSM2_1 || dsm.protocol == DSM_DSM2_2;
 }

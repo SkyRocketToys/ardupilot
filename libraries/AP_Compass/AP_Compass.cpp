@@ -517,6 +517,9 @@ void Compass::_detect_backends(void)
         ADD_BACKEND(AP_Compass_LIS3MDL::probe(*this, hal.i2c_mgr->get_device(0, HAL_COMPASS_LIS3MDL_I2C_ADDR),
                                                true, ROTATION_YAW_90),
                     AP_Compass_LIS3MDL::name, false);
+        ADD_BACKEND(AP_Compass_LIS3MDL::probe(*this, hal.i2c_mgr->get_device(0, 0x1e),
+                                               true, ROTATION_YAW_90),
+                    AP_Compass_LIS3MDL::name, false);
         }
         break;
 
