@@ -28,9 +28,9 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define RADIO_DEBUG 0
+#define RADIO_DEBUG 1
 #if RADIO_DEBUG
-#define debug(fmt, args...)   printf(fmt, ##args)
+#define debug(fmt, args...)   hal.console->printf(fmt, ##args)
 #else
 #define debug(fmt, args...)
 #endif
