@@ -122,6 +122,12 @@ private:
         DSM_DSMX_2 = 0xB2,   // The original DSMX protocol with 2 packets of data
     };
 
+    enum dsm2_sync {
+        DSM2_SYNC_A,
+        DSM2_SYNC_B,
+        DSM2_OK
+    };
+    
     // dsm config data and status
     struct {
         uint8_t channels[23];
@@ -132,7 +138,6 @@ private:
         uint16_t crc_seed;
         uint8_t sop_col;
         uint8_t data_col;
-        bool is_dsm2 = false;
         uint8_t last_sop_code[8];
         uint8_t last_data_code[16];
 
@@ -141,11 +146,12 @@ private:
 
         uint32_t last_recv_us;
         uint32_t last_recv_chan;
-        uint32_t last_crc_seed;
         uint32_t last_chan_change_us;
         uint8_t num_channels;
         uint16_t pwm_channels[max_channels];
         bool need_bind_save;
+        enum dsm2_sync sync;
+        uint32_t crc_errors;
     } dsm;
 
     // bind structure saved to storage
@@ -165,9 +171,7 @@ private:
     // setup for DSMX transfers
     void dsm_setup_transfer_dsmx(void);
 
-    // move to next DSM channel
-    void dsm_set_next_channel(void);
-
+    // choose channel to receive on
     void dsm_choose_channel(void);
     
     // parse DSM channels from a packet
@@ -184,5 +188,7 @@ private:
 
     // save bind info to storage
     void save_bind_info(void);
+
+    bool is_DSM2(void);
 };
 
