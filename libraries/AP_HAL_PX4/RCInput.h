@@ -11,8 +11,6 @@
 #define RC_INPUT_MAX_CHANNELS 18
 #endif
 
-#define HAL_RCINPUT_WITH_AP_RADIO 1
-
 class PX4::PX4RCInput : public AP_HAL::RCInput {
 public:
     void init() override;
@@ -40,7 +38,7 @@ private:
     pthread_mutex_t rcin_mutex;
 
 #if HAL_RCINPUT_WITH_AP_RADIO
-    AP_Radio radio;
+    AP_Radio *radio;
     uint32_t last_radio_us;
 #endif
 };
