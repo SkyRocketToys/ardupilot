@@ -5,6 +5,38 @@
 
 extern const AP_HAL::HAL& hal;
 
+// table of user settable parameters
+const AP_Param::GroupInfo AP_Radio::var_info[] = {
+
+    // @Param: _TYPE
+    // @DisplayName: Set type of direct attached radio
+    // @Description: This enables support for direct attached radio receivers
+    // @Values: 0:None,1:CYRF6936
+    // @User: Advanced
+    AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, RADIO_TYPE_NONE),
+
+    // @Param: _PROT
+    // @DisplayName: protocol
+    // @Description: Select air protocol
+    // @Values: 0:Auto,1:DSM2,2:DSMX
+    // @User: Advanced
+    AP_GROUPINFO("_PROT",  2, AP_Radio, protocol, PROTOCOL_AUTO),
+
+    AP_GROUPEND
+};
+
+AP_Radio *AP_Radio::_instance;
+
+// constructor
+AP_Radio::AP_Radio(void)
+{
+    AP_Param::setup_object_defaults(this, var_info);
+    if (_instance != nullptr) {
+        AP_HAL::panic("Multiple AP_Radio declarations");
+    }
+    _instance = this;
+}
+
 bool AP_Radio::init(void)
 {
     driver = new AP_Radio_cypress(*this);

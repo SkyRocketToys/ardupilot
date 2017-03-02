@@ -19,12 +19,16 @@
  */
 
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Param/AP_Param.h>
 
 class AP_Radio_backend;
 
 class AP_Radio
 {
 public:
+    // constructor
+    AP_Radio(void);
+    
     // init - initialise radio
     bool init(void);
 
@@ -54,9 +58,31 @@ public:
         uint32_t timeouts;
     };
 
+    enum {
+        RADIO_TYPE_NONE=0,
+        RADIO_TYPE_CYRF6936=1,
+    };
+    
+    enum protocol {
+        PROTOCOL_AUTO=0,
+        PROTOCOL_DSM2=1,
+        PROTOCOL_DSMX=2,
+    };
+    
     // get packet statistics
     const struct stats &get_stats(void);
+
+    static const struct AP_Param::GroupInfo var_info[];
+
+    // get singleton instance
+    static AP_Radio *instance(void) {
+        return _instance;
+    }
     
 private:
     AP_Radio_backend *driver;
+
+    AP_Int8 radio_type;
+    AP_Int8 protocol;
+    static AP_Radio *_instance;
 };

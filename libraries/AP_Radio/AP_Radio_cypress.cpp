@@ -1056,5 +1056,8 @@ void AP_Radio_cypress::load_bind_info(void)
 
 bool AP_Radio_cypress::is_DSM2(void)
 {
+    if (radio.protocol != PROTOCOL_AUTO) {
+        return radio.protocol == PROTOCOL_DSM2;
+    }
     return dsm.protocol == DSM_DSM2_1 || dsm.protocol == DSM_DSM2_2;
 }
