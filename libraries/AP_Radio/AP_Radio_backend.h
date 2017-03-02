@@ -51,6 +51,15 @@ public:
     // get radio statistics structure
     virtual const AP_Radio::stats &get_stats(void) = 0;
     
-private:
+protected:
+
+    AP_Radio::ap_radio_protocol get_protocol(void) const {
+        return (AP_Radio::ap_radio_protocol)radio.protocol.get();
+    }
+
+    uint8_t get_debug_level(void) const {
+        return (uint8_t)radio.debug_level.get();
+    }
+
     AP_Radio &radio;
 };

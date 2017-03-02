@@ -112,7 +112,12 @@ private:
 
     static const uint8_t max_channels = 16;
 
+    uint32_t last_debug_print_ms;
+
+    void print_debug_info(void);
+    
     AP_Radio::stats stats;
+    AP_Radio::stats last_stats;
 
     enum dsm_protocol {
         DSM_NONE   = 0,      // not bound yet

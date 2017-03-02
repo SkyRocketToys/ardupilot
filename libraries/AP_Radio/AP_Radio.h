@@ -26,6 +26,8 @@ class AP_Radio_backend;
 class AP_Radio
 {
 public:
+    friend class AP_Radio_backend;
+    
     // constructor
     AP_Radio(void);
     
@@ -58,12 +60,12 @@ public:
         uint32_t timeouts;
     };
 
-    enum {
+    enum ap_radio_type {
         RADIO_TYPE_NONE=0,
         RADIO_TYPE_CYRF6936=1,
     };
     
-    enum protocol {
+    enum ap_radio_protocol {
         PROTOCOL_AUTO=0,
         PROTOCOL_DSM2=1,
         PROTOCOL_DSMX=2,
@@ -84,5 +86,7 @@ private:
 
     AP_Int8 radio_type;
     AP_Int8 protocol;
+    AP_Int8 debug_level;
+    
     static AP_Radio *_instance;
 };

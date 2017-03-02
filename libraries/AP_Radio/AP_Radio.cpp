@@ -22,6 +22,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_PROT",  2, AP_Radio, protocol, PROTOCOL_AUTO),
 
+    // @Param: _DEBUG
+    // @DisplayName: debug level
+    // @Description: radio debug level
+    // @Range: 0 4
+    // @User: Advanced
+    AP_GROUPINFO("_DEBUG",  3, AP_Radio, debug_level, 0),
+    
     AP_GROUPEND
 };
 
@@ -39,7 +46,13 @@ AP_Radio::AP_Radio(void)
 
 bool AP_Radio::init(void)
 {
-    driver = new AP_Radio_cypress(*this);
+    switch (radio_type) {
+    case RADIO_TYPE_CYRF6936:
+        driver = new AP_Radio_cypress(*this);
+        break;
+    default:
+        break;
+    }
     if (!driver) {
         return false;
     }

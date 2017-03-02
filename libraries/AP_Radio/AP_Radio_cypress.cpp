@@ -29,12 +29,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define RADIO_DEBUG 1
-#if RADIO_DEBUG
-#define debug(fmt, args...)   printf(fmt, ##args)
-#else
-#define debug(fmt, args...)
-#endif
+#define debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { printf(fmt, ##args); }} while (0)
 
 #define LP_FIFO_SIZE  16      // Physical data FIFO lengths in Radio
 
@@ -304,10 +299,34 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
 }
 
 /*
+  print one second debug info
+ */
+void AP_Radio_cypress::print_debug_info(void)
+{
+    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u 1:%4u 1:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
+          stats.recv_packets - last_stats.recv_packets,
+          stats.bad_packets - last_stats.bad_packets,
+          stats.timeouts - last_stats.timeouts,
+          stats.recv_errors - last_stats.recv_errors,
+          num_channels(),
+          dsm.pwm_channels[0], dsm.pwm_channels[1], dsm.pwm_channels[2], dsm.pwm_channels[3], 
+          dsm.pwm_channels[4], dsm.pwm_channels[5], dsm.pwm_channels[6], dsm.pwm_channels[7],
+          dsm.pwm_channels[13]);
+    last_stats = stats;
+}
+
+/*
   return number of active channels
  */
 uint8_t AP_Radio_cypress::num_channels(void)
 {
+    if (get_debug_level() > 1) {
+        uint32_t now = AP_HAL::millis();
+        if (now - last_debug_print_ms > 1000) {
+            last_debug_print_ms = now;
+            print_debug_info();
+        }
+    }
     return dsm.num_channels;
 }
 
@@ -482,7 +501,7 @@ void AP_Radio_cypress::radio_set_config(const struct config *conf, uint8_t size)
  */
 void AP_Radio_cypress::radio_init(void)
 {
-    debug("Cypress: radio_init starting\n");
+    debug(1, "Cypress: radio_init starting\n");
 
     // wait for radio to settle
     while (true) {
@@ -509,7 +528,7 @@ void AP_Radio_cypress::radio_init(void)
     // start in RECV state
     state = STATE_RECV;
 
-    debug("Cypress: radio_init done\n");
+    debug(1, "Cypress: radio_init done\n");
 
     start_receive();
 
@@ -608,9 +627,7 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
     if (ok) {
         uint8_t mfg_id[4] = {uint8_t(~pkt[0]), uint8_t(~pkt[1]), uint8_t(~pkt[2]), uint8_t(~pkt[3])};
-#if RADIO_DEBUG
         uint8_t num_chan = pkt[11];
-#endif
         uint8_t protocol = pkt[12];
         
         // change to normal receive
@@ -622,7 +639,7 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         dsm_setup_transfer_dsmx();
         dsm.protocol = (enum dsm_protocol)protocol;
 
-        debug("BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
+        debug(1, "BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
               mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
               num_chan,
               protocol,
@@ -649,12 +666,12 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             if (dsm.sync == DSM2_SYNC_A) {
                 dsm.channels[0] = dsm.current_rf_channel;
                 dsm.sync = DSM2_SYNC_B;
-                debug("DSM2 SYNCA chan=%u\n", dsm.channels[0]);
+                debug(2, "DSM2 SYNCA chan=%u\n", dsm.channels[0]);
             } else {
                 if (dsm.current_rf_channel != dsm.channels[0]) {
                     dsm.channels[1] = dsm.current_rf_channel;
                     dsm.sync = DSM2_OK;                    
-                    debug("DSM2 SYNCB chan=%u\n", dsm.channels[1]);
+                    debug(2, "DSM2 SYNCB chan=%u\n", dsm.channels[1]);
                 }
             }
         }
@@ -722,7 +739,7 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
         if (reason & CYRF_BAD_CRC) {
             dsm.crc_errors++;
             if (dsm.crc_errors > 20) {
-                debug("Flip CRC\n");
+                debug(2, "Flip CRC\n");
                 // flip crc seed, this allows us to resync with transmitter
                 dsm.crc_seed = ~dsm.crc_seed;
                 dsm.crc_errors = 0;
@@ -891,7 +908,7 @@ void AP_Radio_cypress::dsm_generate_channels_dsmx(uint8_t mfg_id[4], uint8_t cha
         }
     }
 
-    debug("Generated DSMX channels\n");
+    debug(2, "Generated DSMX channels\n");
 }
 
 /*
@@ -976,7 +993,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
 
     if (is_DSM2()) {
         if (now - dsm.last_recv_us > 5000000) {
-            debug("DSM2 resync\n");
+            debug(2, "DSM2 resync\n");
             dsm.sync = DSM2_SYNC_A;
         }
     }
@@ -995,7 +1012,7 @@ void AP_Radio_cypress::start_recv_bind(void)
         return;
     }
 
-    debug("Cypress: start_recv_bind\n");
+    debug(1, "Cypress: start_recv_bind\n");
 
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
@@ -1056,8 +1073,8 @@ void AP_Radio_cypress::load_bind_info(void)
 
 bool AP_Radio_cypress::is_DSM2(void)
 {
-    if (radio.protocol != PROTOCOL_AUTO) {
-        return radio.protocol == PROTOCOL_DSM2;
+    if (get_protocol() != AP_Radio::PROTOCOL_AUTO) {
+        return get_protocol() == AP_Radio::PROTOCOL_DSM2;
     }
     return dsm.protocol == DSM_DSM2_1 || dsm.protocol == DSM_DSM2_2;
 }
