@@ -34,13 +34,15 @@ void loop()
     hal.scheduler->delay(1000);
 
     AP_Radio::stats new_stats = radio.get_stats();
-    debug("recv:%3u bad:%3u to:%3u re:%u N:%2u %4u %4u %4u %4u 14:%u\n",
-                        new_stats.recv_packets - stats.recv_packets,
-                        new_stats.bad_packets - stats.bad_packets,
-                        new_stats.timeouts - stats.timeouts,
-                        new_stats.recv_errors - stats.recv_errors,
-                        radio.num_channels(),
-                        radio.read(0), radio.read(1), radio.read(2), radio.read(3), radio.read(13));
+    debug("recv:%3u bad:%3u to:%3u re:%u N:%2u 1:%4u 1:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
+          new_stats.recv_packets - stats.recv_packets,
+          new_stats.bad_packets - stats.bad_packets,
+          new_stats.timeouts - stats.timeouts,
+          new_stats.recv_errors - stats.recv_errors,
+          radio.num_channels(),
+          radio.read(0), radio.read(1), radio.read(2), radio.read(3),
+          radio.read(4), radio.read(5), radio.read(6), radio.read(7),
+          radio.read(13));
     stats = new_stats;
 }
 

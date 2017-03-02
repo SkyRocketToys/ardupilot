@@ -5,6 +5,7 @@
 #include <utility>
 #include <stdio.h>
 #include <StorageManager/StorageManager.h>
+#include <AP_HAL/utility/dsm.h>
 
 /*
   driver for CYRF6936 radio
@@ -567,25 +568,11 @@ void AP_Radio_cypress::write_register(uint8_t reg, uint8_t value)
  */
 void AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 {
-    const bool is_11bit = true;
-    uint8_t bit_shift = (is_11bit)? 11:10;
-    int16_t value_max = (is_11bit)? 0x07FF: 0x03FF;
-
-    for (uint8_t i=0; i<7; i++) {
-        const int16_t tmp = ((data[2*i]<<8) + data[2*i+1]) & 0x7FFF;
-        const uint8_t chan = (tmp >> bit_shift) & 0x0F;
-        const int16_t val  = (tmp & value_max);
-
-        /* scale to normal PWM output range */
-		uint16_t value = ((((int32_t)val - 1024) * 1000) / 1700) + 1500;
-
-        if (chan < max_channels) {
-            dsm.pwm_channels[chan] = value;
-            if (chan >= dsm.num_channels) {
-                dsm.num_channels = chan+1;
-            }
-        }
-    }
+    dsm_decode(AP_HAL::micros64(),
+               data,
+               dsm.pwm_channels,
+               &dsm.num_channels,
+               ARRAY_SIZE(dsm.pwm_channels));
 }
 
 /*
@@ -678,7 +665,7 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
                 dsm.crc_errors -= 2;
             }
 
-            parse_dsm_channels(&pkt[2]);
+            parse_dsm_channels(pkt);
 
             stats.recv_packets++;
         } else {

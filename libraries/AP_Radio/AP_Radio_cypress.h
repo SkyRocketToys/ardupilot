@@ -147,7 +147,7 @@ private:
         uint32_t last_recv_us;
         uint32_t last_recv_chan;
         uint32_t last_chan_change_us;
-        uint8_t num_channels;
+        uint16_t num_channels;
         uint16_t pwm_channels[max_channels];
         bool need_bind_save;
         enum dsm2_sync sync;
