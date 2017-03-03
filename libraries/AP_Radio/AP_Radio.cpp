@@ -28,6 +28,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 4
     // @User: Advanced
     AP_GROUPINFO("_DEBUG",  3, AP_Radio, debug_level, 0),
+
+    // @Param: _DISCRC
+    // @DisplayName: disable receive CRC
+    // @Description: disable receive CRC (for debug)
+    // @Values: 0:NotDisabled,1:Disabled
+    // @User: Advanced
+    AP_GROUPINFO("_DISCRC",  4, AP_Radio, disable_crc, 0),
     
     AP_GROUPEND
 };

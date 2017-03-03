@@ -61,5 +61,9 @@ protected:
         return (uint8_t)radio.debug_level.get();
     }
 
+    bool get_disable_crc(void) const {
+        return (bool)radio.disable_crc.get();
+    }
+    
     AP_Radio &radio;
 };

@@ -519,6 +519,10 @@ void AP_Radio_cypress::radio_init(void)
     // start with receive config
     radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
 
+    if (get_disable_crc()) {
+        write_register(CYRF_RX_OVERRIDE, CYRF_DIS_RXCRC);
+    }
+    
     dsm_setup_transfer_dsmx();
 
     write_register(CYRF_XTAL_CTRL,0x80);  // XOUT=BitSerial
@@ -635,6 +639,10 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         state = STATE_RECV;
 
         radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
+
+        if (get_disable_crc()) {
+            write_register(CYRF_RX_OVERRIDE, CYRF_DIS_RXCRC);
+        }
 
         dsm_setup_transfer_dsmx();
         dsm.protocol = (enum dsm_protocol)protocol;
