@@ -65,5 +65,13 @@ protected:
         return (bool)radio.disable_crc.get();
     }
     
+    uint8_t get_rssi_chan(void) const {
+        return (uint8_t)radio.rssi_chan.get();
+    }
+
+    uint8_t get_rate_chan(void) const {
+        return (uint8_t)radio.rate_chan.get();
+    }
+    
     AP_Radio &radio;
 };

@@ -312,7 +312,6 @@ void AP_Radio_cypress::print_debug_info(void)
           dsm.pwm_channels[0], dsm.pwm_channels[1], dsm.pwm_channels[2], dsm.pwm_channels[3], 
           dsm.pwm_channels[4], dsm.pwm_channels[5], dsm.pwm_channels[6], dsm.pwm_channels[7],
           dsm.pwm_channels[13]);
-    last_stats = stats;
 }
 
 /*
@@ -320,12 +319,25 @@ void AP_Radio_cypress::print_debug_info(void)
  */
 uint8_t AP_Radio_cypress::num_channels(void)
 {
-    if (get_debug_level() > 1) {
-        uint32_t now = AP_HAL::millis();
-        if (now - last_debug_print_ms > 1000) {
-            last_debug_print_ms = now;
+    uint32_t now = AP_HAL::millis();
+    if (now - last_debug_print_ms > 1000) {
+        last_debug_print_ms = now;
+        if (get_debug_level() > 1) {
             print_debug_info();
         }
+
+        uint8_t ch = get_rssi_chan();
+        if (ch > 0) {
+            dsm.pwm_channels[ch-1] = (uint8_t)dsm.rssi;
+            dsm.num_channels = MAX(dsm.num_channels, ch);
+        }
+
+        ch = get_rate_chan();
+        if (ch > 0) {
+            dsm.pwm_channels[ch-1] = stats.recv_packets - last_stats.recv_packets;
+            dsm.num_channels = MAX(dsm.num_channels, ch);
+        }
+        last_stats = stats;
     }
     return dsm.num_channels;
 }
@@ -693,6 +705,10 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             parse_dsm_channels(pkt);
 
             stats.recv_packets++;
+
+            // sample the RSSI
+            uint8_t rssi = read_register(CYRF_RSSI);
+            dsm.rssi = 0.95 * dsm.rssi + 0.05 * rssi;
         } else {
             stats.bad_packets++;
         }

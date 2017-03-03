@@ -88,6 +88,8 @@ private:
     AP_Int8 protocol;
     AP_Int8 debug_level;
     AP_Int8 disable_crc;
+    AP_Int8 rssi_chan;
+    AP_Int8 rate_chan;
     
     static AP_Radio *_instance;
 };

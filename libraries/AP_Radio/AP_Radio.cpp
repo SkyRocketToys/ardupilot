@@ -35,6 +35,20 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Values: 0:NotDisabled,1:Disabled
     // @User: Advanced
     AP_GROUPINFO("_DISCRC",  4, AP_Radio, disable_crc, 0),
+
+    // @Param: _RSSICH
+    // @DisplayName: RSSI value channel
+    // @Description: Channel to show RSSI value, or zero for disabled
+    // @Range: 0 16
+    // @User: Advanced
+    AP_GROUPINFO("_RSSICH",  5, AP_Radio, rssi_chan, 0),
+
+    // @Param: _RATECH
+    // @DisplayName: Packet rate channel
+    // @Description: Channel to show received packet rate, or zero for disabled
+    // @Range: 0 16
+    // @User: Advanced
+    AP_GROUPINFO("_RATECH",  6, AP_Radio, rate_chan, 0),
     
     AP_GROUPEND
 };

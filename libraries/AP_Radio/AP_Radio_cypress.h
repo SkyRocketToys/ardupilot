@@ -157,6 +157,7 @@ private:
         bool need_bind_save;
         enum dsm2_sync sync;
         uint32_t crc_errors;
+        float rssi;
     } dsm;
 
     // bind structure saved to storage
