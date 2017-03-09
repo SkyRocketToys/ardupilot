@@ -187,10 +187,10 @@ void RGBLed::update_colours(void)
             case 2:
             case 3:
             case 4:
-                // yellow on
+                // red on
                 _red_des = brightness;
                 _blue_des = _led_off;
-                _green_des = brightness;
+                _green_des = _led_off;
                 break;
             case 5:
             case 6:
@@ -241,10 +241,10 @@ void RGBLed::update_colours(void)
                 case 1:
                 case 4:
                 case 5:
-                    // yellow on
+                    // red
                     _red_des = brightness;
                     _blue_des = _led_off;
-                    _green_des = brightness;
+                    _green_des = _led_off;
                     break;
                 case 2:
                 case 3:
