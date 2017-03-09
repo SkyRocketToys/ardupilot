@@ -19,7 +19,7 @@
 
 #ifndef AP_ARMING_COMPASS_OFFSETS_MAX
 // this can also be overridden for specific boards in the HAL
-#define AP_ARMING_COMPASS_OFFSETS_MAX   600
+#define AP_ARMING_COMPASS_OFFSETS_MAX   2000
 #endif
 #define AP_ARMING_COMPASS_MAGFIELD_EXPECTED 530
 #define AP_ARMING_COMPASS_MAGFIELD_MIN  185     // 0.35 * 530 milligauss
