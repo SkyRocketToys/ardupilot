@@ -4,6 +4,7 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <sys/ioctl.h>
+#include <AP_Radio/AP_Radio.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 && !defined(CONFIG_ARCH_BOARD_PX4FMU_V1)
 
@@ -113,4 +114,9 @@ private:
 
     // target temperarure for IMU in Celsius, or -1 to disable
     AP_Int8 _imu_target_temperature;
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    // direct attached radio
+    AP_Radio _radio;
+#endif
 };
