@@ -411,9 +411,9 @@ void AP_BoardConfig::px4_setup_peripherals(void)
         px4_sensor_error("no ADC found");
     }
 
-#if HAL_PX4_HAVE_PX4IO
-    px4_setup_px4io();
-#endif
+    if (px4.io_enable.get() != 0) {
+        px4_setup_px4io();
+    }
 
 #if defined(CONFIG_ARCH_BOARD_PX4FMU_V1)
     const char *fmu_mode = "mode_serial";

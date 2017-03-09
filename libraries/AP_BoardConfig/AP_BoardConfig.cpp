@@ -170,6 +170,16 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
     // @Path: ../libraries/AP_Radio/AP_Radio.cpp
     AP_SUBGROUPINFO(_radio, "RADIO", 10, AP_BoardConfig, AP_Radio),
 #endif
+
+#if HAL_PX4_HAVE_PX4IO
+    // @Param: BRD_IO_ENABLE
+    // @DisplayName: Enable IO co-processor
+    // @Description: This allows for the IO co-processor on FMUv1 and FMUv2 to be disabled
+    // @Values: 0:Disabled,1:Enabled
+    // @RebootRequired: True
+    // @User: Advanced
+    AP_GROUPINFO("IO_ENABLE", 11, AP_BoardConfig, px4.io_enable, 1),
+#endif
     
     AP_GROUPEND
 };
