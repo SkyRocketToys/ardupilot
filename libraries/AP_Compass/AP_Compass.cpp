@@ -516,7 +516,7 @@ void Compass::_detect_backends(void)
     
 #if HAL_COMPASS_DEFAULT == HAL_COMPASS_HIL
     ADD_BACKEND(AP_Compass_HIL::detect(*this), nullptr, false);
-#elif HAL_COMPASS_DEFAULT == HAL_COMPASS_PX4 || HAL_COMPASS_DEFAULT == HAL_COMPASS_VRBRAIN
+#elif 1
     switch (AP_BoardConfig::get_board_type()) {
     case AP_BoardConfig::PX4_BOARD_PX4V1:
     case AP_BoardConfig::PX4_BOARD_PIXHAWK:
@@ -553,24 +553,20 @@ void Compass::_detect_backends(void)
                                                        both_i2c_external, ROTATION_NONE),
                      AP_Compass_AK09916::name, true);
         
+        ADD_BACKEND(AP_Compass_BMM150::probe(*this, hal.i2c_mgr->get_device(0, 0x10)),
+                                             AP_Compass_BMM150::name, false);
+        ADD_BACKEND(AP_Compass_BMM150::probe(*this, hal.i2c_mgr->get_device(0, 0x12)),
+                                             AP_Compass_BMM150::name, false);
 #if 0
         // lis3mdl - this is disabled for now due to an errata on pixhawk2 GPS unit, pending investigation
-        ADD_BACKEND(AP_Compass_LIS3MDL::probe(*this, hal.i2c_mgr->get_device(1, HAL_COMPASS_LIS3MDL_I2C_ADDR),
-                                               true, ROTATION_YAW_90),
-                     AP_Compass_LIS3MDL::name, true);
         ADD_BACKEND(AP_Compass_LIS3MDL::probe(*this, hal.i2c_mgr->get_device(0, HAL_COMPASS_LIS3MDL_I2C_ADDR),
-                                              both_i2c_external, both_i2c_external?ROTATION_YAW_90:ROTATION_NONE),
-                     AP_Compass_LIS3MDL::name, both_i2c_external);
+                                               true, ROTATION_YAW_90),
+                    AP_Compass_LIS3MDL::name, false);
+        ADD_BACKEND(AP_Compass_LIS3MDL::probe(*this, hal.i2c_mgr->get_device(0, 0x1e),
+                                               true, ROTATION_YAW_90),
+                    AP_Compass_LIS3MDL::name, false);
 #endif
-
-        // AK09916
-        ADD_BACKEND(AP_Compass_AK09916::probe(*this, hal.i2c_mgr->get_device(1, HAL_COMPASS_AK09916_I2C_ADDR),
-                                               true, ROTATION_YAW_270),
-                     AP_Compass_AK09916::name, true);
-        ADD_BACKEND(AP_Compass_AK09916::probe(*this, hal.i2c_mgr->get_device(0, HAL_COMPASS_AK09916_I2C_ADDR),
-                                              both_i2c_external, both_i2c_external?ROTATION_YAW_270:ROTATION_NONE),
-                     AP_Compass_AK09916::name, both_i2c_external);
-#endif // HAL_MINIMIZE_FEATURES
+#endif
         }
         break;
 
