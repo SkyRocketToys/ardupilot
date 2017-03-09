@@ -4,6 +4,7 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <sys/ioctl.h>
+#include <AP_Radio/AP_Radio.h>
 
 extern "C" typedef int (*main_fn_t)(int argc, char **);
 
@@ -147,4 +148,9 @@ private:
 
     // target temperarure for IMU in Celsius, or -1 to disable
     AP_Int8 _imu_target_temperature;
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    // direct attached radio
+    AP_Radio _radio;
+#endif
 };
