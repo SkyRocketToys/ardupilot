@@ -122,3 +122,6 @@
 #ifndef HAL_HAVE_SAFETY_SWITCH
 #define HAL_HAVE_SAFETY_SWITCH 1
 #endif
+
+// enable direct attached radio support
+#define HAL_RCINPUT_WITH_AP_RADIO 1
