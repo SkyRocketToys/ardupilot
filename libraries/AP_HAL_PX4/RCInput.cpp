@@ -21,6 +21,13 @@ void PX4RCInput::init()
     }
     clear_overrides();
     pthread_mutex_init(&rcin_mutex, nullptr);
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    radio = AP_Radio::instance();
+    if (radio) {
+        radio->init();
+    }
+#endif
 }
 
 bool PX4RCInput::new_input()
@@ -66,6 +73,14 @@ uint16_t PX4RCInput::read(uint8_t ch)
     }
     uint16_t v = _rcin.values[ch];
     pthread_mutex_unlock(&rcin_mutex);
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (radio && ch == 0) {
+        // hook to allow for update of radio on main thread, for mavlink sends
+        radio->update();
+    }
+#endif
+
     return v;
 }
 
@@ -120,6 +135,20 @@ void PX4RCInput::_timer_tick(void)
         orb_copy(ORB_ID(input_rc), _rc_sub, &_rcin);
         pthread_mutex_unlock(&rcin_mutex);
     }
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    if (radio && radio->last_recv_us() != last_radio_us) {
+        last_radio_us = radio->last_recv_us();
+        pthread_mutex_lock(&rcin_mutex);
+        _rcin.timestamp_last_signal = last_radio_us;
+        _rcin.channel_count = radio->num_channels();
+        for (uint8_t i=0; i<_rcin.channel_count; i++) {
+            _rcin.values[i] = radio->read(i);
+        }
+        pthread_mutex_unlock(&rcin_mutex);
+    }
+#endif
+    
     // note, we rely on the vehicle code checking new_input()
     // and a timeout for the last valid input to handle failsafe
     perf_end(_perf_rcin);
@@ -136,6 +165,12 @@ bool PX4RCInput::rc_bind(int dsmMode)
         return false;
     }
 
+#if HAL_RCINPUT_WITH_AP_RADIO
+    if (radio) {
+        radio->start_recv_bind();
+    }
+#endif
+    
     uint32_t mode = (dsmMode == 0) ? DSM2_BIND_PULSES : ((dsmMode == 1) ? DSMX_BIND_PULSES : DSMX8_BIND_PULSES);
     int ret = ioctl(fd, DSM_BIND_START, mode);
     close(fd);
