@@ -5,7 +5,7 @@
   ArduPilot to run on a wider range of boards and reduces board cost
  */
 #ifndef USE_FLASH_STORAGE
-#define USE_FLASH_STORAGE 0
+#define USE_FLASH_STORAGE 1
 #endif
 
 #include <AP_HAL/AP_HAL.h>
