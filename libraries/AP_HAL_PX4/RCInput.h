@@ -4,6 +4,7 @@
 #include <drivers/drv_rc_input.h>
 #include <systemlib/perf_counter.h>
 #include <pthread.h>
+#include <AP_Radio/AP_Radio.h>
 
 
 #ifndef RC_INPUT_MAX_CHANNELS
@@ -35,4 +36,9 @@ private:
     bool _override_valid;
     perf_counter_t _perf_rcin;
     pthread_mutex_t rcin_mutex;
+
+#if HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio *radio;
+    uint32_t last_radio_us;
+#endif
 };
