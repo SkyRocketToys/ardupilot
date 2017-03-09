@@ -70,3 +70,5 @@
 #define HAL_BARO_MS5611_I2C_BUS  0
 #endif
 
+// enable direct attached radio support
+#define HAL_RCINPUT_WITH_AP_RADIO 1
