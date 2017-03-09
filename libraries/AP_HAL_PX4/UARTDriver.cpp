@@ -35,6 +35,8 @@ PX4UARTDriver::PX4UARTDriver(const char *devpath, const char *perf_name) :
 
 extern const AP_HAL::HAL& hal;
 
+#define UART_CHECK_PID 0
+
 /*
   this UART driver maps to a serial device in /dev
  */
@@ -239,9 +241,11 @@ uint32_t PX4UARTDriver::txspace()
  */
 int16_t PX4UARTDriver::read()
 {
+#if UART_CHECK_PID
     if (_uart_owner_pid != getpid()){
         return -1;
     }
+#endif
     if (!_initialised) {
         try_initialise();
         return -1;
@@ -260,9 +264,11 @@ int16_t PX4UARTDriver::read()
  */
 size_t PX4UARTDriver::write(uint8_t c)
 {
+#if UART_CHECK_PID
     if (_uart_owner_pid != getpid()){
         return 0;
     }
+#endif
     if (!_initialised) {
         try_initialise();
         return 0;
@@ -282,9 +288,11 @@ size_t PX4UARTDriver::write(uint8_t c)
  */
 size_t PX4UARTDriver::write(const uint8_t *buffer, size_t size)
 {
+#if UART_CHECK_PID
     if (_uart_owner_pid != getpid()){
         return 0;
     }
+#endif
 	if (!_initialised) {
         try_initialise();
 		return 0;
