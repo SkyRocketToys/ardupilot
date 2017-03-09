@@ -111,6 +111,10 @@ SPIDesc SPIDeviceManager::device_table[] = {
 #endif
 #endif
 
+    SPIDesc("pixartflow",   4, (spi_dev_e)PX4_SPIDEV_EXT0, SPIDEV_MODE3, 2*MHZ, 2*MHZ),
+
+    SPIDesc("cypress",   2,  (spi_dev_e)1, SPIDEV_MODE0, 2*MHZ, 2*MHZ),
+    
     SPIDesc(nullptr, 0, (spi_dev_e)0, (spi_mode_e)0, 0, 0),
 };
 
