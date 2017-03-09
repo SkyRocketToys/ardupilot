@@ -80,6 +80,7 @@ then
     if usb_connected
     then
         echo "Opening USB nsh"
+        set HAVE_MICROSD 1
     else
         echo "booting with no microSD"
         set HAVE_MICROSD 1
@@ -94,5 +95,6 @@ then
     # if APM startup is successful then nsh will exit
     sh /etc/init.d/rc.APM
 else
+    uorb start
     nshterm /dev/ttyACM0 &
 fi
