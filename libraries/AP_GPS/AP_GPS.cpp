@@ -862,6 +862,27 @@ void AP_GPS::send_mavlink_gps_raw(mavlink_channel_t chan)
         ground_speed(0)*100,  // cm/s
         ground_course(0)*100, // 1/100 degrees,
         num_sats(0));
+    if (HAVE_PAYLOAD_SPACE(chan, GPS_RAW_INT)) {
+        // hack for live graph of GPS accuracies
+        float sacc=0, hacc=0, vacc=0;
+        speed_accuracy(0, sacc);
+        horizontal_accuracy(0, hacc);
+        vertical_accuracy(0, vacc);
+        mavlink_msg_gps2_raw_send(
+            chan,
+            last_fix_time_ms(0)*(uint64_t)1000,
+            status(0),
+            loc.lat,
+            loc.lng,
+            loc.alt * 10UL,
+            hacc*100, // hdop
+            vacc*100, // vdop
+            sacc*100, // ground_speed
+            vacc*100, // ground_course
+            num_sats(0),
+            0,
+            0);
+    }
 }
 
 void AP_GPS::send_mavlink_gps2_raw(mavlink_channel_t chan)
