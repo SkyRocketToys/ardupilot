@@ -2019,7 +2019,7 @@ void Copter::mavlink_delay_cb()
         gcs_send_deferred();
         notify.update();
     }
-    if (tnow - last_5s > 5000) {
+    if (tnow - last_5s > 50000) {
         last_5s = tnow;
         gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM");
     }

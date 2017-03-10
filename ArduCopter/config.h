@@ -54,7 +54,7 @@
 # define MAIN_LOOP_MICROS  2500
 
 #ifndef ARMING_DELAY_SEC
-    # define ARMING_DELAY_SEC 2.0f
+    # define ARMING_DELAY_SEC 0.5f
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -646,4 +646,8 @@
 
 #ifndef ADVANCED_FAILSAFE
 # define ADVANCED_FAILSAFE DISABLED
+#endif
+
+#ifndef CH_MODE
+#define CH_MODE CH_5
 #endif
