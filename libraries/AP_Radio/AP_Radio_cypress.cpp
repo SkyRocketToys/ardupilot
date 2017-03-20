@@ -17,15 +17,20 @@
 
 #ifndef CYRF_SPI_DEVICE
 # define CYRF_SPI_DEVICE "cypress"
+//# define CYRF_SPI_DEVICE "external0m0"
 #endif
 
 #ifndef CYRF_IRQ_INPUT
 # define CYRF_IRQ_INPUT (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
+//# define CYRF_IRQ_INPUT (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN13)
 #endif
 
 #ifndef CYRF_RESET_PIN
 # define CYRF_RESET_PIN (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_EXTI|GPIO_PORTB|GPIO_PIN0)
+//# define CYRF_RESET_PIN (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_EXTI|GPIO_PORTD|GPIO_PIN14)
 #endif
+
+#define RADIO_SEND_TEST 1
 
 extern const AP_HAL::HAL& hal;
 
@@ -269,10 +274,15 @@ bool AP_Radio_cypress::reset(void)
     radio_init();
     dev->get_semaphore()->give();
 
+#if RADIO_SEND_TEST
+    start_send_test();
+
+#else
     if (dsm.protocol == DSM_NONE) {
-        start_recv_bind();
+        //start_recv_bind();
     }
-    
+#endif
+
     return true;
 }
 
@@ -303,12 +313,14 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
  */
 void AP_Radio_cypress::print_debug_info(void)
 {
-    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u 1:%4u 1:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
+    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u TXI:%u TX:%u 1:%4u 1:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
           stats.recv_packets - last_stats.recv_packets,
           stats.bad_packets - last_stats.bad_packets,
           stats.timeouts - last_stats.timeouts,
           stats.recv_errors - last_stats.recv_errors,
           num_channels(),
+          dsm.send_irq_count,
+          dsm.send_count,
           dsm.pwm_channels[0], dsm.pwm_channels[1], dsm.pwm_channels[2], dsm.pwm_channels[3], 
           dsm.pwm_channels[4], dsm.pwm_channels[5], dsm.pwm_channels[6], dsm.pwm_channels[7],
           dsm.pwm_channels[13]);
@@ -546,7 +558,11 @@ void AP_Radio_cypress::radio_init(void)
 
     debug(1, "Cypress: radio_init done\n");
 
+#if RADIO_SEND_TEST
+    start_send_test();
+#else
     start_receive();
+#endif
 
     // setup handler for rising edge of IRQ pin
     stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
@@ -785,6 +801,21 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
 
 
 /*
+  handle a send IRQ
+ */
+void AP_Radio_cypress::irq_handler_send(uint8_t tx_status)
+{
+    if ((tx_status & (CYRF_TXC_IRQ | CYRF_TXE_IRQ)) == 0) {
+        // nothing interesting yet
+        return;
+    }
+    if ((tx_status & CYRF_TXC_IRQ) && !(tx_status & CYRF_TXE_IRQ)) {
+        dsm.send_irq_count++;
+    }
+}
+
+
+/*
   IRQ handler
  */
 void AP_Radio_cypress::irq_handler(void)
@@ -796,12 +827,16 @@ void AP_Radio_cypress::irq_handler(void)
     }
     // always read both rx and tx status. This ensure IRQ is cleared
     uint8_t rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-    read_status_debounced(CYRF_TX_IRQ_STATUS);
+    uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
 
     switch (state) {
     case STATE_RECV:
     case STATE_BIND:
         irq_handler_recv(rx_status);
+        break;
+
+    case STATE_SEND:
+        irq_handler_send(tx_status);
         break;
         
     default:
@@ -825,7 +860,11 @@ void AP_Radio_cypress::irq_timeout(void)
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
 
-    start_receive();
+    if (state == STATE_SEND) {
+        send_test_packet();
+    } else {
+        start_receive();
+    }
 
     dev->get_semaphore()->give();
 }
@@ -855,6 +894,14 @@ int AP_Radio_cypress::irq_timeout_trampoline(int irq, void *context)
  */
 void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed)
 {
+#if 1
+    channel = 2;
+    is_dsm2 = false;
+    sop_col = 1;
+    data_col = 1;
+    crc_seed = 1;
+#endif
+    
     //printf("dsm_set_channel: %u\n", channel);
 
     uint8_t pn_row;
@@ -1107,4 +1154,42 @@ bool AP_Radio_cypress::is_DSM2(void)
         return get_protocol() == AP_Radio::PROTOCOL_DSM2;
     }
     return dsm.protocol == DSM_DSM2_1 || dsm.protocol == DSM_DSM2_2;
+}
+
+/*
+  transmit a 16 byte packet
+  this is a blind send, not waiting for ack or completion
+*/
+void AP_Radio_cypress::transmit16(const uint8_t data[16])
+{
+    write_register(CYRF_TX_LENGTH, 16);
+    write_register(CYRF_TX_CTRL, CYRF_TX_CLR);
+
+    write_multiple(CYRF_TX_BUFFER, 16, data);
+    write_register(CYRF_TX_CTRL, CYRF_TX_GO | CYRF_TXC_IRQEN);
+    dsm.send_count++;
+}
+
+
+/*
+  start packet receive
+ */
+void AP_Radio_cypress::start_send_test(void)
+{
+    state = STATE_SEND;
+
+    write_register(CYRF_RX_ABORT, 0);
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+    
+    hrt_call_after(&wait_call, 50000, (hrt_callout)irq_timeout_trampoline, nullptr);
+}
+
+void AP_Radio_cypress::send_test_packet(void)
+{
+    uint8_t pkt[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+    dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
+                    dsm.sop_col, dsm.data_col, 0);
+    transmit16(pkt);
+    hrt_call_after(&wait_call, 50000, (hrt_callout)irq_timeout_trampoline, nullptr);
+    dsm.last_recv_us = AP_HAL::micros();
 }
