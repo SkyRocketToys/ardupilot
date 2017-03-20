@@ -159,6 +159,8 @@ private:
         uint32_t crc_errors;
         float rssi;
         bool last_discrc;
+        uint32_t send_irq_count;
+        uint32_t send_count;
     } dsm;
 
     // bind structure saved to storage
@@ -197,5 +199,12 @@ private:
     void save_bind_info(void);
 
     bool is_DSM2(void);
+
+    // send a 16 byte packet
+    void transmit16(const uint8_t data[16]);
+
+    void start_send_test(void);
+    void send_test_packet(void);
+    void irq_handler_send(uint8_t tx_status);
 };
 
