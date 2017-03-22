@@ -76,7 +76,6 @@ private:
     enum {
         STATE_RECV,
         STATE_BIND,
-        STATE_SEND,
         STATE_SEND_TELEM
     } state;
     
@@ -172,6 +171,26 @@ private:
         enum dsm_protocol protocol;
     };
 
+    enum telem_type {
+        TELEM_STATUS=0, // a telem_status packet
+    };
+
+    struct telem_status {
+        uint8_t pps; // packets per second received
+        uint8_t rssi; // lowpass rssi
+    };
+    
+    struct PACKED telem_packet {
+        uint8_t crc; // simple CRC
+        enum telem_type type;
+        union {
+            uint8_t pkt[14];
+            struct telem_status status;
+        } payload;
+    };
+    
+    struct telem_status t_status;
+    
     // DSM specific functions
     void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 
@@ -204,8 +223,6 @@ private:
     // send a 16 byte packet
     void transmit16(const uint8_t data[16]);
 
-    void start_send_test(void);
-    void send_test_packet(void);
     void send_telem_packet(void);
     void irq_handler_send(uint8_t tx_status);
 };

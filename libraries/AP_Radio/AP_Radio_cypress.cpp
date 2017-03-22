@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <StorageManager/StorageManager.h>
 #include <AP_HAL/utility/dsm.h>
+#include <AP_Math/crc.h>
 
 /*
   driver for CYRF6936 radio
@@ -26,8 +27,6 @@
 #ifndef CYRF_RESET_PIN
 # define CYRF_RESET_PIN (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_EXTI|GPIO_PORTB|GPIO_PIN0)
 #endif
-
-#define RADIO_SEND_TEST 0
 
 extern const AP_HAL::HAL& hal;
 
@@ -271,14 +270,9 @@ bool AP_Radio_cypress::reset(void)
     radio_init();
     dev->get_semaphore()->give();
 
-#if RADIO_SEND_TEST
-    start_send_test();
-
-#else
     if (dsm.protocol == DSM_NONE) {
-        //start_recv_bind();
+        start_recv_bind();
     }
-#endif
 
     return true;
 }
@@ -341,11 +335,14 @@ uint8_t AP_Radio_cypress::num_channels(void)
             dsm.num_channels = MAX(dsm.num_channels, ch);
         }
 
+        uint8_t pps = stats.recv_packets - last_stats.recv_packets;
         ch = get_rate_chan();
         if (ch > 0) {
-            dsm.pwm_channels[ch-1] = stats.recv_packets - last_stats.recv_packets;
+            dsm.pwm_channels[ch-1] = pps;
             dsm.num_channels = MAX(dsm.num_channels, ch);
         }
+        t_status.pps = pps;
+        t_status.rssi = (uint8_t)dsm.rssi;
         last_stats = stats;
     }
     return dsm.num_channels;
@@ -555,11 +552,7 @@ void AP_Radio_cypress::radio_init(void)
 
     debug(1, "Cypress: radio_init done\n");
 
-#if RADIO_SEND_TEST
-    start_send_test();
-#else
     start_receive();
-#endif
 
     // setup handler for rising edge of IRQ pin
     stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
@@ -722,10 +715,15 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             stats.recv_packets++;
 
             // sample the RSSI
-            uint8_t rssi = read_register(CYRF_RSSI);
+            uint8_t rssi = read_register(CYRF_RSSI) & 0x1F;
             dsm.rssi = 0.95 * dsm.rssi + 0.05 * rssi;
 
             if (packet_dt_us < 5000) {
+                /*
+                  we have just received two packets rapidly, which
+                  means we have about 7ms before the next one. That
+                  gives time for a telemetry packet
+                 */
                 state = STATE_SEND_TELEM;
                 hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
             }
@@ -841,9 +839,7 @@ void AP_Radio_cypress::irq_handler(void)
         irq_handler_recv(rx_status);
         break;
 
-    case STATE_SEND:
     case STATE_SEND_TELEM:
-        send_test_packet();
         break;
 
     default:
@@ -868,11 +864,8 @@ void AP_Radio_cypress::irq_timeout(void)
     write_register(CYRF_RX_ABORT, 0);
 
     switch (state) {
-    case STATE_SEND:
-        //send_test_packet();
-        break;
     case STATE_SEND_TELEM:
-        send_test_packet();
+        send_telem_packet();
         break;
     default:
         start_receive();
@@ -1176,31 +1169,15 @@ void AP_Radio_cypress::transmit16(const uint8_t data[16])
 }
 
 
-/*
-  start packet receive
- */
-void AP_Radio_cypress::start_send_test(void)
+void AP_Radio_cypress::send_telem_packet(void)
 {
-    state = STATE_SEND;
-
-    write_register(CYRF_RX_ABORT, 0);
-    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+    struct telem_packet pkt;
+    pkt.type = TELEM_STATUS;
+    pkt.payload.status = t_status;
+    pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
     
-    hrt_call_after(&wait_call, 50000, (hrt_callout)irq_timeout_trampoline, nullptr);
-}
-
-void AP_Radio_cypress::send_test_packet(void)
-{
-    static uint16_t counter;
-    counter++;
-    uint8_t pkt[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-    pkt[4] = counter>>8;
-    pkt[5] = counter&0xFF;
-    uint16_t seed = dsm.crc_seed;
-    if (dsm.current_channel & 1) {
-        seed = ~seed;
-    }
-    transmit16(pkt);
+    transmit16((uint8_t*)&pkt);
+    
     state = STATE_RECV;
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
