@@ -76,7 +76,8 @@ private:
     enum {
         STATE_RECV,
         STATE_BIND,
-        STATE_SEND
+        STATE_SEND,
+        STATE_SEND_TELEM
     } state;
     
     struct config {
@@ -205,6 +206,7 @@ private:
 
     void start_send_test(void);
     void send_test_packet(void);
+    void send_telem_packet(void);
     void irq_handler_send(uint8_t tx_status);
 };
 
