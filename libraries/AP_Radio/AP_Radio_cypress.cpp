@@ -17,20 +17,17 @@
 
 #ifndef CYRF_SPI_DEVICE
 # define CYRF_SPI_DEVICE "cypress"
-//# define CYRF_SPI_DEVICE "external0m0"
 #endif
 
 #ifndef CYRF_IRQ_INPUT
 # define CYRF_IRQ_INPUT (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
-//# define CYRF_IRQ_INPUT (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN13)
 #endif
 
 #ifndef CYRF_RESET_PIN
 # define CYRF_RESET_PIN (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_EXTI|GPIO_PORTB|GPIO_PIN0)
-//# define CYRF_RESET_PIN (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_EXTI|GPIO_PORTD|GPIO_PIN14)
 #endif
 
-#define RADIO_SEND_TEST 1
+#define RADIO_SEND_TEST 0
 
 extern const AP_HAL::HAL& hal;
 
@@ -712,8 +709,10 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             }
         }
         if (ok) {
+            uint32_t now = AP_HAL::micros();
+            uint32_t packet_dt_us = now - dsm.last_recv_us;
             dsm.last_recv_chan = dsm.current_channel;
-            dsm.last_recv_us = AP_HAL::micros();
+            dsm.last_recv_us = now;
             if (dsm.crc_errors > 2) {
                 dsm.crc_errors -= 2;
             }
@@ -725,6 +724,11 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             // sample the RSSI
             uint8_t rssi = read_register(CYRF_RSSI);
             dsm.rssi = 0.95 * dsm.rssi + 0.05 * rssi;
+
+            if (packet_dt_us < 5000) {
+                state = STATE_SEND_TELEM;
+                hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+            }
         } else {
             stats.bad_packets++;
         }
@@ -796,7 +800,9 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
         }
     }
 
-    start_receive();
+    if (state != STATE_SEND_TELEM) {
+        start_receive();
+    }
 }
 
 
@@ -827,7 +833,7 @@ void AP_Radio_cypress::irq_handler(void)
     }
     // always read both rx and tx status. This ensure IRQ is cleared
     uint8_t rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-    uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
+    read_status_debounced(CYRF_TX_IRQ_STATUS);
 
     switch (state) {
     case STATE_RECV:
@@ -836,9 +842,10 @@ void AP_Radio_cypress::irq_handler(void)
         break;
 
     case STATE_SEND:
-        irq_handler_send(tx_status);
+    case STATE_SEND_TELEM:
+        send_test_packet();
         break;
-        
+
     default:
         break;
     }
@@ -860,10 +867,16 @@ void AP_Radio_cypress::irq_timeout(void)
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
 
-    if (state == STATE_SEND) {
+    switch (state) {
+    case STATE_SEND:
+        //send_test_packet();
+        break;
+    case STATE_SEND_TELEM:
         send_test_packet();
-    } else {
+        break;
+    default:
         start_receive();
+        break;
     }
 
     dev->get_semaphore()->give();
@@ -894,14 +907,6 @@ int AP_Radio_cypress::irq_timeout_trampoline(int irq, void *context)
  */
 void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed)
 {
-#if 1
-    channel = 2;
-    is_dsm2 = false;
-    sop_col = 1;
-    data_col = 1;
-    crc_seed = 1;
-#endif
-    
     //printf("dsm_set_channel: %u\n", channel);
 
     uint8_t pn_row;
@@ -1186,10 +1191,16 @@ void AP_Radio_cypress::start_send_test(void)
 
 void AP_Radio_cypress::send_test_packet(void)
 {
+    static uint16_t counter;
+    counter++;
     uint8_t pkt[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-    dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
-                    dsm.sop_col, dsm.data_col, 0);
+    pkt[4] = counter>>8;
+    pkt[5] = counter&0xFF;
+    uint16_t seed = dsm.crc_seed;
+    if (dsm.current_channel & 1) {
+        seed = ~seed;
+    }
     transmit16(pkt);
-    hrt_call_after(&wait_call, 50000, (hrt_callout)irq_timeout_trampoline, nullptr);
-    dsm.last_recv_us = AP_HAL::micros();
+    state = STATE_RECV;
+    hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
