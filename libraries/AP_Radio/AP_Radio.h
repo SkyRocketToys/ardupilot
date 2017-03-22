@@ -90,6 +90,7 @@ private:
     AP_Int8 disable_crc;
     AP_Int8 rssi_chan;
     AP_Int8 rate_chan;
+    AP_Int8 telem_enable;
     
     static AP_Radio *_instance;
 };

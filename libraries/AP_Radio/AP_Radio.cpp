@@ -49,6 +49,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 16
     // @User: Advanced
     AP_GROUPINFO("_RATECH",  6, AP_Radio, rate_chan, 0),
+
+    // @Param: _TELEM
+    // @DisplayName: Enable telemetry
+    // @Description: If this is non-zero then telemetry packets will be sent over DSM
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Advanced
+    AP_GROUPINFO("_TELEM",  7, AP_Radio, telem_enable, 0),
     
     AP_GROUPEND
 };
