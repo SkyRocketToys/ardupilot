@@ -72,6 +72,10 @@ protected:
     uint8_t get_rate_chan(void) const {
         return (uint8_t)radio.rate_chan.get();
     }
+
+    bool get_telem_enable(void) const {
+        return radio.telem_enable.get() > 0;
+    }
     
     AP_Radio &radio;
 };
