@@ -718,14 +718,17 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             uint8_t rssi = read_register(CYRF_RSSI) & 0x1F;
             dsm.rssi = 0.95 * dsm.rssi + 0.05 * rssi;
 
-            if (packet_dt_us < 5000) {
-                /*
-                  we have just received two packets rapidly, which
-                  means we have about 7ms before the next one. That
-                  gives time for a telemetry packet
-                 */
-                state = STATE_SEND_TELEM;
-                hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+            if (get_telem_enable()) {
+                if (packet_dt_us < 5000) {
+                    /*
+                      we have just received two packets rapidly, which
+                      means we have about 7ms before the next
+                      one. That gives time for a telemetry packet. We
+                      send it 1ms after we receive the incoming packet
+                    */
+                    state = STATE_SEND_TELEM;
+                    hrt_call_after(&wait_call, 1000, (hrt_callout)irq_timeout_trampoline, nullptr);
+                }
             }
         } else {
             stats.bad_packets++;
@@ -813,9 +816,8 @@ void AP_Radio_cypress::irq_handler_send(uint8_t tx_status)
         // nothing interesting yet
         return;
     }
-    if ((tx_status & CYRF_TXC_IRQ) && !(tx_status & CYRF_TXE_IRQ)) {
-        dsm.send_irq_count++;
-    }
+    state = STATE_RECV;
+    start_receive();        
 }
 
 
@@ -831,7 +833,7 @@ void AP_Radio_cypress::irq_handler(void)
     }
     // always read both rx and tx status. This ensure IRQ is cleared
     uint8_t rx_status = read_status_debounced(CYRF_RX_IRQ_STATUS);
-    read_status_debounced(CYRF_TX_IRQ_STATUS);
+    uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
 
     switch (state) {
     case STATE_RECV:
@@ -840,6 +842,8 @@ void AP_Radio_cypress::irq_handler(void)
         break;
 
     case STATE_SEND_TELEM:
+    case STATE_SEND_TELEM_WAIT:
+        irq_handler_send(tx_status);
         break;
 
     default:
@@ -860,14 +864,16 @@ void AP_Radio_cypress::irq_timeout(void)
         return;
     }
 
-    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
-    write_register(CYRF_RX_ABORT, 0);
-
     switch (state) {
     case STATE_SEND_TELEM:
         send_telem_packet();
         break;
+    case STATE_SEND_TELEM_WAIT:
+        state = STATE_RECV;
+        // fall through
     default:
+        write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
+        write_register(CYRF_RX_ABORT, 0);
         start_receive();
         break;
     }
@@ -1176,8 +1182,11 @@ void AP_Radio_cypress::send_telem_packet(void)
     pkt.payload.status = t_status;
     pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
     
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+    write_register(CYRF_RX_ABORT, 0);
     transmit16((uint8_t*)&pkt);
+
+    state = STATE_SEND_TELEM_WAIT;
     
-    state = STATE_RECV;
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }

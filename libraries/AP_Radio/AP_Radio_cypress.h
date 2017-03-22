@@ -76,7 +76,8 @@ private:
     enum {
         STATE_RECV,
         STATE_BIND,
-        STATE_SEND_TELEM
+        STATE_SEND_TELEM,
+        STATE_SEND_TELEM_WAIT
     } state;
     
     struct config {
