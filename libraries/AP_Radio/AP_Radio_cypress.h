@@ -76,8 +76,8 @@ private:
     enum {
         STATE_RECV,
         STATE_BIND,
-        STATE_SEND,
-        STATE_SEND_TELEM
+        STATE_SEND_TELEM,
+        STATE_SEND_TELEM_WAIT
     } state;
     
     struct config {
@@ -162,6 +162,8 @@ private:
         bool last_discrc;
         uint32_t send_irq_count;
         uint32_t send_count;
+        uint16_t pkt_time1 = 3000;
+        uint16_t pkt_time2 = 7000;
     } dsm;
 
     // bind structure saved to storage
@@ -172,6 +174,33 @@ private:
         enum dsm_protocol protocol;
     };
 
+    enum telem_type {
+        TELEM_STATUS =0, // a telem_status packet
+        TELEM_PLAY   =1, // play a tune
+    };
+
+    struct telem_status {
+        uint8_t pps; // packets per second received
+        uint8_t rssi; // lowpass rssi
+    };
+
+    struct telem_play {
+        uint8_t seq;
+        uint8_t tune_index;
+    };
+    
+    struct PACKED telem_packet {
+        uint8_t crc; // simple CRC
+        enum telem_type type;
+        union {
+            uint8_t pkt[14];
+            struct telem_status status;
+            struct telem_play play;
+        } payload;
+    };
+    
+    struct telem_status t_status;
+    
     // DSM specific functions
     void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 
@@ -204,8 +233,6 @@ private:
     // send a 16 byte packet
     void transmit16(const uint8_t data[16]);
 
-    void start_send_test(void);
-    void send_test_packet(void);
     void send_telem_packet(void);
     void irq_handler_send(uint8_t tx_status);
 };
