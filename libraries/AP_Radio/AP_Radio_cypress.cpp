@@ -718,6 +718,12 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             uint8_t rssi = read_register(CYRF_RSSI) & 0x1F;
             dsm.rssi = 0.95 * dsm.rssi + 0.05 * rssi;
 
+            if (packet_dt_us < 5000) {
+                dsm.pkt_time1 = packet_dt_us;
+            } else if (packet_dt_us < 8000) {
+                dsm.pkt_time2 = packet_dt_us;
+            }
+            
             if (get_telem_enable()) {
                 if (packet_dt_us < 5000) {
                     /*
@@ -753,7 +759,7 @@ void AP_Radio_cypress::start_receive(void)
     if (state == STATE_BIND) {
         dsm.receive_timeout_usec = 15000;
     } else {
-        dsm.receive_timeout_usec = 23000;
+        dsm.receive_timeout_usec = 9000;
     }
     //dsm.receive_timeout_usec = 45000;
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
@@ -1013,8 +1019,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
 {
     uint32_t now = AP_HAL::micros();
     uint32_t dt = now - dsm.last_recv_us;
-    
-    const uint32_t cycle_time = 11000;
+    const uint32_t cycle_time = dsm.pkt_time1 + dsm.pkt_time2;
     uint8_t next_channel;
 
     
@@ -1044,14 +1049,14 @@ void AP_Radio_cypress::dsm_choose_channel(void)
     if (dt < 1000) {
         // normal channel advance
         next_channel = dsm.last_recv_chan + 1;
-    } else if (dt > 10*cycle_time) {
-        // stay with this channel till transmitter finds us
-        next_channel = dsm.last_recv_chan + (dt % 15);
+    } else if (dt > 20*cycle_time) {
+        // change channel slowly
+        next_channel = dsm.last_recv_chan + (dt / (cycle_time*2));
     } else {
         // predict next channel
         next_channel = dsm.last_recv_chan + 1;
         next_channel += (dt / cycle_time) * 2;
-        if (dt % cycle_time > 5000) {
+        if (dt % cycle_time > dsm.pkt_time1 + 1000) {
             next_channel++;
         }
     }

@@ -162,6 +162,8 @@ private:
         bool last_discrc;
         uint32_t send_irq_count;
         uint32_t send_count;
+        uint16_t pkt_time1 = 3000;
+        uint16_t pkt_time2 = 7000;
     } dsm;
 
     // bind structure saved to storage
