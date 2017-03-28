@@ -8,6 +8,8 @@
 #define TOY_LAND_COUNT 15
 #define TOY_COMMMAND_DELAY 15
 
+#define TOY_CH5_RESCALE 0
+
 /*
   special mode handling for toys
  */
@@ -75,9 +77,13 @@ void Copter::toy_input_check()
     }
 }
 
-
+/*
+  this copes with a strange parkzone transmitter that changes scale on
+  sticks when CH5 is high
+ */
 void Copter::toy_chan_fix(void)
 {
+#if TOY_CH5_RESCALE
     uint16_t ch5_in = hal.rcin->read(CH_5);
     if (ch5_in < 1700) {
         // nothing to do
@@ -95,5 +101,5 @@ void Copter::toy_chan_fix(void)
         v = ((v - 1500) * 1.3423) + 1500;
         chan->set_radio_in(v);
     }
+#endif // TOY_CH5_RESCALE
 }
-
