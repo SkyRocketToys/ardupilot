@@ -6,7 +6,7 @@
 // times in 0.1s units
 #define TOY_ARM_COUNT 5
 #define TOY_LAND_COUNT 15
-#define TOY_COMMMAND_DELAY 15
+#define TOY_COMMMAND_DELAY 30
 
 #define TOY_CH5_RESCALE 0
 
