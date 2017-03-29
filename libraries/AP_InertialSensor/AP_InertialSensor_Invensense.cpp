@@ -437,6 +437,11 @@ void AP_InertialSensor_Invensense::start()
         temp_zero = 25;
         temp_sensitivity = 1.0/326.8; 
         break;
+
+    case Invensense_ICM20789:
+        temp_zero = 25;
+        temp_sensitivity = 0.003;
+        break;
     }
 
     _gyro_instance = _imu.register_gyro(1000, _dev->get_bus_id_devtype(gdev));
