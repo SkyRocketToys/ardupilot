@@ -27,6 +27,7 @@
 #include <stdio.h>
 
 #include <AP_Math/AP_Math.h>
+#include <DataFlash/DataFlash.h>
 
 extern const AP_HAL::HAL &hal;
 
@@ -247,6 +248,11 @@ float AP_Baro_ICM20789::get_pressure(uint32_t p_LSB, uint32_t T_LSB)
 }
 
 
+static struct {
+    uint32_t Praw, Traw;
+    float T, P;
+} dd;
+
 void AP_Baro_ICM20789::convert_data(uint32_t Praw, uint32_t Traw)
 {
     // temperature is easy
@@ -261,6 +267,11 @@ void AP_Baro_ICM20789::convert_data(uint32_t Praw, uint32_t Traw)
     }
     
     if (_sem->take(0)) {
+        dd.Praw = Praw;
+        dd.Traw = Traw;
+        dd.P = P;
+        dd.T = T;
+        
         accum.psum += P;
         accum.tsum += T;
         accum.count++;
@@ -297,6 +308,9 @@ void AP_Baro_ICM20789::update()
             accum.count = 0;
         }
         _sem->give();
+        DataFlash_Class::instance()->Log_Write("ICMB", "TimeUS,Traw,Praw,P,T", "QIIff",
+                                               AP_HAL::micros64(),
+                                               dd.Traw, dd.Praw, dd.P, dd.T);
     }
 }
 
