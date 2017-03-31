@@ -185,6 +185,8 @@ private:
     AP_Float                            _user_ground_temperature; // user override of the ground temperature used for EAS2TAS
     bool                                _hil_mode:1;
     float                               _guessed_ground_temperature; // currently ground temperature estimate using our best abailable source
+    AP_Float                            _correction_factor;
+    AP_Int8                             _correction_zero;
 
     // when did we last notify the GCS of new pressure reference?
     uint32_t                            _last_notify_ms;

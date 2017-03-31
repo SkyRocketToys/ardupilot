@@ -130,6 +130,22 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // Slot 12 used to be TEMP3
 #endif
 
+    // @Param: CORR_FACTOR
+    // @DisplayName: Pressure correction factor
+    // @Description: This sets the correction power of pressure for temperature
+    // @Range: 0.5 1.5
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("CORR_FACTOR", 13, AP_Baro, _correction_factor, 1.0),
+
+    // @Param: CORR_ZERO
+    // @DisplayName: Pressure correction zero
+    // @Description: This sets the temperature at which correction starts applying
+    // @Range: 0 50
+    // @Increment: 1
+    // @User: Advanced
+    AP_GROUPINFO("CORR_ZERO", 14, AP_Baro, _correction_zero, 0),
+    
     AP_GROUPEND
 };
 
@@ -520,7 +536,11 @@ void AP_Baro::update(void)
             }
             float altitude = sensors[i].altitude;
             if (sensors[i].type == BARO_TYPE_AIR) {
-                altitude = get_altitude_difference(sensors[i].ground_pressure, sensors[i].pressure);
+                float pressure = sensors[i].pressure;
+                if (!is_equal(_correction_factor.get(), 1.0)) {
+                    pressure += powf(MAX(sensors[i].temperature - _correction_zero, 0), _correction_factor);
+                }
+                altitude = get_altitude_difference(sensors[i].ground_pressure, pressure);
             } else if (sensors[i].type == BARO_TYPE_WATER) {
                 //101325Pa is sea level air pressure, 9800 Pascal/ m depth in water.
                 //No temperature or depth compensation for density of water.
