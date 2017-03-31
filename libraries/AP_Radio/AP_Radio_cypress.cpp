@@ -1,4 +1,7 @@
 #include <AP_HAL/AP_HAL.h>
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+
 #include <AP_Math/AP_Math.h>
 #include <board_config.h>
 #include "AP_Radio_cypress.h"
@@ -1195,3 +1198,6 @@ void AP_Radio_cypress::send_telem_packet(void)
     
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
+
+#endif // HAL_RCINPUT_WITH_AP_RADIO
+
