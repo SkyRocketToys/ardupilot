@@ -149,7 +149,7 @@ private:
     // target temperarure for IMU in Celsius, or -1 to disable
     AP_Int8 _imu_target_temperature;
 
-#if HAL_RCINPUT_WITH_AP_RADIO
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
     // direct attached radio
     AP_Radio _radio;
 #endif
