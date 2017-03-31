@@ -1,4 +1,7 @@
 #include <AP_HAL/AP_HAL.h>
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+
 #include "AP_Radio.h"
 #include "AP_Radio_backend.h"
 #include "AP_Radio_cypress.h"
@@ -139,3 +142,5 @@ uint32_t AP_Radio::last_recv_us(void)
     }
     return driver->last_recv_us();
 }
+#endif // HAL_RCINPUT_WITH_AP_RADIO
+
