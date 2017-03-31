@@ -1,6 +1,7 @@
 # defaults for SkyRocket streaming GPS board
 BRD_TYPE 2
 BRD_IO_ENABLE 0
+MOT_PWM_TYPE 3
 
 AHRS_ORIENTATION 12
 COMPASS_EXTERNAL 1
