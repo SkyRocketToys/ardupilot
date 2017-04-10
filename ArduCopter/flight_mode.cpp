@@ -341,6 +341,52 @@ bool Copter::mode_allows_arming(control_mode_t mode, bool arming_from_gcs)
     return false;
 }
 
+// return a string for flight mode
+const char *Copter::flight_mode_string(control_mode_t mode)
+{
+    switch (mode) {
+    case STABILIZE:
+        return "STABILIZE";
+    case ACRO:
+        return "ACRO";
+    case ALT_HOLD:
+        return "ALT_HOLD";
+    case AUTO:
+        return "AUTO";
+    case GUIDED:
+        return "GUIDED";
+    case LOITER:
+        return "LOITER";
+    case RTL:
+        return "RTL";
+    case CIRCLE:
+        return "CIRCLE";
+    case LAND:
+        return "LAND";
+    case DRIFT:
+        return "DRIFT";
+    case SPORT:
+        return "SPORT";
+    case FLIP:
+        return "FLIP";
+    case AUTOTUNE:
+        return "AUTOTUNE";
+    case POSHOLD:
+        return "POSHOLD";
+    case BRAKE:
+        return "BRAKE";
+    case THROW:
+        return "THROW";
+    case AVOID_ADSB:
+        return "AVOID_ADSB";
+    case GUIDED_NOGPS:
+        return "GUIDED_NOGPS";
+    default:
+        break;
+    }
+    return "UNKNOWN";
+}
+
 // notify_flight_mode - sets notify object based on flight mode.  Only used for OreoLED notify device
 void Copter::notify_flight_mode(control_mode_t mode)
 {

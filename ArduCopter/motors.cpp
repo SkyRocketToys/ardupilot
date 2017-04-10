@@ -13,6 +13,13 @@ void Copter::arm_motors_check()
 {
     static int16_t arming_counter;
 
+#if TOY_MODE_ENABLED == ENABLED
+    if (g2.toy_mode.enabled()) {
+        // not armed with sticks in toy mode
+        return;
+    }
+#endif
+    
     // ensure throttle is down
     if (channel_throttle->get_control_in() > 0) {
         arming_counter = 0;
@@ -101,7 +108,7 @@ void Copter::auto_disarm_check()
         if (mode_has_manual_throttle(control_mode) || !sprung_throttle_stick) {
             thr_low = ap.throttle_zero;
         } else {
-            float deadband_top = channel_throttle->get_control_mid() + g.throttle_deadzone;
+            float deadband_top = get_throttle_mid() + g.throttle_deadzone;
             thr_low = channel_throttle->get_control_in() <= deadband_top;
         }
 
