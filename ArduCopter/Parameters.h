@@ -312,6 +312,7 @@ public:
         k_param_flight_mode5,
         k_param_flight_mode6,
         k_param_simple_modes,
+        k_param_flight_mode_chan,
 
         //
         // 210: Waypoint data
@@ -434,6 +435,7 @@ public:
     AP_Int8         flight_mode5;
     AP_Int8         flight_mode6;
     AP_Int8         simple_modes;
+    AP_Int8         flight_mode_chan;
 
     // Misc
     //
