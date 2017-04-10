@@ -124,6 +124,10 @@
 #include "afs_copter.h"
 #endif
 
+#if TOY_MODE_ENABLED == ENABLED
+#include "toy_mode.h"
+#endif
+
 // Local modules
 #include "Parameters.h"
 #include "avoidance_adsb.h"
@@ -144,6 +148,7 @@ public:
     friend class AP_AdvancedFailsafe_Copter;
 #endif
     friend class AP_Arming_Copter;
+    friend class ToyMode;
 
     Copter(void);
 
@@ -984,6 +989,7 @@ private:
     bool mode_requires_GPS(control_mode_t mode);
     bool mode_has_manual_throttle(control_mode_t mode);
     bool mode_allows_arming(control_mode_t mode, bool arming_from_gcs);
+    const char *flight_mode_string(control_mode_t mode);
     void notify_flight_mode(control_mode_t mode);
     void heli_init();
     void check_dynamic_flight(void);
@@ -1007,6 +1013,7 @@ private:
     uint8_t mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value, float timeout_sec, uint8_t motor_count);
     void motor_test_stop();
     void arm_motors_check();
+    void toy_mode_update(void);
     void auto_disarm_check();
     bool init_arm_motors(bool arming_from_gcs);
     void init_disarm_motors();
@@ -1064,6 +1071,7 @@ private:
     void report_flight_modes();
     void report_optflow();
     void print_radio_values();
+    int16_t get_throttle_mid(void);
     void print_switch(uint8_t p, uint8_t m, bool b);
     void print_accel_offsets_and_scaling(void);
     void print_gyro_offsets(void);
