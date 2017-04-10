@@ -680,3 +680,6 @@
 #define INITIAL_MODE STABILIZE
 #endif
 
+#ifndef TOY_MODE_ENABLED
+#define TOY_MODE_ENABLED DISABLED
+#endif
