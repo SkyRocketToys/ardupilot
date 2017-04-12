@@ -654,3 +654,8 @@
 #ifndef CH_MODE_DEFAULT
 #define CH_MODE_DEFAULT CH_5
 #endif
+
+#ifndef INITIAL_MODE
+#define INITIAL_MODE STABILIZE
+#endif
+
