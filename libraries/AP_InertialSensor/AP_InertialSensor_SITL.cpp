@@ -132,12 +132,6 @@ void AP_InertialSensor_SITL::timer_update(void)
     _notify_new_gyro_raw_sample(gyro_instance[1], gyro1);
 }
 
-// generate a random float between -1 and 1
-float AP_InertialSensor_SITL::rand_float(void)
-{
-    return ((((unsigned)random()) % 2000000) - 1.0e6) / 1.0e6;
-}
-
 float AP_InertialSensor_SITL::gyro_drift(void)
 {
     if (sitl->drift_speed == 0.0f ||

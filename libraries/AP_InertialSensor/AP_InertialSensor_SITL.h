@@ -21,7 +21,6 @@ public:
 private:
     bool init_sensor(void);
     void timer_update();
-    float rand_float(void);
     float gyro_drift(void);
 
     SITL::SITL *sitl;
