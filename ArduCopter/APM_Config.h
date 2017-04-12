@@ -44,3 +44,8 @@
 //#define USERHOOK_MEDIUMLOOP userhook_MediumLoop();        // for code to be run at 10hz
 //#define USERHOOK_SLOWLOOP userhook_SlowLoop();            // for code to be run at 3.3hz
 //#define USERHOOK_SUPERSLOWLOOP userhook_SuperSlowLoop();  // for code to be run at 1hz
+
+// local changes for toy mode
+#define ARMING_DELAY_SEC 0.5f
+#define FS_RADIO_TIMEOUT_MS 1500
+#define INITIAL_MODE ALT_HOLD
