@@ -28,6 +28,9 @@ private:
     uint32_t time_delta;
     uint32_t delayed_time;
 
+    // adjust for simulated board temperature
+    void temperature_adjustment(float &p, float &T);
+    
 };
 #endif // CONFIG_HAL_BOARD
 
