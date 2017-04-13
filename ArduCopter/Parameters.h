@@ -571,6 +571,9 @@ public:
     
     // control over servo output ranges
     SRV_Channels servo_channels;
+
+    // temperature calibration handling
+    AP_TempCalibration temp_calibration;
 };
 
 extern const AP_Param::Info        var_info[];

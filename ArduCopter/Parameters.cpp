@@ -1013,6 +1013,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(visual_odom, "VISO", 18, ParametersG2, AP_VisualOdom),
 #endif
 
+    // @Group: TCAL
+    // @Path: ../libraries/AP_TempCalibration/AP_TempCalibration.cpp
+    AP_SUBGROUPINFO(temp_calibration, "TCAL", 19, ParametersG2, AP_TempCalibration),
+
     AP_GROUPEND
 };
 
@@ -1028,6 +1032,7 @@ ParametersG2::ParametersG2(void)
 #if ADVANCED_FAILSAFE == ENABLED
     ,afs(copter.mission, copter.barometer, copter.gps, copter.rcmap)
 #endif
+    ,temp_calibration(copter.barometer, copter.ins)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
