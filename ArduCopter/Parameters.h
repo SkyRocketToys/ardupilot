@@ -573,6 +573,9 @@ public:
     // Safe RTL library
     AP_SmartRTL smart_rtl;
 #endif
+
+    // temperature calibration handling
+    AP_TempCalibration temp_calibration;
 };
 
 extern const AP_Param::Info        var_info[];
