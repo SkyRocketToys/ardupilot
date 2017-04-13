@@ -502,3 +502,8 @@ void Copter::update_visual_odom()
     }
 #endif
 }
+
+void Copter::temp_cal_update(void)
+{
+    g2.temp_calibration.update();
+}
