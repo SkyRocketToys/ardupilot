@@ -93,6 +93,7 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
+#include <AP_TempCalibration/AP_TempCalibration.h>
 
 // Configuration
 #include "defines.h"
@@ -1156,6 +1157,7 @@ private:
     void init_capabilities(void);
     void dataflash_periodic(void);
     void accel_cal_update(void);
+    void temp_cal_update(void);
 
 public:
     void mavlink_delay_cb();
