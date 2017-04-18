@@ -10,6 +10,8 @@
 #include <StorageManager/StorageManager.h>
 #include <AP_HAL/utility/dsm.h>
 #include <AP_Math/crc.h>
+#include "telem_structure.h"
+#include <AP_Notify/AP_Notify.h>
 
 /*
   driver for CYRF6936 radio
@@ -1186,6 +1188,13 @@ void AP_Radio_cypress::transmit16(const uint8_t data[16])
 void AP_Radio_cypress::send_telem_packet(void)
 {
     struct telem_packet pkt;
+
+    t_status.flags = 0;
+    t_status.flags |= AP_Notify::flags.gps_status >= 3?TELEM_FLAG_GPS_OK:0;
+    t_status.flags |= AP_Notify::flags.pre_arm_check?TELEM_FLAG_ARM_OK:0;
+    t_status.flags |= AP_Notify::flags.failsafe_battery?0:TELEM_FLAG_BATT_OK;
+    t_status.flight_mode = AP_Notify::flags.flight_mode;
+
     pkt.type = TELEM_STATUS;
     pkt.payload.status = t_status;
     pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);

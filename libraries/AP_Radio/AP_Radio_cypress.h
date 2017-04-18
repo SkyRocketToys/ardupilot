@@ -27,6 +27,7 @@
 #include <nuttx/arch.h>
 #include <systemlib/systemlib.h>
 #include <drivers/drv_hrt.h>
+#include "telem_structure.h"
 
 class AP_Radio_cypress : public AP_Radio_backend
 {
@@ -174,31 +175,6 @@ private:
         enum dsm_protocol protocol;
     };
 
-    enum telem_type {
-        TELEM_STATUS =0, // a telem_status packet
-        TELEM_PLAY   =1, // play a tune
-    };
-
-    struct telem_status {
-        uint8_t pps; // packets per second received
-        uint8_t rssi; // lowpass rssi
-    };
-
-    struct telem_play {
-        uint8_t seq;
-        uint8_t tune_index;
-    };
-    
-    struct PACKED telem_packet {
-        uint8_t crc; // simple CRC
-        enum telem_type type;
-        union {
-            uint8_t pkt[14];
-            struct telem_status status;
-            struct telem_play play;
-        } payload;
-    };
-    
     struct telem_status t_status;
     
     // DSM specific functions
