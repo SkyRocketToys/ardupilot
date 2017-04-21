@@ -34,7 +34,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/select.h>
-#include <termios.h>
+#include <asm/termbits.h>
 
 #include "UARTDriver.h"
 #include "SITL_State.h"
@@ -302,7 +302,7 @@ void UARTDriver::_tcp_start_client(const char *address, uint16_t port)
  */
 void UARTDriver::_uart_start_connection(void)
 {
-    struct termios t {};
+    struct termios2 t {};
     if (!_connected) {
         _fd = ::open(_uart_path, O_RDWR | O_CLOEXEC);
         if (_fd == -1) {
@@ -324,20 +324,26 @@ void UARTDriver::_uart_start_connection(void)
     fcntl(_fd, F_SETFL, flags);
 
     // disable LF -> CR/LF
-    tcgetattr(_fd, &t);
-    t.c_iflag &= ~(BRKINT | ICRNL | IMAXBEL | IXON | IXOFF);
-    t.c_oflag &= ~(OPOST | ONLCR);
-    t.c_lflag &= ~(ISIG | ICANON | IEXTEN | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE);
+    int ret = ioctl(_fd, TCGETS2, &t);
+    ::printf("TCGET2 ret=%d\n", ret);
+    t.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR
+                     | IGNCR | ICRNL | IXON);
+    t.c_iflag |= (INPCK | IGNPAR);
+    t.c_oflag &= ~OPOST;
+    t.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    t.c_cflag &= ~(CSIZE | CRTSCTS | PARODD | CBAUD);
     t.c_cc[VMIN] = 0;
     if (_sitlState->use_rtscts()) {
         t.c_cflag |= CRTSCTS;
     }
-    tcsetattr(_fd, TCSANOW, &t);
-
     // set baudrate
-    tcgetattr(_fd, &t);
-    cfsetspeed(&t, _uart_baudrate);
-    tcsetattr(_fd, TCSANOW, &t);
+    // use BOTHER to specify speed directly in c_[io]speed member
+    t.c_cflag |= (CS8 | CSTOPB | CLOCAL | PARENB | BOTHER | CREAD);
+    ::printf("Setting baudrate %u\n", _uart_baudrate);
+    t.c_ispeed = _uart_baudrate;
+    t.c_ospeed = _uart_baudrate;
+    ret = ioctl(_fd, TCSETS2, &t);
+    ::printf("TCSET2 ret=%d\n", ret);
 
     _connected = true;
     _use_send_recv = false;
