@@ -820,6 +820,15 @@ void NavEKF3::getVelNED(int8_t instance, Vector3f &vel)
     }
 }
 
+// return an array of 24 floats containing the state variances
+void NavEKF3::getStateVariances(int8_t instance, float var[])
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (core) {
+        core[instance].getStateVariances(var);
+    }
+}
+
 // Return the rate of change of vertical position in the down direction (dPosD/dt) in m/s
 float NavEKF3::getPosDownDerivative(int8_t instance)
 {
