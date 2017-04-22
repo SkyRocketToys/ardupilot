@@ -121,7 +121,6 @@ LAND_SPEED_HIGH      100
 # logging
 LOG_BACKEND_TYPE       2
 LOG_FILE_BUFSIZE       1
-LOG_BITMASK       176127
 
 # voltages
 MOT_BAT_VOLT_MAX      4.2
@@ -144,7 +143,6 @@ RC3_MIN             1000
 RC3_MAX             2000
 RC4_MIN             1000
 RC4_MAX             2000
-RC_FEEL_RP           100
 RTL_ALT             1000
 
 # pos control
