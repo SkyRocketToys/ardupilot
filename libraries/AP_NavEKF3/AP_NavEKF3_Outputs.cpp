@@ -220,6 +220,14 @@ void NavEKF3_core::getVelNED(Vector3f &vel) const
     vel = outputDataNew.velocity + velOffsetNED;
 }
 
+// return an array of 24 floats containing the state variances
+void NavEKF3_core::getStateVariances(float var[]) const
+{
+    for (uint8_t index=0; index<24; index++) {
+        var[index] = P[index][index];
+    }
+}
+
 // Return the rate of change of vertical position in the down diection (dPosD/dt) of the body frame origin in m/s
 float NavEKF3_core::getPosDownDerivative(void) const
 {
