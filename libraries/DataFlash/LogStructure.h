@@ -391,6 +391,23 @@ struct PACKED log_NKF5 {
     float posErr;
 };
 
+struct PACKED log_NKFV {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float var0;
+    float var1;
+    float var2;
+    float var3;
+    float var4;
+    float var5;
+    float var6;
+    float var7;
+    float var8;
+    float var9;
+    float var10;
+    float var11;
+};
+
 struct PACKED log_Quaternion {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -990,6 +1007,10 @@ Format characters in the format string for binary log messages
     { LOG_XKQ2_MSG, sizeof(log_Quaternion), "XKQ2", QUAT_FMT, QUAT_LABELS }, \
     { LOG_XKFD_MSG, sizeof(log_ekfBodyOdomDebug), \
       "XKFD","Qffffff","TimeUS,IX,IY,IZ,IVX,IVY,IVZ" }, \
+    { LOG_XKV0_MSG, sizeof(log_NKFV), \
+      "XKV0","Qffffffffffff","TimeUS,V0,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10,V11" }, \
+    { LOG_XKV1_MSG, sizeof(log_NKFV), \
+      "XKV1","Qffffffffffff","TimeUS,V12,V13,V14,V15,V16,V17,V18,V19,V20,V21,V22,V23" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_GPS_UBX1_MSG, sizeof(log_Ubx1), \
@@ -1192,6 +1213,8 @@ enum LogMessages {
     LOG_XKQ1_MSG,
     LOG_XKQ2_MSG,
     LOG_XKFD_MSG,
+    LOG_XKV0_MSG,
+    LOG_XKV1_MSG,
     LOG_DF_MAV_STATS,
 
     LOG_MSG_SBPHEALTH,

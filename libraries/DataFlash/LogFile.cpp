@@ -1747,6 +1747,47 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         WriteBlock(&pkt11, sizeof(pkt11));
         updateTime_ms = lastUpdateTime_ms;
     }
+    // write debug data for state variances at 1Hz
+    float stateVar[24];
+    static uint32_t lastVarianceLogTime_ms = 0;
+    ahrs.get_NavEKF3().getStateVariances(-1, stateVar);
+    if (AP_HAL::millis() - lastVarianceLogTime_ms > 1000) {
+        struct log_NKFV pkt12 = {
+            LOG_PACKET_HEADER_INIT(LOG_XKV0_MSG),
+            time_us : time_us,
+            var0 : stateVar[0],
+            var1 : stateVar[1],
+            var2 : stateVar[2],
+            var3 : stateVar[3],
+            var4 : stateVar[4],
+            var5 : stateVar[5],
+            var6 : stateVar[6],
+            var7 : stateVar[7],
+            var8 : stateVar[8],
+            var9 : stateVar[9],
+            var10 : stateVar[10],
+            var11 : stateVar[11]
+         };
+        WriteBlock(&pkt12, sizeof(pkt12));
+        struct log_NKFV pkt13 = {
+            LOG_PACKET_HEADER_INIT(LOG_XKV1_MSG),
+            time_us : time_us,
+            var0 : stateVar[12],
+            var1 : stateVar[13],
+            var2 : stateVar[14],
+            var3 : stateVar[15],
+            var4 : stateVar[16],
+            var5 : stateVar[17],
+            var6 : stateVar[18],
+            var7 : stateVar[19],
+            var8 : stateVar[20],
+            var9 : stateVar[21],
+            var10 : stateVar[22],
+            var11 : stateVar[23]
+         };
+        WriteBlock(&pkt13, sizeof(pkt13));
+        lastVarianceLogTime_ms = AP_HAL::millis();
+    }
 }
 #endif
 
