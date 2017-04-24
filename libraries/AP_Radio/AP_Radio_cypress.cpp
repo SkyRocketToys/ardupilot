@@ -309,7 +309,7 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
  */
 void AP_Radio_cypress::print_debug_info(void)
 {
-    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u TXI:%u TX:%u 1:%4u 1:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
+    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u TXI:%u TX:%u 1:%4u 2:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
           stats.recv_packets - last_stats.recv_packets,
           stats.bad_packets - last_stats.bad_packets,
           stats.timeouts - last_stats.timeouts,
