@@ -35,7 +35,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { printf(fmt, ##args); }} while (0)
+#define debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { hal.console->printf(fmt, ##args); }} while (0)
 
 #define LP_FIFO_SIZE  16      // Physical data FIFO lengths in Radio
 
