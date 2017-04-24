@@ -144,6 +144,7 @@ RC3_MAX             2000
 RC4_MIN             1000
 RC4_MAX             2000
 RTL_ALT             1000
+GND_EFFECT_COMP     1
 
 # pos control
 POS_XY_P              0.7
