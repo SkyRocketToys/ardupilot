@@ -28,7 +28,15 @@ void Copter::toy_input_check()
     } else {
         ch6_counter = 0;
     }
-    if (ch6_counter > TOY_ARM_COUNT && !motors->armed()) {
+
+    // don't arm if sticks aren't in deadzone, to prevent pot problems
+    // on TX causing flight control issues
+    bool sticks_centered =
+        channel_roll->get_control_in() == 0 &&
+        channel_pitch->get_control_in() == 0 &&
+        channel_yaw->get_control_in() == 0;
+    
+    if (ch6_counter > TOY_ARM_COUNT && !motors->armed() && sticks_centered) {
         // 1 second for arming.
         if (gps_enable && arming.pre_arm_gps_checks(false)) {
             // we want GPS and checks are passing, arm and enable fence
