@@ -6,6 +6,7 @@
 // times in 0.1s units
 #define TOY_ARM_COUNT 5
 #define TOY_LAND_COUNT 15
+#define TOY_FORCE_DISARM_COUNT 5
 #define TOY_COMMMAND_DELAY 30
 
 #define TOY_CH5_RESCALE 0
@@ -16,6 +17,7 @@
 void Copter::toy_input_check()
 {
     static int32_t ch6_counter;
+    static uint32_t power_counter;
     uint16_t ch5_in = hal.rcin->read(CH_5);
     static bool last_gps_enable;
     bool gps_enable = (ch5_in > 1700);
@@ -35,6 +37,19 @@ void Copter::toy_input_check()
         channel_roll->get_control_in() == 0 &&
         channel_pitch->get_control_in() == 0 &&
         channel_yaw->get_control_in() == 0;
+
+    // power button adds 400 to ch7
+    bool power_pressed = hal.rcin->read(CH_7) >= 1380;
+
+    if (power_pressed && motors->armed()) {
+        power_counter++;
+        if (power_counter >= TOY_FORCE_DISARM_COUNT) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Force disarm");
+            copter.init_disarm_motors();
+        }
+    } else {
+        power_counter = 0;
+    }
     
     if (ch6_counter > TOY_ARM_COUNT && !motors->armed() && sticks_centered) {
         // 1 second for arming.
