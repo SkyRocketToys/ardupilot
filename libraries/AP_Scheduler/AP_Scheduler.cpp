@@ -114,7 +114,7 @@ void AP_Scheduler::run(uint32_t time_available)
 
             if (dt >= interval_ticks*2) {
                 // we've slipped a whole run of this task!
-                if (_debug > 1) {
+                if (_debug > 4) {
                     ::printf("Scheduler slip task[%u-%s] (%u/%u/%u)\n",
                              (unsigned)i,
                              _tasks[i].name,
