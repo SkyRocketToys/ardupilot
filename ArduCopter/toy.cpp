@@ -44,7 +44,7 @@ void Copter::toy_input_check()
     if (power_pressed && motors->armed()) {
         power_counter++;
         if (power_counter >= TOY_FORCE_DISARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Force disarm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: Force disarm");
             copter.init_disarm_motors();
         }
     } else {
@@ -61,12 +61,16 @@ void Copter::toy_input_check()
                 init_arm_motors(false);
                 if (!motors->armed()) {
                     AP_Notify::events.arming_failed = true;
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
+                } else {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS armed motors");
                 }
                 ch6_counter = -TOY_COMMMAND_DELAY;
             }
         } else if (gps_enable) {
             // notify of arming fail
             AP_Notify::events.arming_failed = true;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
         } else {
             // non-GPS mode
             set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
@@ -76,26 +80,38 @@ void Copter::toy_input_check()
                 ch6_counter = -TOY_COMMMAND_DELAY;
                 if (!motors->armed()) {
                     AP_Notify::events.arming_failed = true;
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS arming failed");
+                } else {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS armed motors");
                 }
             }
         }
     }
     if (ch6_counter > TOY_LAND_COUNT && motors->armed() && !ap.land_complete) {
-        set_mode(LAND, MODE_REASON_TX_COMMAND);        
+        if (control_mode == TOY_GPS_MODE) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS RTL");
+            set_mode(RTL, MODE_REASON_TX_COMMAND);
+        } else {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS LAND");
+            set_mode(LAND, MODE_REASON_TX_COMMAND);
+        }
         ch6_counter = -TOY_COMMMAND_DELAY;
     }
     if (ch6_counter > TOY_LAND_COUNT && motors->armed() && ap.land_complete) {
         init_disarm_motors();
         ch6_counter = -TOY_COMMMAND_DELAY;
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: disarmed");
     }
 
     if (mode_change) {
         if (!gps_enable) {
             fence.enable(false);
             set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS mode");
         } else {
             fence.enable(true);
             set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS mode");
         }
     }
 }
