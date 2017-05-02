@@ -115,6 +115,14 @@ public:
         return _flags.fly_forward;
     }
 
+    void set_indoor_flight(bool b) {
+        _flags.indoor_flight = b;
+    }
+
+    bool get_indoor_flight(void) const {
+        return _flags.indoor_flight;
+    }
+    
     AHRS_VehicleClass get_vehicle_class(void) const {
         return _vehicle_class;
     }
@@ -551,6 +559,7 @@ protected:
         uint8_t fly_forward             : 1;    // 1 if we can assume the aircraft will be flying forward on its X axis
         uint8_t correct_centrifugal     : 1;    // 1 if we should correct for centrifugal forces (allows arducopter to turn this off when motors are disarmed)
         uint8_t wind_estimation         : 1;    // 1 if we should do wind estimation
+        uint8_t indoor_flight           : 1;    // 1 if we should assume indoor conditions, with bad GPS
     } _flags;
 
     // calculate sin/cos of roll/pitch/yaw from rotation
