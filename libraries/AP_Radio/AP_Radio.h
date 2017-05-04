@@ -91,6 +91,7 @@ private:
     AP_Int8 rssi_chan;
     AP_Int8 rate_chan;
     AP_Int8 telem_enable;
+    AP_Int8 transmit_power;
     
     static AP_Radio *_instance;
 };
