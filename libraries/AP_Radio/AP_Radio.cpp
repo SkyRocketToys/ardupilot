@@ -59,6 +59,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
     AP_GROUPINFO("_TELEM",  7, AP_Radio, telem_enable, 0),
+
+    // @Param: _TXPOW
+    // @DisplayName: Transmit power
+    // @Description: Set transmit power
+    // @Range: 0 7
+    // @User: Advanced
+    AP_GROUPINFO("_TXPOW",  8, AP_Radio, transmit_power, 7),
     
     AP_GROUPEND
 };

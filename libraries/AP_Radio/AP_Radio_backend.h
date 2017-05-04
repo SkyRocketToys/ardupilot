@@ -76,6 +76,10 @@ protected:
     bool get_telem_enable(void) const {
         return radio.telem_enable.get() > 0;
     }
+
+    uint8_t get_transmit_power(void) const {
+        return radio.transmit_power.get();
+    }
     
     AP_Radio &radio;
 };

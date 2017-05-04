@@ -161,6 +161,7 @@ private:
         uint32_t crc_errors;
         float rssi;
         bool last_discrc;
+        uint8_t last_transmit_power;
         uint32_t send_irq_count;
         uint32_t send_count;
         uint16_t pkt_time1 = 3000;

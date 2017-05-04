@@ -943,6 +943,12 @@ void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t so
         debug(3,"Cypress: DISCRC=%u\n", dsm.last_discrc);
         write_register(CYRF_RX_OVERRIDE, dsm.last_discrc?CYRF_DIS_RXCRC:0);
     }
+
+    if (get_transmit_power() != dsm.last_transmit_power) {
+        dsm.last_transmit_power = get_transmit_power();
+        debug(3,"Cypress: TXPOWER=%u\n", dsm.last_transmit_power);
+        write_register(CYRF_TX_CFG, CYRF_DATA_CODE_LENGTH | CYRF_DATA_MODE_8DR | dsm.last_transmit_power);
+    }
     
     // Change channel
     set_channel(channel);
