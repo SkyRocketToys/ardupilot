@@ -83,8 +83,8 @@ ATC_ANG_RLL_P          6
 ATC_RAT_PIT_D          0.0008
 ATC_RAT_PIT_FILT      20
 ATC_RAT_PIT_IMAX       0.6
-ATC_RAT_PIT_I          0.05
-ATC_RAT_PIT_P          0.05
+ATC_RAT_PIT_I          0.07
+ATC_RAT_PIT_P          0.07
 ATC_RAT_RLL_D          0.001
 ATC_RAT_RLL_FILT      20
 ATC_RAT_RLL_I          0.15
@@ -144,7 +144,7 @@ RC3_MIN             1000
 RC3_MAX             2000
 RC4_MIN             1000
 RC4_MAX             2000
-RTL_ALT             1000
+RTL_ALT              400
 GND_EFFECT_COMP     1
 
 # pos control
