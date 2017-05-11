@@ -31,6 +31,7 @@ struct telem_play {
 // write to new firmware
 struct telem_firmware {
     uint8_t seq;
+    uint8_t len;
     uint16_t offset;
     uint8_t data[8];
 };
@@ -44,6 +45,7 @@ struct telem_packet {
     union {
         uint8_t pkt[14];
         struct telem_status status;
+        struct telem_firmware fw;
     } payload;
 };
 
