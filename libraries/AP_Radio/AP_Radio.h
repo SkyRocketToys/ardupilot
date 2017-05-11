@@ -20,6 +20,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
+#include <GCS_MAVLink/GCS.h>
 
 class AP_Radio_backend;
 
@@ -52,6 +53,9 @@ public:
     // return current PWM of a channel
     uint16_t read(uint8_t chan);
 
+    // update status, should be called from main thread
+    void update(void);
+    
     struct stats {
         uint32_t bad_packets;
         uint32_t recv_errors;
@@ -80,6 +84,9 @@ public:
     static AP_Radio *instance(void) {
         return _instance;
     }
+
+    // handle a data96 mavlink packet for fw upload
+    void handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m);
     
 private:
     AP_Radio_backend *driver;

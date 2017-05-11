@@ -55,6 +55,12 @@ public:
     // return current PWM of a channel
     uint16_t read(uint8_t chan) override;
 
+    // handle a data96 mavlink packet for fw upload
+    void handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m) override;
+
+    // update status
+    void update(void) override;
+    
     // get radio statistics structure
     const AP_Radio::stats &get_stats(void) override;
     
@@ -134,6 +140,9 @@ private:
         DSM2_SYNC_B,
         DSM2_OK
     };
+
+    // semaphore between ISR and main thread
+    AP_HAL::Semaphore *sem;    
     
     // dsm config data and status
     struct {
@@ -168,6 +177,18 @@ private:
         uint16_t pkt_time2 = 7000;
     } dsm;
 
+    struct {
+        mavlink_channel_t chan;
+        bool need_ack;
+        uint8_t counter;
+        uint8_t sequence;
+        uint32_t offset;
+        uint32_t length;
+        uint32_t acked;
+        uint8_t len;
+        uint8_t pending_data[92];
+    } fwupload;
+    
     // bind structure saved to storage
     static const uint16_t bind_magic = 0x43F6;
     struct PACKED bind_info {
@@ -191,7 +212,7 @@ private:
     void dsm_choose_channel(void);
     
     // parse DSM channels from a packet
-    void parse_dsm_channels(const uint8_t *data);
+    bool parse_dsm_channels(const uint8_t *data);
 
     // process an incoming packet
     void process_packet(const uint8_t *pkt, uint8_t len);
@@ -212,5 +233,8 @@ private:
 
     void send_telem_packet(void);
     void irq_handler_send(uint8_t tx_status);
+
+    // check sending of fw upload ack
+    void check_fw_ack(void);
 };
 

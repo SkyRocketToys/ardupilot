@@ -247,6 +247,8 @@ bool AP_Radio_cypress::init(void)
     dev = std::move(hal.spi->get_device(CYRF_SPI_DEVICE));
 
     load_bind_info();
+
+    sem = hal.util->new_semaphore();    
     
     return reset();
 }
@@ -305,6 +307,15 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
 }
 
 /*
+  update status - called from main thread
+ */
+void AP_Radio_cypress::update(void)
+{
+    check_fw_ack();
+}
+    
+
+/*
   print one second debug info
  */
 void AP_Radio_cypress::print_debug_info(void)
@@ -350,7 +361,26 @@ uint8_t AP_Radio_cypress::num_channels(void)
         t_status.rssi = (uint8_t)dsm.rssi;
         last_stats = stats;
     }
+
     return dsm.num_channels;
+}
+
+/*
+  send a fwupload ack if needed
+ */
+void AP_Radio_cypress::check_fw_ack(void)
+{
+    debug(4,"check need_ack\n");
+    if (fwupload.need_ack && sem->take_nonblocking()) {
+        // ack the send of a DATA96 fw packet to TX
+        fwupload.need_ack = false;
+        uint8_t data16[16] {};
+        uint32_t ack_to = fwupload.offset + fwupload.acked;
+        memcpy(&data16[0], &ack_to, 4);
+        mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
+        debug(4,"sent ack DATA16\n");
+        sem->give();
+    }
 }
 
 /*
@@ -612,13 +642,51 @@ void AP_Radio_cypress::write_register(uint8_t reg, uint8_t value)
 /*
   parse channels from a packet
  */
-void AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
+bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 {
-    dsm_decode(AP_HAL::micros64(),
-               data,
-               dsm.pwm_channels,
-               &dsm.num_channels,
-               ARRAY_SIZE(dsm.pwm_channels));
+    uint16_t num_values = 0;
+    if (!dsm_decode(AP_HAL::micros64(),
+                    data,
+                    dsm.pwm_channels,
+                    &num_values,
+                    ARRAY_SIZE(dsm.pwm_channels))) {
+        // invalid packet
+        debug(2, "DSM: bad decode\n");
+        return false;
+    }
+    if (num_values < 5) {
+        debug(2, "DSM: num_values=%u\n", num_values);
+        return false;
+    }
+    dsm.num_channels = num_values;
+
+    if (num_values == 8) {
+        // decode telemetry ack value
+        uint16_t d=0;
+        if (is_DSM2()) {
+            d = data[14] << 8 | data[15];
+        } else {
+            // see chan_order[] for DSMX
+            d = data[10] << 8 | data[11];
+        }
+        uint8_t chan = d>>11;
+        uint16_t v = d & 0x7FF;
+        if (chan == 7 && v < 256) {
+            // got an ack
+            debug(4, "ack %u seq=%u acked=%u length=%u len=%u\n",
+                  v, fwupload.sequence, fwupload.acked, fwupload.length, fwupload.len);
+            if (fwupload.sequence == v && sem->take_nonblocking()) {
+                fwupload.sequence++;
+                fwupload.acked += fwupload.len;
+                if (fwupload.acked == fwupload.length) {
+                    // trigger send of DATA16 ack to client
+                    fwupload.need_ack = true;
+                }
+                sem->give();
+            }
+        }
+    }
+    return true;
 }
 
 /*
@@ -688,6 +756,8 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
     if (len == 16) {
         bool ok;
         const uint8_t *id = dsm.mfg_id;
+        uint32_t now = AP_HAL::micros();
+        
         if (is_DSM2()) {
             ok = (pkt[0] == ((~id[2])&0xFF) && pkt[1] == (~id[3]&0xFF));
         } else {
@@ -698,24 +768,28 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
                 dsm.channels[0] = dsm.current_rf_channel;
                 dsm.sync = DSM2_SYNC_B;
                 debug(2, "DSM2 SYNCA chan=%u\n", dsm.channels[0]);
+                dsm.last_recv_us = now;
             } else {
                 if (dsm.current_rf_channel != dsm.channels[0]) {
                     dsm.channels[1] = dsm.current_rf_channel;
                     dsm.sync = DSM2_OK;                    
                     debug(2, "DSM2 SYNCB chan=%u\n", dsm.channels[1]);
+                    dsm.last_recv_us = now;
                 }
             }
+            return;
+        }
+        if (ok && (!is_DSM2() || dsm.sync == DSM2_OK)) {
+            ok = parse_dsm_channels(pkt);
         }
         if (ok) {
-            uint32_t now = AP_HAL::micros();
             uint32_t packet_dt_us = now - dsm.last_recv_us;
+
             dsm.last_recv_chan = dsm.current_channel;
             dsm.last_recv_us = now;
             if (dsm.crc_errors > 2) {
                 dsm.crc_errors -= 2;
             }
-
-            parse_dsm_channels(pkt);
 
             stats.recv_packets++;
 
@@ -764,7 +838,7 @@ void AP_Radio_cypress::start_receive(void)
     if (state == STATE_BIND) {
         dsm.receive_timeout_usec = 15000;
     } else {
-        dsm.receive_timeout_usec = 9000;
+        dsm.receive_timeout_usec = 12000;
     }
     //dsm.receive_timeout_usec = 45000;
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
@@ -1054,6 +1128,11 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
                         dsm.sop_col, dsm.data_col,
                         dsm.sync==DSM2_SYNC_B?~dsm.crc_seed:dsm.crc_seed);
+        if (dsm.sync == DSM2_SYNC_B &&
+            now - dsm.last_recv_us > 5000000) {
+            debug(2, "DSM2 resync\n");
+            dsm.sync = DSM2_SYNC_A;
+        }
         return;
     }
     
@@ -1201,9 +1280,29 @@ void AP_Radio_cypress::send_telem_packet(void)
     t_status.flags |= AP_Notify::flags.failsafe_battery?0:TELEM_FLAG_BATT_OK;
     t_status.flight_mode = AP_Notify::flags.flight_mode;
 
-    pkt.type = TELEM_STATUS;
-    pkt.payload.status = t_status;
-    pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
+    // send fw update packet for 7/8 of packets if any data pending
+    if (fwupload.length != 0 &&
+        fwupload.length > fwupload.acked &&
+        ((fwupload.counter++ & 0x07) != 0) &&
+        sem->take_nonblocking()) {
+        pkt.type = TELEM_FW;
+        pkt.payload.fw.seq = fwupload.sequence;
+        uint32_t len = fwupload.length>fwupload.acked?fwupload.length - fwupload.acked:0;
+        pkt.payload.fw.len = len<=8?len:8;
+        pkt.payload.fw.offset = fwupload.offset+fwupload.acked;
+        memcpy(&pkt.payload.fw.data[0], &fwupload.pending_data[fwupload.acked], pkt.payload.fw.len);
+        fwupload.len = pkt.payload.fw.len;
+        debug(4,"sent fw seq=%u offset=%u len=%u\n",
+              pkt.payload.fw.seq,
+              pkt.payload.fw.offset,
+              pkt.payload.fw.len);              
+        sem->give();
+        pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
+    } else {
+        pkt.type = TELEM_STATUS;
+        pkt.payload.status = t_status;
+        pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
+    }
     
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
@@ -1212,6 +1311,24 @@ void AP_Radio_cypress::send_telem_packet(void)
     state = STATE_SEND_TELEM_WAIT;
     
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+}
+
+// handle a data96 mavlink packet for fw upload
+void AP_Radio_cypress::handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m)
+{
+    uint32_t ofs=0;
+    memcpy(&ofs, &m.data[0], 4);
+    debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, ofs);
+    if (sem->take_nonblocking()) {
+        fwupload.chan = chan;
+        fwupload.need_ack = false;
+        fwupload.offset = ofs;
+        fwupload.length = MIN(m.len-4, 92);
+        fwupload.acked = 0;
+        fwupload.sequence++;
+        memcpy(&fwupload.pending_data[0], &m.data[4], fwupload.length);
+        sem->give();
+    } 
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
