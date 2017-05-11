@@ -29,6 +29,11 @@
 #include <fcntl.h>
 #endif
 
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#include <AP_Radio/AP_Radio.h>
+#include <AP_BoardConfig/AP_BoardConfig.h>
+#endif
+
 extern const AP_HAL::HAL& hal;
 
 uint32_t GCS_MAVLINK::last_radio_status_remrssi_ms;
@@ -1660,6 +1665,32 @@ void GCS_MAVLINK::handle_timesync(mavlink_message_t *msg)
 
 
 /*
+  handle a data message
+ */
+void GCS_MAVLINK::handle_data_packet(mavlink_message_t *msg)
+{
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    mavlink_data96_t m;
+    mavlink_msg_data96_decode(msg, &m);
+    switch (m.type) {
+    case 42: {
+        // pass to AP_Radio (for firmware upload)
+        AP_Radio *radio = AP_Radio::instance();
+        if (radio != nullptr) {
+            radio->handle_data_packet(chan, m);
+        }
+        break;
+    }
+    default:
+        // unknown
+        break;
+    }
+#endif
+}
+
+
+
+/*
   handle messages which don't require vehicle specific data
  */
 void GCS_MAVLINK::handle_common_message(mavlink_message_t *msg)
@@ -1682,6 +1713,9 @@ void GCS_MAVLINK::handle_common_message(mavlink_message_t *msg)
         break;
     case MAVLINK_MSG_ID_REMOTE_LOG_BLOCK_STATUS:
         DataFlash_Class::instance()->handle_mavlink_msg(chan, msg);
+        break;
+    case MAVLINK_MSG_ID_DATA96:
+        handle_data_packet(msg);
         break;
     }
 }
