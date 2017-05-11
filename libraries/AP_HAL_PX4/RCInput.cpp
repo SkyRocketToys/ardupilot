@@ -73,6 +73,14 @@ uint16_t PX4RCInput::read(uint8_t ch)
     }
     uint16_t v = _rcin.values[ch];
     pthread_mutex_unlock(&rcin_mutex);
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (radio && ch == 0) {
+        // hook to allow for update of radio on main thread, for mavlink sends
+        radio->update();
+    }
+#endif
+
     return v;
 }
 
