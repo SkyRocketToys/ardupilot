@@ -312,6 +312,12 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
 void AP_Radio_cypress::update(void)
 {
     check_fw_ack();
+    uint32_t now = AP_HAL::micros();
+    if (AP_HAL::micros() - dsm.last_recv_us > 5000000) {
+        // force a read with number of channels zero
+        dsm.last_recv_us = now;
+        dsm.num_channels = 0;
+    }
 }
     
 
@@ -339,25 +345,25 @@ void AP_Radio_cypress::print_debug_info(void)
 uint8_t AP_Radio_cypress::num_channels(void)
 {
     uint32_t now = AP_HAL::millis();
+    uint8_t ch = get_rssi_chan();
+    if (ch > 0) {
+        dsm.pwm_channels[ch-1] = dsm.rssi;
+        dsm.num_channels = MAX(dsm.num_channels, ch);
+    }
+
+    ch = get_rate_chan();
+    if (ch > 0) {
+        dsm.pwm_channels[ch-1] = t_status.pps;
+        dsm.num_channels = MAX(dsm.num_channels, ch);
+    }
+    
     if (now - last_debug_print_ms > 1000) {
         last_debug_print_ms = now;
         if (get_debug_level() > 1) {
             print_debug_info();
         }
 
-        uint8_t ch = get_rssi_chan();
-        if (ch > 0) {
-            dsm.pwm_channels[ch-1] = (uint8_t)dsm.rssi;
-            dsm.num_channels = MAX(dsm.num_channels, ch);
-        }
-
-        uint8_t pps = stats.recv_packets - last_stats.recv_packets;
-        ch = get_rate_chan();
-        if (ch > 0) {
-            dsm.pwm_channels[ch-1] = pps;
-            dsm.num_channels = MAX(dsm.num_channels, ch);
-        }
-        t_status.pps = pps;
+        t_status.pps = stats.recv_packets - last_stats.recv_packets;
         t_status.rssi = (uint8_t)dsm.rssi;
         last_stats = stats;
     }
@@ -658,7 +664,9 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
         debug(2, "DSM: num_values=%u\n", num_values);
         return false;
     }
-    dsm.num_channels = num_values;
+
+    // suppress channel 8 ack values
+    dsm.num_channels = num_values==8?7:num_values;
 
     if (num_values == 8) {
         // decode telemetry ack value
