@@ -563,13 +563,18 @@ void AP_Radio_cypress::radio_init(void)
     debug(1, "Cypress: radio_init starting\n");
 
     // wait for radio to settle
-    while (true) {
+    uint16_t i;
+    for (i=0; i<1000; i++) {
         uint8_t chan = read_register(CYRF_CHANNEL);
         if (chan == 1) {
             break;
         }
         write_register(CYRF_CHANNEL, 1);
         hal.scheduler->delay(10);
+    }
+    if (i == 1000) {
+        debug(1, "Cypress: radio_init failed\n");
+        return;
     }
 
     // base config
