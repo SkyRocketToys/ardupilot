@@ -1159,7 +1159,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         // predict next channel
         next_channel = dsm.last_recv_chan + 1;
         next_channel += (dt / cycle_time) * 2;
-        if (dt % cycle_time > dsm.pkt_time1 + 1000) {
+        if (dt % cycle_time > (unsigned)(dsm.pkt_time1 + 1000U)) {
             next_channel++;
         }
     }
