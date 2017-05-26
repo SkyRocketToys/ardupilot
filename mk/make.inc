@@ -7,4 +7,5 @@ LIBRARIES += SRV_Channel
 LIBRARIES += AP_UAVCAN
 LIBRARIES += AP_ADC
 LIBRARIES += AP_Airspeed
-
+LIBRARIES += AP_Radio
+LIBRARIES += AP_TempCalibration
