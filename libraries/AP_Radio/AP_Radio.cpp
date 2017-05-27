@@ -166,5 +166,14 @@ void AP_Radio::update(void)
     }
 }
 
+// get transmitter firmware version
+uint8_t AP_Radio::get_tx_version(void)
+{
+    if (driver) {
+        return driver->get_tx_version();
+    }
+    return 0;
+}
+
 #endif // HAL_RCINPUT_WITH_AP_RADIO
 

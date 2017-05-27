@@ -55,6 +55,9 @@ public:
 
     // update status, should be called from main thread
     void update(void);
+
+    // get transmitter firmware version
+    uint8_t get_tx_version(void);
     
     struct stats {
         uint32_t bad_packets;
