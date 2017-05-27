@@ -1377,6 +1377,13 @@ void GCS_MAVLINK::send_autopilot_version(uint8_t major_version, uint8_t minor_ve
 #else
     memset(os_custom_version,0,8);
 #endif
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio *radio = AP_Radio::instance();
+    if (radio) {
+        vendor_id = radio->get_tx_version();
+    }
+#endif
     
     mavlink_msg_autopilot_version_send(
         chan,
