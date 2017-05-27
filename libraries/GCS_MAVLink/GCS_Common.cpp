@@ -1409,6 +1409,25 @@ void GCS_MAVLINK::send_autopilot_version() const
         os_custom_version[sizeof(os_custom_version) - 1] = '\0';
     }
 
+#if defined(PX4_GIT_VERSION)
+    strncpy((char *)middleware_custom_version, PX4_GIT_VERSION, 8);
+#else
+    memset(middleware_custom_version,0,8);
+#endif
+    
+#if defined(NUTTX_GIT_VERSION)
+    strncpy((char *)os_custom_version, NUTTX_GIT_VERSION, 8);
+#else
+    memset(os_custom_version,0,8);
+#endif
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio *radio = AP_Radio::instance();
+    if (radio) {
+        vendor_id = radio->get_tx_version();
+    }
+#endif
+    
     mavlink_msg_autopilot_version_send(
         chan,
         hal.util->get_capabilities(),
