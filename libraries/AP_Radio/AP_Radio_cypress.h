@@ -60,6 +60,11 @@ public:
 
     // update status
     void update(void) override;
+
+    // get TX fw version
+    uint8_t get_tx_version(void) override {
+        return dsm.tx_firmware_version;
+    }
     
     // get radio statistics structure
     const AP_Radio::stats &get_stats(void) override;
@@ -175,6 +180,7 @@ private:
         uint32_t send_count;
         uint16_t pkt_time1 = 3000;
         uint16_t pkt_time2 = 7000;
+        uint8_t tx_firmware_version;
     } dsm;
 
     struct {

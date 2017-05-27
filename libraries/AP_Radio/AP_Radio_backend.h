@@ -53,6 +53,9 @@ public:
 
     // update status
     virtual void update(void) = 0;
+
+    // get TX fw version
+    virtual uint8_t get_tx_version(void) = 0;
     
     // get radio statistics structure
     virtual const AP_Radio::stats &get_stats(void) = 0;

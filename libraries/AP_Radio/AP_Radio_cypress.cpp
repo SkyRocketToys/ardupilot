@@ -674,7 +674,7 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
     dsm.num_channels = num_values==8?7:num_values;
 
     if (num_values == 8) {
-        // decode telemetry ack value
+        // decode telemetry ack value and version
         uint16_t d=0;
         if (is_DSM2()) {
             d = data[14] << 8 | data[15];
@@ -682,10 +682,12 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
             // see chan_order[] for DSMX
             d = data[10] << 8 | data[11];
         }
+        // extra data is sent on channel 8, with 3 bit key and 8 bit data
         uint8_t chan = d>>11;
-        uint16_t v = d & 0x7FF;
-        if (chan == 7 && v < 256) {
-            // got an ack
+        uint8_t key = (d >> 8) & 0x7;
+        uint8_t v = d & 0xFF;
+        if (chan == 7 && key == 0) {
+            // got an ack from key 0
             debug(4, "ack %u seq=%u acked=%u length=%u len=%u\n",
                   v, fwupload.sequence, fwupload.acked, fwupload.length, fwupload.len);
             if (fwupload.sequence == v && sem->take_nonblocking()) {
@@ -697,6 +699,10 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                 }
                 sem->give();
             }
+        }
+        if (chan == 7 && key == 1) {
+            // firmware version is in key 1
+            dsm.tx_firmware_version = v;
         }
     }
     return true;
