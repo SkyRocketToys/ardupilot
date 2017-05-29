@@ -102,6 +102,7 @@ private:
     AP_Int8 rate_chan;
     AP_Int8 telem_enable;
     AP_Int8 transmit_power;
+    AP_Int8 fcc_test;
     
     static AP_Radio *_instance;
 };

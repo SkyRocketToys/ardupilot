@@ -89,6 +89,10 @@ protected:
     uint8_t get_transmit_power(void) const {
         return radio.transmit_power.get();
     }
-    
+
+    uint8_t get_fcc_test(void) const {
+        return radio.fcc_test.get();
+    }
+
     AP_Radio &radio;
 };

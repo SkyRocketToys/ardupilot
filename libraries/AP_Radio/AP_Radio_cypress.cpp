@@ -960,6 +960,9 @@ void AP_Radio_cypress::irq_handler(void)
         irq_handler_send(tx_status);
         break;
 
+    case STATE_SEND_FCC:
+        break;
+        
     default:
         break;
     }
@@ -978,9 +981,20 @@ void AP_Radio_cypress::irq_timeout(void)
         return;
     }
 
+    if (get_fcc_test() != 0 && state != STATE_SEND_FCC) {
+        debug(3,"Starting FCC test\n");
+        state = STATE_SEND_FCC;
+    } else if (get_fcc_test() == 0 && state == STATE_SEND_FCC) {
+        debug(3,"Ending FCC test\n");
+        state = STATE_RECV;
+    }
+    
     switch (state) {
     case STATE_SEND_TELEM:
         send_telem_packet();
+        break;
+    case STATE_SEND_FCC:
+        send_FCC_test_packet();
         break;
     case STATE_SEND_TELEM_WAIT:
         state = STATE_RECV;
@@ -1299,6 +1313,9 @@ void AP_Radio_cypress::transmit16(const uint8_t data[16])
 }
 
 
+/*
+  send a telemetry structure packet
+ */
 void AP_Radio_cypress::send_telem_packet(void)
 {
     struct telem_packet pkt;
@@ -1340,6 +1357,45 @@ void AP_Radio_cypress::send_telem_packet(void)
     state = STATE_SEND_TELEM_WAIT;
     
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+}
+
+/*
+  send a FCC test packet
+ */
+void AP_Radio_cypress::send_FCC_test_packet(void)
+{
+    uint8_t pkt[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+    write_register(CYRF_RX_ABORT, 0);
+    transmit16(pkt);
+
+    state = STATE_SEND_FCC;
+
+    uint8_t channel=0;
+    
+    switch (get_fcc_test()) {
+    case 0:
+        // switch back to normal operation
+        send_telem_packet();
+        return;
+    case 1:
+        channel = 0;
+        break;
+    case 2:
+        channel = DSM_MAX_CHANNEL/2;
+        break;
+    case 3:
+    default:
+        channel = DSM_MAX_CHANNEL-1;
+        break;
+    }
+
+    debug(5,"FCC send %u\n", channel);
+    set_channel(channel);
+    
+    
+    hrt_call_after(&wait_call, 3000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
 
 // handle a data96 mavlink packet for fw upload

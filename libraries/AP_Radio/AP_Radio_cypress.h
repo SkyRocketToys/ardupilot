@@ -90,7 +90,8 @@ private:
         STATE_RECV,
         STATE_BIND,
         STATE_SEND_TELEM,
-        STATE_SEND_TELEM_WAIT
+        STATE_SEND_TELEM_WAIT,
+        STATE_SEND_FCC
     } state;
     
     struct config {
@@ -243,6 +244,8 @@ private:
     void send_telem_packet(void);
     void irq_handler_send(uint8_t tx_status);
 
+    void send_FCC_test_packet(void);
+    
     // check sending of fw upload ack
     void check_fw_ack(void);
 };
