@@ -64,7 +64,7 @@ public:
     // get TX fw version
     uint32_t get_tx_version(void) override {
         // pack date into 16 bits for vendor_id in AUTOPILOT_VERSION
-        return (dsm.tx_firmware_year<<12) + (dsm.tx_firmware_month<<8) + dsm.tx_firmware_day;
+        return (uint16_t(dsm.tx_firmware_year)<<12) + (uint16_t(dsm.tx_firmware_month)<<8) + dsm.tx_firmware_day;
     }
     
     // get radio statistics structure
