@@ -57,7 +57,7 @@ public:
     void update(void);
 
     // get transmitter firmware version
-    uint8_t get_tx_version(void);
+    uint32_t get_tx_version(void);
     
     struct stats {
         uint32_t bad_packets;

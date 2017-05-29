@@ -700,9 +700,19 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                 sem->give();
             }
         }
-        if (chan == 7 && key == 1) {
-            // firmware version is in key 1
-            dsm.tx_firmware_version = v;
+        if (chan == 7) {
+            // extract firmware release date
+            switch (key) {
+            case 1:
+                dsm.tx_firmware_year = v;
+                break;
+            case 2:
+                dsm.tx_firmware_month = v;
+                break;
+            case 3:
+                dsm.tx_firmware_day = v;
+                break;
+            }
         }
     }
     return true;
