@@ -14,6 +14,7 @@ enum telem_type {
 #define TELEM_FLAG_GPS_OK  (1U<<0)
 #define TELEM_FLAG_ARM_OK  (1U<<1)
 #define TELEM_FLAG_BATT_OK (1U<<2)
+#define TELEM_FLAG_ARMED   (1U<<4)
 
 struct telem_status {
     uint8_t pps; // packets per second received
