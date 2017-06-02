@@ -117,7 +117,7 @@ FLTMODE6               2
 # failsafes
 FS_THR_ENABLE          1
 FS_BATT_ENABLE         1
-FS_BATT_VOLTAGE      2.8
+FS_BATT_VOLTAGE      3.3
 FS_GCS_ENABLE          0
 
 # baro
