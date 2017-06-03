@@ -170,7 +170,7 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
 
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
     // @Group: RADIO
-    // @Path: ../libraries/AP_Radio/AP_Radio.cpp
+    // @Path: ../AP_Radio/AP_Radio.cpp
     AP_SUBGROUPINFO(_radio, "RADIO", 10, AP_BoardConfig, AP_Radio),
 #endif
 
