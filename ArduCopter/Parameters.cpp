@@ -1017,6 +1017,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: ../libraries/AP_TempCalibration/AP_TempCalibration.cpp
     AP_SUBGROUPINFO(temp_calibration, "TCAL", 19, ParametersG2, AP_TempCalibration),
 
+    // @Group: TMODE
+    // @Path: toy_mode.cpp
+    AP_SUBGROUPINFO(toy_mode, "TMODE", 20, ParametersG2, ToyMode),
+    
     AP_GROUPEND
 };
 
