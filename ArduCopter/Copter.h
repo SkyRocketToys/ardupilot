@@ -124,13 +124,13 @@
 #include "afs_copter.h"
 #endif
 
-// Local modules
-#include "Parameters.h"
-#include "avoidance_adsb.h"
-
 #if TOY_MODE_ENABLED == ENABLED
 #include "toy_mode.h"
 #endif
+
+// Local modules
+#include "Parameters.h"
+#include "avoidance_adsb.h"
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
@@ -259,10 +259,6 @@ private:
     GCS _gcs; // avoid using this; use gcs()
     GCS &gcs() { return _gcs; }
 
-#if TOY_MODE_ENABLED == ENABLED
-    ToyMode toy_mode;
-#endif
-    
     // User variables
 #ifdef USERHOOK_VARIABLES
 # include USERHOOK_VARIABLES

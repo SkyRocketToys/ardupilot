@@ -14,11 +14,28 @@
 
 #define TOY_CH5_RESCALE 0
 
+const AP_Param::GroupInfo ToyMode::var_info[] = {
+
+    // @Param: ENABLE
+    // @DisplayName: tmode enable 
+    // @Description: tmode (or "toy" mode) gives a simplified user interface designed for mass market drones.
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Advanced
+    AP_GROUPINFO_FLAGS("_ENABLE", 1, ToyMode, enable, 0, AP_PARAM_FLAG_ENABLE),
+
+    AP_GROUPEND
+};
+
 /*
   special mode handling for toys
  */
 void ToyMode::update()
 {
+    if (!enable) {
+        // not enabled
+        return;
+    }
+    
     uint16_t ch5_in = hal.rcin->read(CH_5);
     bool gps_enable = (ch5_in > 1700);
     bool mode_change = (ch5_in > 900 && gps_enable != last_gps_enable);
@@ -135,7 +152,7 @@ void ToyMode::update()
  */
 void Copter::toy_mode_update(void)
 {
-    toy_mode.update();
+    g2.toy_mode.update();
 }
 
 #endif // TOY_MODE_ENABLED

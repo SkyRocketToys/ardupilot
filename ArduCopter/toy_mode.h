@@ -12,7 +12,11 @@ public:
 
     void update(void);
 
+    static const struct AP_Param::GroupInfo var_info[];
+    
 private:
+    AP_Int8 enable;
+    
     int32_t ch6_counter;
     uint32_t power_counter;
     uint32_t throttle_low_counter;
