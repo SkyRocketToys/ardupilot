@@ -21,7 +21,7 @@ private:
     AP_Int8 primary_mode1;
     AP_Int8 primary_mode2;
     
-    int32_t ch6_counter;
+    int32_t arm_counter;
     uint32_t power_counter;
     uint32_t throttle_low_counter;
     bool last_secondary_mode;
