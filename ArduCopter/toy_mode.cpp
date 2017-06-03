@@ -2,9 +2,6 @@
 
 #if TOY_MODE_ENABLED == ENABLED
 
-#define TOY_GPS_MODE LOITER
-#define TOY_NON_GPS_MODE ALT_HOLD
-
 // times in 0.1s units
 #define TOY_ARM_COUNT 5
 #define TOY_LAND_COUNT 15
@@ -12,19 +9,36 @@
 #define TOY_LAND_DISARM_COUNT 15
 #define TOY_COMMMAND_DELAY 30
 
-#define TOY_CH5_RESCALE 0
-
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
-    // @Param: ENABLE
+    // @Param: _ENABLE
     // @DisplayName: tmode enable 
     // @Description: tmode (or "toy" mode) gives a simplified user interface designed for mass market drones.
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
     AP_GROUPINFO_FLAGS("_ENABLE", 1, ToyMode, enable, 0, AP_PARAM_FLAG_ENABLE),
 
+    // @Param: _MODE1
+    // @DisplayName: Tmode first mode
+    // @Description: This is the initial mode when the vehicle is first turned on. This mode is assumed to not require GPS
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS
+    // @User: Standard
+    AP_GROUPINFO("_MODE1", 2, ToyMode, primary_mode1, ALT_HOLD),
+
+    // @Param: _MODE2
+    // @DisplayName: Tmode second mode
+    // @Description: This is the secondary mode. This mode is assumed to require GPS
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS
+    // @User: Standard
+    AP_GROUPINFO("_MODE2", 3, ToyMode, primary_mode2, LOITER),
+    
     AP_GROUPEND
 };
+
+ToyMode::ToyMode()
+{
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 /*
   special mode handling for toys
@@ -35,12 +49,17 @@ void ToyMode::update()
         // not enabled
         return;
     }
+
+    if (first_update) {
+        first_update = false;
+        copter.set_mode(control_mode_t(primary_mode2.get()), MODE_REASON_TX_COMMAND);
+    }
     
     uint16_t ch5_in = hal.rcin->read(CH_5);
-    bool gps_enable = (ch5_in > 1700);
-    bool mode_change = (ch5_in > 900 && gps_enable != last_gps_enable);
+    bool secondary_mode = (ch5_in > 1700);
+    bool mode_change = (ch5_in > 900 && secondary_mode != last_secondary_mode);
 
-    last_gps_enable = gps_enable;
+    last_secondary_mode = secondary_mode;
 
     if (hal.rcin->read(CH_6) > 1700) {
         ch6_counter++;
@@ -64,7 +83,7 @@ void ToyMode::update()
     if (power_pressed && copter.motors->armed()) {
         power_counter++;
         if (power_counter >= TOY_FORCE_DISARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: Force disarm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
             copter.init_disarm_motors();
         }
     } else {
@@ -75,7 +94,7 @@ void ToyMode::update()
     if (throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
         if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: disarm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: disarm");
             copter.init_disarm_motors();
         }
     } else {
@@ -84,46 +103,46 @@ void ToyMode::update()
     
     if (ch6_counter > TOY_ARM_COUNT && !copter.motors->armed() && sticks_centered) {
         // 1 second for arming.
-        if (gps_enable && copter.arming.pre_arm_gps_checks(false)) {
+        if (secondary_mode && copter.arming.pre_arm_gps_checks(false)) {
             // we want GPS and checks are passing, arm and enable fence
-            copter.set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.set_mode(control_mode_t(primary_mode2.get()), MODE_REASON_TX_COMMAND);
             copter.fence.enable(true);
-            if (copter.control_mode == TOY_GPS_MODE) {
+            if (copter.control_mode == primary_mode2) {
                 copter.init_arm_motors(false);
                 if (!copter.motors->armed()) {
                     AP_Notify::events.arming_failed = true;
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
                 } else {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS armed motors");
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
                 }
                 ch6_counter = -TOY_COMMMAND_DELAY;
             }
-        } else if (gps_enable) {
+        } else if (secondary_mode) {
             // notify of arming fail
             AP_Notify::events.arming_failed = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
         } else {
             // non-GPS mode
-            copter.set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.set_mode(control_mode_t(primary_mode1.get()), MODE_REASON_TX_COMMAND);
             copter.fence.enable(false);
-            if (copter.control_mode == TOY_NON_GPS_MODE) {
+            if (copter.control_mode == primary_mode1) {
                 copter.init_arm_motors(false);
                 ch6_counter = -TOY_COMMMAND_DELAY;
                 if (!copter.motors->armed()) {
                     AP_Notify::events.arming_failed = true;
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS arming failed");
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
                 } else {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS armed motors");
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
                 }
             }
         }
     }
     if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && !copter.ap.land_complete) {
-        if (copter.control_mode == TOY_GPS_MODE) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS RTL");
+        if (copter.control_mode == primary_mode2) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS RTL");
             copter.set_mode(RTL, MODE_REASON_TX_COMMAND);
         } else {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS LAND");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS LAND");
             copter.set_mode(LAND, MODE_REASON_TX_COMMAND);
         }
         ch6_counter = -TOY_COMMMAND_DELAY;
@@ -131,18 +150,18 @@ void ToyMode::update()
     if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && copter.ap.land_complete) {
         copter.init_disarm_motors();
         ch6_counter = -TOY_COMMMAND_DELAY;
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: disarmed");
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: disarmed");
     }
 
     if (mode_change) {
-        if (!gps_enable) {
+        if (!secondary_mode) {
             copter.fence.enable(false);
-            copter.set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS mode");
+            copter.set_mode(control_mode_t(primary_mode1.get()), MODE_REASON_TX_COMMAND);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: first mode");
         } else {
             copter.fence.enable(true);
-            copter.set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS mode");
+            copter.set_mode(control_mode_t(primary_mode2.get()), MODE_REASON_TX_COMMAND);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: second mode");
         }
     }
 }
