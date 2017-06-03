@@ -1,4 +1,5 @@
 # defaults for SkyRocket streaming GPS board
+TMODE_ENABLE 1
 BRD_TYPE 2
 BRD_IO_ENABLE 0
 MOT_PWM_TYPE 3
