@@ -1,5 +1,7 @@
 #include "Copter.h"
 
+#if TOY_MODE_ENABLED == ENABLED
+
 #define TOY_GPS_MODE LOITER
 #define TOY_NON_GPS_MODE ALT_HOLD
 
@@ -15,13 +17,9 @@
 /*
   special mode handling for toys
  */
-void Copter::toy_input_check()
+void ToyMode::update()
 {
-    static int32_t ch6_counter;
-    static uint32_t power_counter;
-    static uint32_t throttle_low_counter;
     uint16_t ch5_in = hal.rcin->read(CH_5);
-    static bool last_gps_enable;
     bool gps_enable = (ch5_in > 1700);
     bool mode_change = (ch5_in > 900 && gps_enable != last_gps_enable);
 
@@ -36,17 +34,17 @@ void Copter::toy_input_check()
     // don't arm if sticks aren't in deadzone, to prevent pot problems
     // on TX causing flight control issues
     bool sticks_centered =
-        channel_roll->get_control_in() == 0 &&
-        channel_pitch->get_control_in() == 0 &&
-        channel_yaw->get_control_in() == 0;
+        copter.channel_roll->get_control_in() == 0 &&
+        copter.channel_pitch->get_control_in() == 0 &&
+        copter.channel_yaw->get_control_in() == 0;
 
     bool throttle_at_min =
-        channel_throttle->get_control_in() == 0;
+        copter.channel_throttle->get_control_in() == 0;
     
     // power button adds 400 to ch7
     bool power_pressed = hal.rcin->read(CH_7) >= 1380;
 
-    if (power_pressed && motors->armed()) {
+    if (power_pressed && copter.motors->armed()) {
         power_counter++;
         if (power_counter >= TOY_FORCE_DISARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: Force disarm");
@@ -57,7 +55,7 @@ void Copter::toy_input_check()
     }
 
 
-    if (throttle_at_min && motors->armed() && ap.land_complete) {
+    if (throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
         if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: disarm");
@@ -67,15 +65,15 @@ void Copter::toy_input_check()
         throttle_low_counter = 0;
     }
     
-    if (ch6_counter > TOY_ARM_COUNT && !motors->armed() && sticks_centered) {
+    if (ch6_counter > TOY_ARM_COUNT && !copter.motors->armed() && sticks_centered) {
         // 1 second for arming.
-        if (gps_enable && arming.pre_arm_gps_checks(false)) {
+        if (gps_enable && copter.arming.pre_arm_gps_checks(false)) {
             // we want GPS and checks are passing, arm and enable fence
-            set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
-            fence.enable(true);
-            if (control_mode == TOY_GPS_MODE) {
-                init_arm_motors(false);
-                if (!motors->armed()) {
+            copter.set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.fence.enable(true);
+            if (copter.control_mode == TOY_GPS_MODE) {
+                copter.init_arm_motors(false);
+                if (!copter.motors->armed()) {
                     AP_Notify::events.arming_failed = true;
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
                 } else {
@@ -89,12 +87,12 @@ void Copter::toy_input_check()
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS arming failed");
         } else {
             // non-GPS mode
-            set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
-            fence.enable(false);
-            if (control_mode == TOY_NON_GPS_MODE) {
-                init_arm_motors(false);
+            copter.set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.fence.enable(false);
+            if (copter.control_mode == TOY_NON_GPS_MODE) {
+                copter.init_arm_motors(false);
                 ch6_counter = -TOY_COMMMAND_DELAY;
-                if (!motors->armed()) {
+                if (!copter.motors->armed()) {
                     AP_Notify::events.arming_failed = true;
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS arming failed");
                 } else {
@@ -103,31 +101,41 @@ void Copter::toy_input_check()
             }
         }
     }
-    if (ch6_counter > TOY_LAND_COUNT && motors->armed() && !ap.land_complete) {
-        if (control_mode == TOY_GPS_MODE) {
+    if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && !copter.ap.land_complete) {
+        if (copter.control_mode == TOY_GPS_MODE) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS RTL");
-            set_mode(RTL, MODE_REASON_TX_COMMAND);
+            copter.set_mode(RTL, MODE_REASON_TX_COMMAND);
         } else {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS LAND");
-            set_mode(LAND, MODE_REASON_TX_COMMAND);
+            copter.set_mode(LAND, MODE_REASON_TX_COMMAND);
         }
         ch6_counter = -TOY_COMMMAND_DELAY;
     }
-    if (ch6_counter > TOY_LAND_COUNT && motors->armed() && ap.land_complete) {
-        init_disarm_motors();
+    if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && copter.ap.land_complete) {
+        copter.init_disarm_motors();
         ch6_counter = -TOY_COMMMAND_DELAY;
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: disarmed");
     }
 
     if (mode_change) {
         if (!gps_enable) {
-            fence.enable(false);
-            set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.fence.enable(false);
+            copter.set_mode(TOY_NON_GPS_MODE, MODE_REASON_TX_COMMAND);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: GPS mode");
         } else {
-            fence.enable(true);
-            set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
+            copter.fence.enable(true);
+            copter.set_mode(TOY_GPS_MODE, MODE_REASON_TX_COMMAND);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Toy: non-GPS mode");
         }
     }
 }
+
+/*
+  called from scheduler at 10Hz
+ */
+void Copter::toy_mode_update(void)
+{
+    toy_mode.update();
+}
+
+#endif // TOY_MODE_ENABLED
