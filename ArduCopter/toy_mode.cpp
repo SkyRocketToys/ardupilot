@@ -54,17 +54,33 @@ void ToyMode::update()
         first_update = false;
         copter.set_mode(control_mode_t(primary_mode2.get()), MODE_REASON_TX_COMMAND);
     }
+
+    if (copter.failsafe.radio) {
+        // failsafe handling is outside the scope of toy mode, it does
+        // normal failsafe actions
+        return;
+    }
     
     uint16_t ch5_in = hal.rcin->read(CH_5);
+    uint16_t ch6_in = hal.rcin->read(CH_6);
+    uint16_t ch7_in = hal.rcin->read(CH_7);
     bool secondary_mode = (ch5_in > 1700);
     bool mode_change = (ch5_in > 900 && secondary_mode != last_secondary_mode);
 
+    // get buttons from channels
+    bool left_button = (ch5_in > 1950 || (ch5_in > 1050 && ch5_in < 1150));
+    bool right_button = (ch6_in > 1500);
+    uint8_t ch7_bits = (ch7_in>1000)?uint8_t((ch7_in-1000)/100):0;
+    bool left_action_button = (ch7_bits&1) != 0;
+    bool right_action_button = (ch7_bits&2) != 0;
+    bool power_button = (ch7_bits&4) != 0;
+    
     last_secondary_mode = secondary_mode;
 
-    if (hal.rcin->read(CH_6) > 1700) {
-        ch6_counter++;
+    if (right_button && !left_button) {
+        arm_counter++;
     } else {
-        ch6_counter = 0;
+        arm_counter = 0;
     }
 
     // don't arm if sticks aren't in deadzone, to prevent pot problems
@@ -77,10 +93,7 @@ void ToyMode::update()
     bool throttle_at_min =
         copter.channel_throttle->get_control_in() == 0;
     
-    // power button adds 400 to ch7
-    bool power_pressed = hal.rcin->read(CH_7) >= 1380;
-
-    if (power_pressed && copter.motors->armed()) {
+    if (power_button && copter.motors->armed()) {
         power_counter++;
         if (power_counter >= TOY_FORCE_DISARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
@@ -101,7 +114,7 @@ void ToyMode::update()
         throttle_low_counter = 0;
     }
     
-    if (ch6_counter > TOY_ARM_COUNT && !copter.motors->armed() && sticks_centered) {
+    if (arm_counter > TOY_ARM_COUNT && !copter.motors->armed() && sticks_centered) {
         // 1 second for arming.
         if (secondary_mode && copter.arming.pre_arm_gps_checks(false)) {
             // we want GPS and checks are passing, arm and enable fence
@@ -115,7 +128,7 @@ void ToyMode::update()
                 } else {
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
                 }
-                ch6_counter = -TOY_COMMMAND_DELAY;
+                arm_counter = -TOY_COMMMAND_DELAY;
             }
         } else if (secondary_mode) {
             // notify of arming fail
@@ -127,7 +140,7 @@ void ToyMode::update()
             copter.fence.enable(false);
             if (copter.control_mode == primary_mode1) {
                 copter.init_arm_motors(false);
-                ch6_counter = -TOY_COMMMAND_DELAY;
+                arm_counter = -TOY_COMMMAND_DELAY;
                 if (!copter.motors->armed()) {
                     AP_Notify::events.arming_failed = true;
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
@@ -137,7 +150,7 @@ void ToyMode::update()
             }
         }
     }
-    if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && !copter.ap.land_complete) {
+    if (arm_counter > TOY_LAND_COUNT && copter.motors->armed() && !copter.ap.land_complete) {
         if (copter.control_mode == primary_mode2) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS RTL");
             copter.set_mode(RTL, MODE_REASON_TX_COMMAND);
@@ -145,11 +158,11 @@ void ToyMode::update()
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS LAND");
             copter.set_mode(LAND, MODE_REASON_TX_COMMAND);
         }
-        ch6_counter = -TOY_COMMMAND_DELAY;
+        arm_counter = -TOY_COMMMAND_DELAY;
     }
-    if (ch6_counter > TOY_LAND_COUNT && copter.motors->armed() && copter.ap.land_complete) {
+    if (arm_counter > TOY_LAND_COUNT && copter.motors->armed() && copter.ap.land_complete) {
         copter.init_disarm_motors();
-        ch6_counter = -TOY_COMMMAND_DELAY;
+        arm_counter = -TOY_COMMMAND_DELAY;
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: disarmed");
     }
 
