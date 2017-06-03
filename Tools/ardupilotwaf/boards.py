@@ -188,6 +188,11 @@ class Board:
 
     def build(self, bld):
         bld.ap_version_append_str('GIT_VERSION', bld.git_head_hash(short=True))
+        import time
+        ltime = time.localtime()
+        bld.ap_version_append_int('BUILD_DATE_YEAR', ltime.tm_year)
+        bld.ap_version_append_int('BUILD_DATE_MONTH', ltime.tm_mon)
+        bld.ap_version_append_int('BUILD_DATE_DAY', ltime.tm_mday)
 
 Board = BoardMeta('Board', Board.__bases__, dict(Board.__dict__))
 
