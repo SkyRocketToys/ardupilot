@@ -128,6 +128,10 @@
 #include "Parameters.h"
 #include "avoidance_adsb.h"
 
+#if TOY_MODE_ENABLED == ENABLED
+#include "toy_mode.h"
+#endif
+
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
 #endif
@@ -144,6 +148,7 @@ public:
     friend class AP_AdvancedFailsafe_Copter;
 #endif
     friend class AP_Arming_Copter;
+    friend class ToyMode;
 
     Copter(void);
 
@@ -254,6 +259,10 @@ private:
     GCS _gcs; // avoid using this; use gcs()
     GCS &gcs() { return _gcs; }
 
+#if TOY_MODE_ENABLED == ENABLED
+    ToyMode toy_mode;
+#endif
+    
     // User variables
 #ifdef USERHOOK_VARIABLES
 # include USERHOOK_VARIABLES
@@ -1007,7 +1016,7 @@ private:
     uint8_t mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value, float timeout_sec);
     void motor_test_stop();
     void arm_motors_check();
-    void toy_input_check();
+    void toy_mode_update(void);
     void auto_disarm_check();
     bool init_arm_motors(bool arming_from_gcs);
     void init_disarm_motors();
