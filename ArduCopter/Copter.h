@@ -989,6 +989,7 @@ private:
     bool mode_requires_GPS(control_mode_t mode);
     bool mode_has_manual_throttle(control_mode_t mode);
     bool mode_allows_arming(control_mode_t mode, bool arming_from_gcs);
+    const char *flight_mode_string(control_mode_t mode);
     void notify_flight_mode(control_mode_t mode);
     void heli_init();
     void check_dynamic_flight(void);
