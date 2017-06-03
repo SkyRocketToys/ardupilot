@@ -1384,6 +1384,11 @@ void GCS_MAVLINK::send_autopilot_version(uint8_t major_version, uint8_t minor_ve
         vendor_id = radio->get_tx_version();
     }
 #endif
+
+#ifdef BUILD_DATE_YEAR
+    // encode build date in os_sw_version
+    os_sw_version = (BUILD_DATE_YEAR*100*100) + (BUILD_DATE_MONTH*100) + BUILD_DATE_DAY;
+#endif
     
     mavlink_msg_autopilot_version_send(
         chan,
