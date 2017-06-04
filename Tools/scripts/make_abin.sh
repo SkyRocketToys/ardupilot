@@ -10,27 +10,33 @@ else
     ELF=$1
 fi
 
+if [ $# -lt 2 ]; then
+    VEHICLE="arducopter"
+else
+    VEHICLE="$2"
+fi
+
 [ -f $ELF ] || {
     echo "Can't find ELF file"
     exit 1
 }
 
-echo "Creating arducopter.bin"
-arm-none-eabi-objcopy -O binary "$ELF" arducopter.bin || {
+echo "Creating $VEHICLE.bin"
+arm-none-eabi-objcopy -O binary "$ELF" "$VEHICLE".bin || {
     echo "Failed to create bin file"
     exit 1
 }
 
-sum=$(md5sum arducopter.bin | cut -d' ' -f1)
+sum=$(md5sum "$VEHICLE".bin | cut -d' ' -f1)
 githash=$(git rev-parse HEAD)
 
 echo "githash $githash md5 $sum"
 
-cat <<EOF > arducopter.abin
+cat <<EOF > "$VEHICLE".abin
 git version: $githash
 MD5: $sum
 --
 EOF
-cat arducopter.bin >> arducopter.abin
+cat "$VEHICLE".bin >> "$VEHICLE".abin
 
-echo "Created arducopter.abin"
+echo "Created $VEHICLE.abin"
