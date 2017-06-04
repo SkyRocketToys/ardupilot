@@ -94,5 +94,9 @@ protected:
         return radio.fcc_test.get();
     }
 
+    uint8_t get_stick_mode(void) const {
+        return radio.stick_mode.get();
+    }
+
     AP_Radio &radio;
 };
