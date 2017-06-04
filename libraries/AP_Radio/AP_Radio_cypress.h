@@ -220,6 +220,9 @@ private:
 
     // choose channel to receive on
     void dsm_choose_channel(void);
+
+    // map for mode1/mode2
+    void map_stick_mode(uint16_t *channels);
     
     // parse DSM channels from a packet
     bool parse_dsm_channels(const uint8_t *data);

@@ -651,16 +651,58 @@ void AP_Radio_cypress::write_register(uint8_t reg, uint8_t value)
 
 
 /*
+  support all 4 rc input modes by swapping channels.
+ */
+void AP_Radio_cypress::map_stick_mode(uint16_t *channels)
+{
+    switch (get_stick_mode()) {
+    case 1: {
+        // mode1
+        uint16_t tmp = channels[1];
+        channels[1] = 3000 - channels[2];
+        channels[2] = 3000 - tmp;
+        break;
+    }
+
+    case 3: {
+        // mode3
+        uint16_t tmp = channels[1];
+        channels[1] = 3000 - channels[2];
+        channels[2] = 3000 - tmp;
+        tmp = channels[0];
+        channels[0] = channels[3];
+        channels[3] = tmp;
+        break;
+    }
+
+    case 4: {
+        // mode4
+        uint16_t tmp = channels[0];
+        channels[0] = channels[3];
+        channels[3] = tmp;
+        break;
+    }
+        
+    case 2:
+    default:
+        // nothing to do, transmitter is natively mode2
+        break;
+    }
+}
+
+/*
   parse channels from a packet
  */
 bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 {
     uint16_t num_values = 0;
+    uint16_t pwm_channels[max_channels];
+    
     if (!dsm_decode(AP_HAL::micros64(),
                     data,
-                    dsm.pwm_channels,
+                    pwm_channels,
                     &num_values,
-                    ARRAY_SIZE(dsm.pwm_channels))) {
+                    ARRAY_SIZE(pwm_channels))) {
         // invalid packet
         debug(2, "DSM: bad decode\n");
         return false;
@@ -669,6 +711,11 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
         debug(2, "DSM: num_values=%u\n", num_values);
         return false;
     }
+
+    // cope with mode1/mode2
+    map_stick_mode(pwm_channels);
+
+    memcpy(dsm.pwm_channels, pwm_channels, num_values*sizeof(uint16_t));
 
     // suppress channel 8 ack values
     dsm.num_channels = num_values==8?7:num_values;
