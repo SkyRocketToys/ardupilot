@@ -113,6 +113,7 @@ px4-v3: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADER
 	$(v) cp $(PX4_ROOT)/Images/px4fmu-v3_APM.px4 $(SKETCH)-v3.px4
 	$(v) $(SKETCHBOOK)/Tools/scripts/add_git_hashes.py $(HASHADDER_FLAGS) "$(SKETCH)-v3.px4" "$(SKETCH)-v3.px4"
 	$(v) echo "PX4 $(SKETCH) Firmware is in $(SKETCH)-v3.px4"
+	$(v) $(SKETCHBOOK)/Tools/scripts/make_abin.sh $(PX4_ROOT)/Build/px4fmu-v3_APM.build/firmware.elf $(SKETCH)
 
 px4-v4: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADERS) $(PX4_ROOT)/Archives/px4fmu-v4.export $(SKETCHCPP) module_mk
 	$(v) echo Building px4-v4
