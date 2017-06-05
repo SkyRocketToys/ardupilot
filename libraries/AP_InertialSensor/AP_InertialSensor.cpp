@@ -1730,13 +1730,12 @@ bool AP_InertialSensor::get_primary_accel_cal_sample_avg(uint8_t sample_num, Vec
     return true;
 }
 
-
 /*
   perform a simple 1D accel calibration, returning mavlink result code
  */
 uint8_t AP_InertialSensor::simple_accel_cal(AP_AHRS &ahrs)
 {
-    uint8_t num_accels = MIN(get_gyro_count(), INS_MAX_INSTANCES);
+    uint8_t num_accels = MIN(get_accel_count(), INS_MAX_INSTANCES);
     Vector3f last_average[INS_MAX_INSTANCES], best_avg[INS_MAX_INSTANCES];
     Vector3f new_accel_offset[INS_MAX_INSTANCES];
     Vector3f saved_offsets[INS_MAX_INSTANCES];
@@ -1856,6 +1855,9 @@ uint8_t AP_InertialSensor::simple_accel_cal(AP_AHRS &ahrs)
         }
     }
 
+    // restore orientation
+    _board_orientation = saved_orientation;
+
     if (result == MAV_RESULT_ACCEPTED) {
         hal.console->printf("\nPASSED\n");
         for (uint8_t k=0; k<num_accels; k++) {
@@ -1865,14 +1867,10 @@ uint8_t AP_InertialSensor::simple_accel_cal(AP_AHRS &ahrs)
             _accel_scale[k].save();
             _accel_id[k].save();
             _accel_id_ok[k] = true;
-            _accel_cal_requires_reboot = true;
         }
 
         // force trim to zero
         ahrs.set_trim(Vector3f(0, 0, 0));
-
-        // and reset state estimators
-        ahrs.reset();
     } else {
         hal.console->printf("\nFAILED\n");
         // restore old values
@@ -1882,15 +1880,20 @@ uint8_t AP_InertialSensor::simple_accel_cal(AP_AHRS &ahrs)
         }
     }
 
-    // restore orientation
-    _board_orientation = saved_orientation;
-
-    // throw away any existing samples that may have the wrong orientation
-    update();
-        
     // record calibration complete
     _calibrating = false;
 
+    // throw away any existing samples that may have the wrong
+    // orientation. We do this by throwing samples away for 0.5s,
+    // which is enough time for the filters to settle
+    uint32_t start_ms = AP_HAL::millis();
+    while (AP_HAL::millis() - start_ms < 500) {
+        update();
+    }
+
+    // and reset state estimators
+    ahrs.reset();
+        
     // stop flashing leds
     AP_Notify::flags.initialising = false;
 
