@@ -11,12 +11,23 @@ public:
     friend class Copter;
 
     ToyMode();
+    bool enabled(void) const {
+        return enable.get() != 0;
+    }
+    
     void update(void);
 
+    // get throttle mid-point
+    int16_t get_throttle_mid(void) {
+        return throttle_mid;
+    }
+    
     static const struct AP_Param::GroupInfo var_info[];
     
 private:
 
+    void trim_sticks(void);
+    
     enum toy_action {
         ACTION_NONE         = 0,
         ACTION_TAKE_PHOTO   = 1,
@@ -44,6 +55,7 @@ private:
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
     AP_Int8 actions[8];
+    AP_Int8 trim_arm;
     
     int32_t arm_counter;
     uint32_t power_counter;
@@ -52,4 +64,5 @@ private:
     uint8_t last_mode_choice;
     int32_t left_press_counter;
     bool ignore_left_change;
+    int16_t throttle_mid = 500;
 };

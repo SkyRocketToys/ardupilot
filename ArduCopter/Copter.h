@@ -1071,6 +1071,7 @@ private:
     void report_flight_modes();
     void report_optflow();
     void print_radio_values();
+    int16_t get_throttle_mid(void);
     void print_switch(uint8_t p, uint8_t m, bool b);
     void print_accel_offsets_and_scaling(void);
     void print_gyro_offsets(void);

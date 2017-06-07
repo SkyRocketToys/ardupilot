@@ -101,7 +101,7 @@ void Copter::auto_disarm_check()
         if (mode_has_manual_throttle(control_mode) || !sprung_throttle_stick) {
             thr_low = ap.throttle_zero;
         } else {
-            float deadband_top = channel_throttle->get_control_mid() + g.throttle_deadzone;
+            float deadband_top = get_throttle_mid() + g.throttle_deadzone;
             thr_low = channel_throttle->get_control_in() <= deadband_top;
         }
 
