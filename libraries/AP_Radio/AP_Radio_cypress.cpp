@@ -696,7 +696,10 @@ void AP_Radio_cypress::map_stick_mode(uint16_t *channels)
 bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 {
     uint16_t num_values = 0;
-    uint16_t pwm_channels[max_channels];
+    uint16_t pwm_channels[max_channels] {};
+
+    // default value for channels above 4 is previous value
+    memcpy(&pwm_channels[4], &dsm.pwm_channels[4], (max_channels-4)*sizeof(uint16_t));
     
     if (!dsm_decode(AP_HAL::micros64(),
                     data,
