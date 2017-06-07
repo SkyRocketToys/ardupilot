@@ -149,7 +149,7 @@ float Copter::get_pilot_desired_throttle(int16_t throttle_control, float thr_mid
         thr_mid = motors->get_throttle_hover();
     }
 
-    int16_t mid_stick = channel_throttle->get_control_mid();
+    int16_t mid_stick = get_throttle_mid();
     // protect against unlikely divide by zero
     if (mid_stick <= 0) {
         mid_stick = 500;
@@ -187,7 +187,7 @@ float Copter::get_pilot_desired_climb_rate(float throttle_control)
     }
 
     float desired_rate = 0.0f;
-    float mid_stick = channel_throttle->get_control_mid();
+    float mid_stick = get_throttle_mid();
     float deadband_top = mid_stick + g.throttle_deadzone;
     float deadband_bottom = mid_stick - g.throttle_deadzone;
 

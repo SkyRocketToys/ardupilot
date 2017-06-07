@@ -88,6 +88,13 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode
     // @User: Standard
     AP_GROUPINFO("_LEFT_LONG", 11, ToyMode, actions[7], ACTION_MODE_RTL),
+
+    // @Param: _TRIM_ARM
+    // @DisplayName: Stick trim on arming
+    // @Description: This is the amount of automatic stick trim that can be applied on arming. It is a percentage of total stick movement. When arming, the stick trim values will be automatically set to the current stick inputs if they are less than this limit.
+    // @Range: 0 50
+    // @User: Standard
+    AP_GROUPINFO("_TRIM_ARM", 12, ToyMode, trim_arm, 20),
     
     AP_GROUPEND
 };
@@ -110,6 +117,7 @@ void ToyMode::update()
     if (first_update) {
         first_update = false;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TX_COMMAND);
+        throttle_mid = copter.channel_throttle->get_control_mid();
     }
 
     uint16_t ch5_in = hal.rcin->read(CH_5);
@@ -186,13 +194,6 @@ void ToyMode::update()
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: action %u", action);
     }
     
-    // don't arm if sticks aren't in deadzone, to prevent pot problems
-    // on TX causing flight control issues
-    bool sticks_centered =
-        copter.channel_roll->get_control_in() == 0 &&
-        copter.channel_pitch->get_control_in() == 0 &&
-        copter.channel_yaw->get_control_in() == 0;
-
     bool throttle_at_min =
         copter.channel_throttle->get_control_in() == 0;
     
@@ -207,6 +208,18 @@ void ToyMode::update()
     }
 
     bool needs_gps = copter.mode_requires_GPS(copter.control_mode);
+
+    // check if we should auto-trim
+    if (trim_arm > 0 && arm_counter > TOY_ARM_COUNT && !copter.motors->armed()) {
+        trim_sticks();
+    }
+    
+    // don't arm if sticks aren't in deadzone, to prevent pot problems
+    // on TX causing flight control issues
+    bool sticks_centered =
+        copter.channel_roll->get_control_in() == 0 &&
+        copter.channel_pitch->get_control_in() == 0 &&
+        copter.channel_yaw->get_control_in() == 0;
     
     if (arm_counter > TOY_ARM_COUNT && !copter.motors->armed() && sticks_centered) {
         // 1 second for arming.
@@ -362,6 +375,34 @@ void ToyMode::update()
             }
         }
     }
+}
+
+/*
+  automatic stick trimming
+ */
+void ToyMode::trim_sticks(void)
+{
+    uint16_t limit = trim_arm * 0.01 * ROLL_PITCH_YAW_INPUT_MAX;
+
+    if (labs(copter.channel_roll->get_control_in()) >= limit ||
+        labs(copter.channel_pitch->get_control_in()) >= limit ||
+        labs(copter.channel_yaw->get_control_in()) >= limit) {
+        // too large to auto-trim
+        return;
+    }
+
+    // auto-trim roll, pitch and yaw
+    copter.channel_roll->set_radio_trim(copter.channel_roll->get_radio_in());
+    copter.channel_pitch->set_radio_trim(copter.channel_pitch->get_radio_in());
+    copter.channel_yaw->set_radio_trim(copter.channel_yaw->get_radio_in());
+
+    if (labs(copter.channel_throttle->get_control_in() - 500) >= trim_arm * 0.01 * 1000) {
+        // don't auto-trim throttle
+        return;
+    }
+
+    // remember the throttle trim
+    throttle_mid = copter.channel_throttle->get_control_in();
 }
 
 /*
