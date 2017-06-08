@@ -180,6 +180,12 @@ RC4_MAX             2000
 RTL_ALT              400
 GND_EFFECT_COMP     1
 
+# deadzones, with auto-trim
+RC1_DZ              10
+RC2_DZ              10
+RC3_DZ              10
+RC4_DZ              10
+
 # pos control
 POS_XY_P              0.7
 VEL_XY_I              0.3
