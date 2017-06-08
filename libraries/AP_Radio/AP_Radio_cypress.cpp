@@ -312,12 +312,6 @@ uint16_t AP_Radio_cypress::read(uint8_t chan)
 void AP_Radio_cypress::update(void)
 {
     check_fw_ack();
-    uint32_t now = AP_HAL::micros();
-    if (AP_HAL::micros() - dsm.last_recv_us > 5000000) {
-        // force a read with number of channels zero
-        dsm.last_recv_us = now;
-        dsm.num_channels = 0;
-    }
 }
     
 
