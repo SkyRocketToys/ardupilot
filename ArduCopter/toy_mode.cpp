@@ -220,55 +220,6 @@ void ToyMode::update()
         throttle_low_counter = 0;
     }
 
-    bool needs_gps = copter.mode_requires_GPS(copter.control_mode);
-
-    // check if we should auto-trim
-    if (trim_arm > 0 && action == ACTION_ARM_LAND_RTL && !copter.motors->armed()) {
-        trim_sticks();
-    }
-    
-    // don't arm if sticks aren't in deadzone, to prevent pot problems
-    // on TX causing flight control issues
-    bool sticks_centered =
-        copter.channel_roll->get_control_in() == 0 &&
-        copter.channel_pitch->get_control_in() == 0 &&
-        copter.channel_yaw->get_control_in() == 0;
-
-    /*
-      check for arming action
-     */
-    if (action == ACTION_ARM_LAND_RTL && !copter.motors->armed() && sticks_centered) {
-        if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
-            // we want GPS and checks are passing, arm and enable fence
-            copter.set_mode(control_mode_t(primary_mode[1].get()), MODE_REASON_TX_COMMAND);
-            copter.fence.enable(true);
-            copter.init_arm_motors(false);
-            if (!copter.motors->armed()) {
-                AP_Notify::events.arming_failed = true;
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
-            } else {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
-            }
-        } else if (needs_gps) {
-            // notify of arming fail
-            AP_Notify::events.arming_failed = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
-        } else {
-            // non-GPS mode
-            copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TX_COMMAND);
-            copter.fence.enable(false);
-            if (copter.control_mode == primary_mode[0]) {
-                copter.init_arm_motors(false);
-                if (!copter.motors->armed()) {
-                    AP_Notify::events.arming_failed = true;
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
-                } else {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
-                }
-            }
-        }
-    }
-
     enum control_mode_t new_mode = copter.control_mode;
     
     /*
@@ -355,11 +306,10 @@ void ToyMode::update()
         new_mode = control_mode_t(primary_mode[last_mode_choice].get());
         break;
 
-    case ACTION_ARM_LAND_RTL: {
+    case ACTION_ARM_LAND_RTL:
         if (!copter.motors->armed()) {
-            break;
-        }
-        if (new_mode == RTL) {
+            action_arm();
+        } else if (new_mode == RTL) {
             // toggle between RTL and LAND
             new_mode = LAND;
         } else if (new_mode == LAND) {
@@ -374,9 +324,12 @@ void ToyMode::update()
         }
         break;
     }
-        
-    }
 
+    if (!copter.motors->armed() && (copter.control_mode == LAND || copter.control_mode == RTL)) {
+        // revert back to last primary flight mode if disarmed after landing
+        new_mode = control_mode_t(primary_mode[last_mode_choice].get());
+    }
+    
     if (new_mode != copter.control_mode) {
         if (copter.mode_requires_GPS(new_mode)) {
             copter.fence.enable(true);
@@ -422,6 +375,61 @@ void ToyMode::trim_sticks(void)
 
     // remember the throttle trim
     throttle_mid = copter.channel_throttle->get_control_in();
+}
+
+/*
+  handle arming action
+ */
+void ToyMode::action_arm(void)
+{
+    bool needs_gps = copter.mode_requires_GPS(copter.control_mode);
+
+    // check if we should auto-trim
+    if (trim_arm > 0) {
+        trim_sticks();
+    }
+        
+    // don't arm if sticks aren't in deadzone, to prevent pot problems
+    // on TX causing flight control issues
+    bool sticks_centered =
+        copter.channel_roll->get_control_in() == 0 &&
+        copter.channel_pitch->get_control_in() == 0 &&
+        copter.channel_yaw->get_control_in() == 0;
+
+    if (!sticks_centered) {
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: sticks not centered\n");
+        return;
+    }
+    
+    if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
+        // we want GPS and checks are passing, arm and enable fence
+        copter.set_mode(control_mode_t(primary_mode[1].get()), MODE_REASON_TX_COMMAND);
+        copter.fence.enable(true);
+        copter.init_arm_motors(false);
+        if (!copter.motors->armed()) {
+            AP_Notify::events.arming_failed = true;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
+        } else {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
+        }
+    } else if (needs_gps) {
+        // notify of arming fail
+        AP_Notify::events.arming_failed = true;
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
+    } else {
+        // non-GPS mode
+        copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TX_COMMAND);
+        copter.fence.enable(false);
+        if (copter.control_mode == primary_mode[0]) {
+            copter.init_arm_motors(false);
+            if (!copter.motors->armed()) {
+                AP_Notify::events.arming_failed = true;
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
+            } else {
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
+            }
+        }
+    }
 }
 
 /*
