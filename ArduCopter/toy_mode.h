@@ -27,6 +27,7 @@ public:
 private:
 
     void trim_sticks(void);
+    void action_arm(void);
     
     enum toy_action {
         ACTION_NONE         = 0,
