@@ -49,20 +49,21 @@ private:
         ACTION_MODE_STAB    = 17,
         ACTION_DISARM       = 18,
         ACTION_TOGGLE_MODE  = 19,
+        ACTION_ARM_LAND_RTL = 20,
     };
     
     bool first_update;
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
-    AP_Int8 actions[8];
+    AP_Int8 actions[9];
     AP_Int8 trim_arm;
     
-    int32_t arm_counter;
     uint32_t power_counter;
     uint32_t throttle_low_counter;
     uint16_t last_ch5;
     uint8_t last_mode_choice;
     int32_t left_press_counter;
+    int32_t right_press_counter;
     bool ignore_left_change;
     int16_t throttle_mid = 500;
 };
