@@ -403,7 +403,6 @@ void ToyMode::action_arm(void)
     
     if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
         // we want GPS and checks are passing, arm and enable fence
-        copter.set_mode(control_mode_t(primary_mode[1].get()), MODE_REASON_TX_COMMAND);
         copter.fence.enable(true);
         copter.init_arm_motors(false);
         if (!copter.motors->armed()) {
@@ -418,7 +417,6 @@ void ToyMode::action_arm(void)
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
     } else {
         // non-GPS mode
-        copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TX_COMMAND);
         copter.fence.enable(false);
         if (copter.control_mode == primary_mode[0]) {
             copter.init_arm_motors(false);
