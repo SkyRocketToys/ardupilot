@@ -899,8 +899,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         state.hdop        = _buffer.dop.hDOP;
         state.vdop        = _buffer.dop.vDOP;
 #if UBLOX_FAKE_3DLOCK
-        state.hdop = 130;
-        state.hdop = 170;
+        state.hdop = 100;
 #endif
         break;
     case MSG_SOL:
@@ -942,7 +941,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         state.time_week = 1721;
         state.time_week_ms = AP_HAL::millis() + 3*60*60*1000 + 37000;
         state.last_gps_time_ms = AP_HAL::millis();
-        state.hdop = 130;
+        state.hdop = 100;
 #endif
         break;
     case MSG_PVT:
@@ -1027,7 +1026,8 @@ AP_GPS_UBLOX::_parse_gps(void)
         state.time_week = 1721;
         state.time_week_ms = AP_HAL::millis() + 3*60*60*1000 + 37000;
         state.last_gps_time_ms = AP_HAL::millis();
-        state.hdop = 130;
+        state.hdop = 100;
+        state.speed_accuracy = 0;
         next_fix = state.status;
 #endif
         break;
