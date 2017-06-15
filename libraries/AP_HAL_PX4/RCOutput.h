@@ -45,6 +45,7 @@ private:
     int _alt_fd;
     uint16_t _freq_hz;
     uint16_t _period[PX4_NUM_OUTPUT_CHANNELS];
+    uint16_t _last_sent[PX4_NUM_OUTPUT_CHANNELS];
     volatile uint8_t _max_channel;
     volatile bool _need_update;
     bool _sbus_enabled:1;

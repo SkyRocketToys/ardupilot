@@ -73,6 +73,7 @@ void PX4RCOutput::init()
     // ensure not to write zeros to disabled channels
     for (uint8_t i=0; i < PX4_NUM_OUTPUT_CHANNELS; i++) {
         _period[i] = PWM_IGNORE_THIS_CHANNEL;
+        _last_sent[i] = PWM_IGNORE_THIS_CHANNEL;
     }
 }
 
@@ -229,6 +230,7 @@ void PX4RCOutput::enable_ch(uint8_t ch)
     _enabled_channels |= (1U<<ch);
     if (_period[ch] == PWM_IGNORE_THIS_CHANNEL) {
         _period[ch] = 0;
+        _last_sent[ch] = 0;
     }
 }
 
@@ -240,6 +242,7 @@ void PX4RCOutput::disable_ch(uint8_t ch)
 
     _enabled_channels &= ~(1U<<ch);
     _period[ch] = PWM_IGNORE_THIS_CHANNEL;
+    _last_sent[ch] = PWM_IGNORE_THIS_CHANNEL;
 }
 
 void PX4RCOutput::set_safety_pwm(uint32_t chmask, uint16_t period_us)
@@ -329,6 +332,8 @@ void PX4RCOutput::write(uint8_t ch, uint16_t period_us)
         _max_channel = ch + 1;
     }
 
+    _last_sent[ch] = period_us;
+    
     if (_output_mode == MODE_PWM_BRUSHED16KHZ) {
         // map from the PWM range to 0 t0 100% duty cycle. For 16kHz
         // this ends up being 0 to 500 pulse width in units of
@@ -386,7 +391,7 @@ uint16_t PX4RCOutput::read_last_sent(uint8_t ch)
         return 0;
     }
 
-    return _period[ch];
+    return _last_sent[ch];
 }
 
 void PX4RCOutput::read_last_sent(uint16_t* period_us, uint8_t len)
