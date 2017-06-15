@@ -16,6 +16,7 @@
 #define AP_COMPASS_MOT_COMP_DISABLED    0x00
 #define AP_COMPASS_MOT_COMP_THROTTLE    0x01
 #define AP_COMPASS_MOT_COMP_CURRENT     0x02
+#define AP_COMPASS_MOT_COMP_PER_MOTOR   0x03
 
 // setup default mag orientation for some board types
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT
@@ -112,6 +113,11 @@ public:
     // compass calibrator interface
     void compass_cal_update();
 
+    // per-motor calibration update
+    void per_motor_calibration_start(void);
+    void per_motor_calibration_update(void);
+    void per_motor_calibration_end(void);
+    
     void start_calibration_all(bool retry=false, bool autosave=false, float delay_sec=0.0f, bool autoreboot = false);
 
     void cancel_calibration_all();
@@ -235,6 +241,11 @@ public:
         }
     }
 
+    /// Set the battery voltage for per-motor compensation
+    void set_voltage(float voltage) {
+        _per_motor.voltage = voltage;
+    }
+    
     /// Returns True if the compasses have been configured (i.e. offsets saved)
     ///
     /// @returns                    True if compass has been configured
@@ -307,6 +318,9 @@ private:
     bool _start_calibration_mask(uint8_t mask, bool retry=false, bool autosave=false, float delay_sec=0.0f, bool autoreboot=false);
     bool _auto_reboot() { return _compass_cal_autoreboot; }
 
+    // calculate per-motor compensation
+    void per_motor_compensate(Vector3f &offset);
+    float per_motor_output(uint8_t motor);
 
     //keep track of which calibrators have been saved
     bool _cal_saved[COMPASS_MAX_INSTANCES];
@@ -346,7 +360,7 @@ private:
     static const uint8_t _mag_history_size = 20;
 
     // motor compensation type
-    // 0 = disabled, 1 = enabled for throttle, 2 = enabled for current
+    // 0 = disabled, 1 = enabled for throttle, 2 = enabled for current, 3 = per-motor
     AP_Int8     _motor_comp_type;
 
     // throttle expressed as a percentage from 0 ~ 1.0 or current expressed in amps
@@ -391,6 +405,36 @@ private:
     
     CompassCalibrator _calibrator[COMPASS_MAX_INSTANCES];
 
+    // per-motor compass compensation
+    struct {
+        AP_Float expo;
+        AP_Vector3f compensation[4];
+
+        // base field on test start
+        Vector3f base_field;
+        
+        // sum of calibration field samples
+        Vector3f field_sum[4];
+
+        // sum of output (voltage*scaledpwm) in calibration
+        float output_sum[4];
+        
+        // count of calibration accumulation
+        uint16_t count[4];
+
+        // time a motor started in milliseconds
+        uint32_t start_ms[4];
+        
+        // battery voltage
+        float voltage;
+
+        // what rcout channel is being calibrated
+        uint8_t channel;
+
+        // is calibration running?
+        bool running;
+    } _per_motor;
+    
     // if we want HIL only
     bool _hil_mode:1;
 
