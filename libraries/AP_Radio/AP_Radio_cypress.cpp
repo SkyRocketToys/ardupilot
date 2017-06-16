@@ -1435,10 +1435,6 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
 {
     uint8_t pkt[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
-    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
-    write_register(CYRF_RX_ABORT, 0);
-    transmit16(pkt);
-
     state = STATE_SEND_FCC;
 
     uint8_t channel=0;
@@ -1450,12 +1446,15 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         send_telem_packet();
         return;
     case 1:
+    case 4:
         channel = 0;
         break;
     case 2:
+    case 5:
         channel = DSM_MAX_CHANNEL/2;
         break;
     case 3:
+    case 6:
     default:
         channel = DSM_MAX_CHANNEL-1;
         break;
@@ -1463,11 +1462,32 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
 
     debug(5,"FCC send %u\n", channel);
 
-    dsm.forced_channel = channel;
+    if (channel != dsm.forced_channel) {
+        debug(1,"FCC channel %u\n", channel);
+        dsm.forced_channel = channel;
     
-    set_channel(channel);
+        write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+        write_register(CYRF_RX_ABORT, 0);
+        radio_set_config(cyrf_config, ARRAY_SIZE(cyrf_config));
+        radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
+
+        set_channel(channel);
+    }
+
+    if (get_fcc_test() > 3) {
+        // continuous preamble transmit is closest approximation to CW
+        // that is possible with this chip
+        write_register(CYRF_PREAMBLE,0x01);
+        write_register(CYRF_PREAMBLE,0x00);
+        write_register(CYRF_PREAMBLE,0x00);
     
-    hrt_call_after(&wait_call, 3000, (hrt_callout)irq_timeout_trampoline, nullptr);
+        write_register(CYRF_TX_OVERRIDE, CYRF_FRC_PRE);
+        write_register(CYRF_TX_CTRL, CYRF_TX_GO);
+        hrt_call_after(&wait_call, 500000, (hrt_callout)irq_timeout_trampoline, nullptr);
+    } else {
+        transmit16(pkt);
+        hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+    }
 }
 
 // handle a data96 mavlink packet for fw upload

@@ -70,7 +70,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Param: _FCCTST
     // @DisplayName: Put radio into FCC test mode
     // @Description: If this is enabled then the radio will continuously transmit as required for FCC testing. The transmit channel is set by the value of the parameter. The radio will not work for RC input while this is enabled
-    // @Values: 0:Disabled,1:MinChannel,2:MidChannel,3:MaxChannel
+    // @Values: 0:Disabled,1:MinChannel,2:MidChannel,3:MaxChannel,4:MinChannelCW,5:MidChannelCW,6:MaxChannelCW
     // @User: Advanced
     AP_GROUPINFO("_FCCTST", 9, AP_Radio, fcc_test, 0),
 
