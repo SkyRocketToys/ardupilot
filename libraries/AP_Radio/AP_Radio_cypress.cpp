@@ -537,7 +537,9 @@ void AP_Radio_cypress::force_initial_state(void)
  */
 void AP_Radio_cypress::set_channel(uint8_t channel)
 {
-    //printf("chan %u\n", channel);
+    if (dsm.forced_channel != -1) {
+        channel = dsm.forced_channel;
+    }
     write_register(CYRF_CHANNEL, channel);
 }
 
@@ -1444,6 +1446,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
     switch (get_fcc_test()) {
     case 0:
         // switch back to normal operation
+        dsm.forced_channel = -1;
         send_telem_packet();
         return;
     case 1:
@@ -1459,8 +1462,10 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
     }
 
     debug(5,"FCC send %u\n", channel);
-    set_channel(channel);
+
+    dsm.forced_channel = channel;
     
+    set_channel(channel);
     
     hrt_call_after(&wait_call, 3000, (hrt_callout)irq_timeout_trampoline, nullptr);
 }
