@@ -822,6 +822,22 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 }
 
 /*
+  start DSM2 sync
+ */
+void AP_Radio_cypress::dsm2_start_sync(void)
+{
+    uint8_t factory_test = get_factory_test();
+    if (factory_test != 0) {
+        dsm.channels[0] = (factory_test*7) % DSM_MAX_CHANNEL;
+        dsm.channels[1] = (dsm.channels[0] + 5) % DSM_MAX_CHANNEL;
+        dsm.sync = DSM2_OK;
+    } else {
+        debug(2, "DSM2 start sync\n");
+        dsm.sync = DSM2_SYNC_A;
+    }
+}
+
+/*
   process an incoming packet
  */
 void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
@@ -1217,8 +1233,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
                         dsm.sync==DSM2_SYNC_B?~dsm.crc_seed:dsm.crc_seed);
         if (dsm.sync == DSM2_SYNC_B &&
             now - dsm.last_recv_us > 5000000) {
-            debug(2, "DSM2 resync\n");
-            dsm.sync = DSM2_SYNC_A;
+            dsm2_start_sync();
         }
         return;
     }
@@ -1256,8 +1271,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
 
     if (is_DSM2()) {
         if (now - dsm.last_recv_us > 5000000) {
-            debug(2, "DSM2 resync\n");
-            dsm.sync = DSM2_SYNC_A;
+            dsm2_start_sync();
         }
     }
     
@@ -1328,7 +1342,15 @@ void AP_Radio_cypress::load_bind_info(void)
     StorageAccess bind_storage(StorageManager::StorageBindInfo);
     struct bind_info info;
 
-    if (bind_storage.read_block(&info, 0, sizeof(info)) && info.magic == bind_magic) {
+    uint8_t factory_test = get_factory_test();
+    
+    if (factory_test != 0) {
+        debug(1, "In factory test %u\n", factory_test);
+        memset(dsm.mfg_id, 0, sizeof(dsm.mfg_id));
+        dsm.mfg_id[0] = factory_test;
+        dsm.protocol = DSM_DSM2_2;
+        dsm2_start_sync();
+    } else if (bind_storage.read_block(&info, 0, sizeof(info)) && info.magic == bind_magic) {
         memcpy(dsm.mfg_id, info.mfg_id, sizeof(info.mfg_id));
         dsm.protocol = info.protocol;
     }

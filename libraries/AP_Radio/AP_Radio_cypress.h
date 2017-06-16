@@ -251,5 +251,8 @@ private:
     
     // check sending of fw upload ack
     void check_fw_ack(void);
+
+    // re-sync DSM2
+    void dsm2_start_sync(void);
 };
 

@@ -98,5 +98,9 @@ protected:
         return radio.stick_mode.get();
     }
 
+    uint8_t get_factory_test(void) const {
+        return radio.factory_test.get();
+    }
+    
     AP_Radio &radio;
 };

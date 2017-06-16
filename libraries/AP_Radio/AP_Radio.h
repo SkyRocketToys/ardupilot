@@ -104,6 +104,7 @@ private:
     AP_Int8 transmit_power;
     AP_Int8 fcc_test;
     AP_Int8 stick_mode;
+    AP_Int8 factory_test;
     
     static AP_Radio *_instance;
 };
