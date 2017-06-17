@@ -88,7 +88,6 @@ bool AP_Baro_ICM20789::spi_init(void)
     uint8_t v;
         
     dev_icm->read_registers(0x6A, &v, 1);
-    debug("reg 0x6A=0x%02x\n", v);
     dev_icm->write_register(0x6B, 0x01);
     
     hal.scheduler->delay(1);
@@ -102,15 +101,12 @@ bool AP_Baro_ICM20789::spi_init(void)
     dev_icm->write_register(0x23, 0x00);
     dev_icm->write_register(0x6B, 0x41);
     
-    // print the WHOAMI
     dev_icm->read_registers(0x75, &whoami, 1);
-    debug("20789 SPI whoami: 0x%02x\n", whoami);
     
     // wait for sensor to settle
     hal.scheduler->delay(100);
     
     dev_icm->read_registers(0x75, &whoami, 1);
-    debug("20789 SPI whoami: 0x%02x\n", whoami);
     
     dev_icm->write_register(0x37, 0x00);
     dev_icm->write_register(0x6A, 0x10);
@@ -304,16 +300,19 @@ void AP_Baro_ICM20789::timer(void)
 
 void AP_Baro_ICM20789::update()
 {
-    if (_sem->take(0)) {
+    if (_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         if (accum.count > 0) {
             _copy_to_frontend(instance, accum.psum/accum.count, accum.tsum/accum.count);
             accum.psum = accum.tsum = 0;
             accum.count = 0;
         }
         _sem->give();
+#if 0
+        // useful for debugging
         DataFlash_Class::instance()->Log_Write("ICMB", "TimeUS,Traw,Praw,P,T", "QIIff",
                                                AP_HAL::micros64(),
                                                dd.Traw, dd.Praw, dd.P, dd.T);
+#endif
     }
 }
 
