@@ -420,11 +420,9 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("OFFS_MAX", 31, Compass, _offset_max, AP_COMPASS_OFFSETS_MAX_DEFAULT),
 
-    AP_GROUPINFO("PMOT_EXP", 32, Compass, _per_motor.expo, 1),
-    AP_GROUPINFO("PMOT1",  33, Compass, _per_motor.compensation[0], 0),
-    AP_GROUPINFO("PMOT2",  34, Compass, _per_motor.compensation[1], 0),
-    AP_GROUPINFO("PMOT3",  35, Compass, _per_motor.compensation[2], 0),
-    AP_GROUPINFO("PMOT4",  36, Compass, _per_motor.compensation[3], 0),
+    // @Group: PMOT
+    // @Path: Compass_PerMotor.cpp
+    AP_SUBGROUPINFO(_per_motor, "PMOT", 32, Compass, Compass_PerMotor),
     
     AP_GROUPEND
 };
