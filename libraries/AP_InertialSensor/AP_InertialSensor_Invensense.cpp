@@ -358,7 +358,12 @@ void AP_InertialSensor_Invensense::_fifo_reset()
 {
     uint8_t user_ctrl = _last_stat_user_ctrl;
     user_ctrl &= ~(BIT_USER_CTRL_FIFO_RESET | BIT_USER_CTRL_FIFO_EN);
-    user_ctrl &= ~BIT_USER_CTRL_I2C_MST_EN;
+
+    if (_mpu_type == Invensense_ICM20789) {
+        // setup to allow for barometer
+        user_ctrl &= ~BIT_USER_CTRL_I2C_MST_EN;
+    }
+    
     _dev->set_speed(AP_HAL::Device::SPEED_LOW);
     _register_write(MPUREG_FIFO_EN, 0);
     _register_write(MPUREG_USER_CTRL, user_ctrl);
@@ -491,8 +496,9 @@ void AP_InertialSensor_Invensense::start()
     // clear interrupt on any read, and hold the data ready pin high
     // until we clear the interrupt
     uint8_t v = _register_read(MPUREG_INT_PIN_CFG) | BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN;
-    v &= BIT_BYPASS_EN;
-    printf("Setting INT_PIN_CFG=0x%02x\n", v);
+    if (_mpu_type == Invensense_ICM20789) {    
+        v &= BIT_BYPASS_EN;
+    }
     _register_write(MPUREG_INT_PIN_CFG, v);
 
     // now that we have initialised, we set the bus speed to high
@@ -569,9 +575,7 @@ bool AP_InertialSensor_Invensense::_data_ready()
  */
 void AP_InertialSensor_Invensense::_poll_data()
 {
-//    if (AP_HAL::millis() < 10000) {
-        _read_fifo();
-//    }
+    _read_fifo();
 }
 
 bool AP_InertialSensor_Invensense::_accumulate(uint8_t *samples, uint8_t n_samples)
@@ -760,7 +764,7 @@ void AP_InertialSensor_Invensense::_read_fifo()
     }
 
     if (need_reset) {
-        debug("fifo reset n_samples %u", bytes_read/MPU_SAMPLE_SIZE);
+        //debug("fifo reset n_samples %u", bytes_read/MPU_SAMPLE_SIZE);
         _fifo_reset();
     }
     
@@ -850,7 +854,7 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
         config |= BITS_DLPF_CFG_188HZ;
     }
 
-    //config |= MPUREG_CONFIG_FIFO_MODE_STOP;
+    config |= MPUREG_CONFIG_FIFO_MODE_STOP;
     _register_write(MPUREG_CONFIG, config, true);
 
 	if (_mpu_type != Invensense_MPU6000) {
@@ -858,7 +862,8 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
             // setup for 4kHz accels
             _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_FCHOICE_B, true);
         } else {
-            _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_DLPF_CFG_218HZ | 0x40, true);
+            uint8_t fifo_size = (_mpu_type == Invensense_ICM20789) ? 1:0;
+            _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_DLPF_CFG_218HZ | (fifo_size<<6), true);
         }
     }
 }
@@ -941,7 +946,9 @@ bool AP_InertialSensor_Invensense::_hardware_init(void)
         /* bus-dependent initialization */
         if ((_dev->bus_type() == AP_HAL::Device::BUS_TYPE_I2C) && (_mpu_type == Invensense_MPU9250)) {
             /* Enable I2C bypass to access internal AK8963 */
-            //_register_write(MPUREG_INT_PIN_CFG, BIT_BYPASS_EN);
+            if (_mpu_type != Invensense_ICM20789) {
+                _register_write(MPUREG_INT_PIN_CFG, BIT_BYPASS_EN);
+            }
         }
 
 
@@ -1105,7 +1112,11 @@ void AP_Invensense_AuxiliaryBus::_configure_slaves()
 {
     auto &backend = AP_InertialSensor_Invensense::from(_ins_backend);
 
-    return;
+    if (backend._mpu_type == AP_InertialSensor_Invensense::Invensense_ICM20789) {
+        // on 20789 we can't enable slaves if we want to be able to use the baro
+        return;
+    }
+    
     /* Enable the I2C master to slaves on the auxiliary I2C bus*/
     if (!(backend._last_stat_user_ctrl & BIT_USER_CTRL_I2C_MST_EN)) {
         backend._last_stat_user_ctrl |= BIT_USER_CTRL_I2C_MST_EN;
