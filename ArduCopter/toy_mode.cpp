@@ -5,8 +5,9 @@
 // times in 0.1s units
 #define TOY_COMMAND_DELAY 15
 #define TOY_LONG_PRESS_COUNT 15
-#define TOY_LAND_DISARM_COUNT 10
-#define TOY_LAND_ARM_COUNT 10
+#define TOY_LAND_MANUAL_DISARM_COUNT 40
+#define TOY_LAND_DISARM_COUNT 1
+#define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
@@ -211,19 +212,22 @@ void ToyMode::update()
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
     }
-    
-    bool throttle_at_min =
-        copter.channel_throttle->get_control_in() == 0;
 
+    // we use 150 for throttle_at_min to cope with varying stick throws
+    bool throttle_at_min =
+        copter.channel_throttle->get_control_in() < 150;
+
+    // throttle threshold for throttle arming
     bool throttle_near_max =
-        copter.channel_throttle->get_control_in() > 800;
+        copter.channel_throttle->get_control_in() > 700;
     
     /*
       disarm if throttle is low for 1 second when landed
      */
     if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
-        if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
+        const uint8_t disarm_limit = copter.mode_has_manual_throttle(copter.control_mode)?TOY_LAND_MANUAL_DISARM_COUNT:TOY_LAND_DISARM_COUNT;
+        if (throttle_low_counter >= disarm_limit) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
@@ -492,11 +496,12 @@ void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
     const uint32_t soft_start_ms = 5000;
+    const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
     if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
         throttle_control = MIN(throttle_control, 500);
     } else if (now - throttle_arm_ms < soft_start_ms) {
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
-        throttle_control = MIN(throttle_control, 500 + p * 500);
+        throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
     }
 }
 
