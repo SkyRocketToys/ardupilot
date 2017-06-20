@@ -163,6 +163,7 @@ MOT_THST_HOVER        0.3514
 MOT_THST_EXPO        -0.56
 MOT_SPIN_ARM          0.05
 MOT_SPIN_MIN          0.05
+MOT_SPOOL_TIME        0
 
 # control inputs
 PILOT_THR_BHV          3
@@ -181,10 +182,10 @@ RTL_ALT              400
 GND_EFFECT_COMP     1
 
 # deadzones, with auto-trim
-RC1_DZ              10
-RC2_DZ              10
-RC3_DZ              10
-RC4_DZ              10
+RC1_DZ              15
+RC2_DZ              15
+RC3_DZ              15
+RC4_DZ              15
 
 # pos control
 POS_XY_P              0.7
