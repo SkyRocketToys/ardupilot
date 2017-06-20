@@ -21,6 +21,9 @@ public:
     int16_t get_throttle_mid(void) {
         return throttle_mid;
     }
+
+    // adjust throttle for throttle takeoff
+    void throttle_adjust(float &throttle_control);
     
     static const struct AP_Param::GroupInfo var_info[];
     
@@ -52,19 +55,28 @@ private:
         ACTION_TOGGLE_MODE  = 19,
         ACTION_ARM_LAND_RTL = 20,
     };
+
+    // these are bitmask indexes for TMODE_FLAGS
+    enum toy_flags {
+        FLAG_THR_DISARM = 0,  // disarm on low throttle
+        FLAG_THR_ARM = 1,     // arm on high throttle
+    };
     
     bool first_update;
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
     AP_Int8 actions[9];
     AP_Int8 trim_arm;
+    AP_Int16 flags;
     
     uint32_t power_counter;
     uint32_t throttle_low_counter;
+    uint32_t throttle_high_counter;
     uint16_t last_ch5;
     uint8_t last_mode_choice;
     int32_t left_press_counter;
     int32_t right_press_counter;
     bool ignore_left_change;
     int16_t throttle_mid = 500;
+    uint32_t throttle_arm_ms;
 };
