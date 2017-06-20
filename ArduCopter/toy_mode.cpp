@@ -416,8 +416,9 @@ void ToyMode::trim_sticks(void)
 
     if (labs(copter.channel_roll->get_control_in()) >= limit ||
         labs(copter.channel_pitch->get_control_in()) >= limit ||
-        labs(copter.channel_yaw->get_control_in()) >= limit) {
-        // too large to auto-trim
+        labs(copter.channel_yaw->get_control_in()) >= limit ||
+        labs(copter.channel_throttle->get_control_in() - 500) >= trim_arm * 0.01 * 1000) {
+        // inputs too large to auto-trim
         return;
     }
 
@@ -425,11 +426,6 @@ void ToyMode::trim_sticks(void)
     copter.channel_roll->set_radio_trim(copter.channel_roll->get_radio_in());
     copter.channel_pitch->set_radio_trim(copter.channel_pitch->get_radio_in());
     copter.channel_yaw->set_radio_trim(copter.channel_yaw->get_radio_in());
-
-    if (labs(copter.channel_throttle->get_control_in() - 500) >= trim_arm * 0.01 * 1000) {
-        // don't auto-trim throttle
-        return;
-    }
 
     // remember the throttle trim
     throttle_mid = copter.channel_throttle->get_control_in();
