@@ -104,8 +104,8 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
-    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available.
-    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter
+    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged
+    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel
     // @User: Standard
     AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
     
@@ -129,7 +129,7 @@ void ToyMode::update()
 
     if (first_update) {
         first_update = false;
-        copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TX_COMMAND);
+        copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         throttle_mid = copter.channel_throttle->get_control_mid();
     }
 
@@ -209,7 +209,7 @@ void ToyMode::update()
     }
     
     if (action != ACTION_NONE) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: action %u", action);
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
     }
     
     bool throttle_at_min =
@@ -224,7 +224,7 @@ void ToyMode::update()
     if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
         if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle disarm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
     } else {
@@ -237,18 +237,18 @@ void ToyMode::update()
     if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed()) {
         throttle_high_counter++;
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle arm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle arm");
             if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
                 /*
                   support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
                  */
-                if (copter.set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND)) {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD update arm");
+                if (copter.set_mode(ALT_HOLD, MODE_REASON_TMODE)) {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
                     copter.fence.enable(false);
                     if (!copter.init_arm_motors(true)) {
                         // go back to LOITER
                         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
-                        copter.set_mode(LOITER, MODE_REASON_TX_COMMAND);
+                        copter.set_mode(LOITER, MODE_REASON_TMODE);
                     } else {
                         upgrade_to_loiter = true;
                     }
@@ -264,10 +264,18 @@ void ToyMode::update()
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
-        } else if (copter.position_ok() && copter.set_mode(LOITER, MODE_REASON_TX_COMMAND)) {
+        } else if (copter.position_ok() && copter.set_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LOITER update");            
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
         }
+    }
+
+    if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) &&
+        (labs(copter.channel_roll->get_control_in()) > 3000 ||
+         labs(copter.channel_pitch->get_control_in()) > 3000 ||
+         throttle_near_max)) {
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
+        copter.set_mode(LOITER, MODE_REASON_TMODE);
     }
     
     enum control_mode_t new_mode = copter.control_mode;
@@ -387,13 +395,13 @@ void ToyMode::update()
             copter.fence.enable(false);
         }
         if (copter.set_mode(new_mode, MODE_REASON_TX_COMMAND)) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: mode %s", copter.flight_mode_string(new_mode));
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: mode %s", copter.flight_mode_string(new_mode));
         } else {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: mode %s FAILED", copter.flight_mode_string(new_mode));
             if (new_mode == RTL) {
                 // if we can't RTL then land
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LANDING");
-                copter.set_mode(LAND, MODE_REASON_TX_COMMAND);
+                copter.set_mode(LAND, MODE_REASON_TMODE);
             }
         }
     }
