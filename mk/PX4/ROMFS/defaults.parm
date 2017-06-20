@@ -17,6 +17,7 @@ TMODE_ACTION3 18
 TMODE_ACTION4 0
 TMODE_ACTION5 0
 TMODE_ACTION6 0
+TMODE_FLAGS   7
 
 # LEDs. pin54 is green, pin55 is red
 RELAY_PIN 54
@@ -164,7 +165,7 @@ MOT_SPIN_ARM          0.05
 MOT_SPIN_MIN          0.05
 
 # control inputs
-PILOT_THR_BHV          1
+PILOT_THR_BHV          3
 PILOT_ACCEL_Z        400
 PILOT_VELZ_MAX       500
 RC_FEEL_RP            50
