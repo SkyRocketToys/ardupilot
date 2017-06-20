@@ -186,6 +186,11 @@ float Copter::get_pilot_desired_climb_rate(float throttle_control)
         return 0.0f;
     }
 
+    if (g2.toy_mode.enabled()) {
+        // allow throttle to be reduced after throttle arming
+        g2.toy_mode.throttle_adjust(throttle_control);
+    }
+        
     float desired_rate = 0.0f;
     float mid_stick = get_throttle_mid();
     float deadband_top = mid_stick + g.throttle_deadzone;

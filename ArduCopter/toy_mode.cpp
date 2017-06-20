@@ -6,6 +6,7 @@
 #define TOY_COMMAND_DELAY 15
 #define TOY_LONG_PRESS_COUNT 15
 #define TOY_LAND_DISARM_COUNT 10
+#define TOY_LAND_ARM_COUNT 10
 #define TOY_RIGHT_PRESS_COUNT 1
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
@@ -100,7 +101,14 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL
     // @User: Standard
     AP_GROUPINFO("_RIGHT", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
-        
+
+    // @Param: _FLAGS
+    // @DisplayName: Tmode flags
+    // @Description: Bitmask of flags to change the behaviour of tmode
+    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle
+    // @User: Standard
+    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, (1U<<FLAG_THR_DISARM)),
+    
     AP_GROUPEND
 };
 
@@ -207,19 +215,37 @@ void ToyMode::update()
     bool throttle_at_min =
         copter.channel_throttle->get_control_in() == 0;
 
+    bool throttle_near_max =
+        copter.channel_throttle->get_control_in() > 800;
+    
     /*
       disarm if throttle is low for 1 second when landed
      */
-    if (throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
+    if ((flags & (1U<<FLAG_THR_DISARM)) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
         if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: disarm");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
     } else {
         throttle_low_counter = 0;
     }
 
+    /*
+      arm if throttle is low for 1 second when landed
+     */
+    if ((flags & (1U<<FLAG_THR_ARM)) && throttle_near_max && !copter.motors->armed()) {
+        throttle_high_counter++;
+        printf("%u counter=%u\n", AP_HAL::millis(), throttle_high_counter);
+        if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle arm");
+            copter.init_arm_motors(false);
+            throttle_arm_ms = AP_HAL::millis();
+        }
+    } else {
+        throttle_high_counter = 0;
+    }
+    
     enum control_mode_t new_mode = copter.control_mode;
     
     /*
@@ -427,6 +453,20 @@ void ToyMode::action_arm(void)
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
             }
         }
+    }
+}
+
+/*
+  adjust throttle for throttle takeoff
+  This prevents sudden climbs when using throttle for arming
+*/
+void ToyMode::throttle_adjust(float &throttle_control)
+{
+    uint32_t now = AP_HAL::millis();
+    const uint32_t soft_start_ms = 5000;
+    if (now - throttle_arm_ms < soft_start_ms) {
+        float p = (now - throttle_arm_ms) / float(soft_start_ms);
+        throttle_control = MIN(throttle_control, 500 + p * 500);
     }
 }
 
