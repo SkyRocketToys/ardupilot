@@ -46,7 +46,7 @@
 //#define USERHOOK_SUPERSLOWLOOP userhook_SuperSlowLoop();  // for code to be run at 1hz
 
 // local changes for toy mode
-#define ARMING_DELAY_SEC 0.5f
+#define ARMING_DELAY_SEC 0.1f
 #define FS_RADIO_TIMEOUT_MS 1500
 #define INITIAL_MODE ALT_HOLD
 #define TOY_MODE_ENABLED ENABLED
