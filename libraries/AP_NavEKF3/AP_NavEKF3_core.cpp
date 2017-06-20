@@ -864,15 +864,23 @@ void NavEKF3_core::CovariancePrediction()
     }
 
     if (!inhibitDelVelBiasStates) {
+        // default process noise (m/s)^2
         float dVelBiasVar = sq(sq(dt) * constrain_float(frontend->_accelBiasProcessNoise, 0.0f, 1.0f));
+
+        // Find the maximum delta velocity bvias state variance
+        float maxStateVar = 0.0f;
+        for (uint8_t stateIndex=13; stateIndex<=15; stateIndex++) {
+            if (P[stateIndex][stateIndex] > maxStateVar) {
+                maxStateVar = P[stateIndex][stateIndex];
+            }
+        }
+
+        // To ensure stability of the covaraince matrix operations, the ratio of a max and min variance must not exceed 100 and the minimum variance must not fall below 1E-8
+        float minAllowedStateVar = fmaxf(0.01f * maxStateVar, 1E-8f);
         for (uint8_t i=3; i<=5; i++) {
             uint8_t stateIndex = i + 10;
-            if (P[stateIndex][stateIndex] > 1E-8f) {
-                processNoiseVariance[i] = dVelBiasVar;
-            } else {
-                // increase the process noise variance up to a maximum of 100 x the nominal value if the variance is below the target minimum
-                processNoiseVariance[i] = 10.0f * dVelBiasVar * (1e-8f / fmaxf(P[stateIndex][stateIndex],1e-9f));
-            }
+            processNoiseVariance[i] = dVelBiasVar;
+            P[stateIndex][stateIndex] = fmaxf(P[stateIndex][stateIndex], minAllowedStateVar);
         }
     }
 
@@ -1426,7 +1434,7 @@ void NavEKF3_core::ConstrainVariances()
         bool resetRequired = false;
         for (uint8_t i=13; i<=15; i++) {
             if (P[i][i] > 1E-9f) {
-                // variance is above the safe minimum
+                // variance is above the safe minimum so constrain the maximum value
                 P[i][i] = fminf(P[i][i], sq(10.0f * dtEkfAvg));
             } else {
                 // Set the variance to the target minimum and request a covariance reset
