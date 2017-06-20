@@ -107,7 +107,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Description: Bitmask of flags to change the behaviour of tmode
     // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle
     // @User: Standard
-    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, (1U<<FLAG_THR_DISARM)),
+    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
     
     AP_GROUPEND
 };
@@ -221,7 +221,7 @@ void ToyMode::update()
     /*
       disarm if throttle is low for 1 second when landed
      */
-    if ((flags & (1U<<FLAG_THR_DISARM)) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
+    if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
         if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle disarm");
@@ -234,16 +234,40 @@ void ToyMode::update()
     /*
       arm if throttle is low for 1 second when landed
      */
-    if ((flags & (1U<<FLAG_THR_ARM)) && throttle_near_max && !copter.motors->armed()) {
+    if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed()) {
         throttle_high_counter++;
-        printf("%u counter=%u\n", AP_HAL::millis(), throttle_high_counter);
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: throttle arm");
-            copter.init_arm_motors(false);
-            throttle_arm_ms = AP_HAL::millis();
+            if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
+                /*
+                  support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
+                 */
+                if (copter.set_mode(ALT_HOLD, MODE_REASON_TX_COMMAND)) {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD update arm");
+                    copter.fence.enable(false);
+                    if (!copter.init_arm_motors(true)) {
+                        // go back to LOITER
+                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
+                        copter.set_mode(LOITER, MODE_REASON_TX_COMMAND);
+                    } else {
+                        upgrade_to_loiter = true;
+                    }
+                }
+            } else {
+                throttle_arm_ms = AP_HAL::millis();
+            }
         }
     } else {
         throttle_high_counter = 0;
+    }
+
+    if (upgrade_to_loiter) {
+        if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
+            upgrade_to_loiter = false;
+        } else if (copter.position_ok() && copter.set_mode(LOITER, MODE_REASON_TX_COMMAND)) {
+            copter.fence.enable(true);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LOITER update");            
+        }
     }
     
     enum control_mode_t new_mode = copter.control_mode;
@@ -464,7 +488,9 @@ void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
     const uint32_t soft_start_ms = 5000;
-    if (now - throttle_arm_ms < soft_start_ms) {
+    if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
+        throttle_control = MIN(throttle_control, 500);
+    } else if (now - throttle_arm_ms < soft_start_ms) {
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
         throttle_control = MIN(throttle_control, 500 + p * 500);
     }
