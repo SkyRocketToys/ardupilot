@@ -2031,6 +2031,12 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 #endif
         break;
 
+#if TOY_MODE_ENABLED == ENABLED
+    case MAVLINK_MSG_ID_NAMED_VALUE_INT:
+        copter.g2.toy_mode.handle_message(msg);
+        break;
+#endif
+        
     default:
         handle_common_message(msg);
         break;
@@ -2161,3 +2167,4 @@ bool GCS_MAVLINK_Copter::accept_packet(const mavlink_status_t &status, mavlink_m
     }
     return (msg.sysid == copter.g.sysid_my_gcs);
 }
+

@@ -5,8 +5,9 @@
 // times in 0.1s units
 #define TOY_COMMAND_DELAY 15
 #define TOY_LONG_PRESS_COUNT 15
-#define TOY_LAND_DISARM_COUNT 10
-#define TOY_LAND_ARM_COUNT 10
+#define TOY_LAND_MANUAL_DISARM_COUNT 40
+#define TOY_LAND_DISARM_COUNT 1
+#define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
@@ -127,6 +128,9 @@ void ToyMode::update()
         return;
     }
 
+    // update LEDs
+    blink_update();
+    
     if (first_update) {
         first_update = false;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
@@ -211,19 +215,22 @@ void ToyMode::update()
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
     }
-    
-    bool throttle_at_min =
-        copter.channel_throttle->get_control_in() == 0;
 
+    // we use 150 for throttle_at_min to cope with varying stick throws
+    bool throttle_at_min =
+        copter.channel_throttle->get_control_in() < 150;
+
+    // throttle threshold for throttle arming
     bool throttle_near_max =
-        copter.channel_throttle->get_control_in() > 800;
+        copter.channel_throttle->get_control_in() > 700;
     
     /*
       disarm if throttle is low for 1 second when landed
      */
     if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
-        if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
+        const uint8_t disarm_limit = copter.mode_has_manual_throttle(copter.control_mode)?TOY_LAND_MANUAL_DISARM_COUNT:TOY_LAND_DISARM_COUNT;
+        if (throttle_low_counter >= disarm_limit) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
@@ -279,7 +286,8 @@ void ToyMode::update()
     }
     
     enum control_mode_t new_mode = copter.control_mode;
-    
+    uint32_t now = AP_HAL::millis();
+
     /*
       implement actions
      */
@@ -288,8 +296,17 @@ void ToyMode::update()
         break;
 
     case ACTION_TAKE_PHOTO:
+        if (now - last_photo_ms > 250) {
+            send_named_int("SNAPSHOT", 1);
+            last_photo_ms = now;
+        }
+        break;
+
     case ACTION_TOGGLE_VIDEO:
-        // handled by compantion computer
+        if (now - last_video_toggle_ms > 300) {
+            send_named_int("VIDEOTOG", 1);
+            last_video_toggle_ms = now;
+        }
         break;
 
     case ACTION_MODE_ACRO:
@@ -492,14 +509,115 @@ void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
     const uint32_t soft_start_ms = 5000;
+    const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
     if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
         throttle_control = MIN(throttle_control, 500);
     } else if (now - throttle_arm_ms < soft_start_ms) {
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
-        throttle_control = MIN(throttle_control, 500 + p * 500);
+        throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
     }
 }
 
+/*
+  update blinking. Blinking is done with a 16 bit pattern for each
+  LED. A count can be set for a pattern, which makes the pattern
+  persist until the count is zero. When it is zero the normal pattern
+  settings based on system status are used
+ */
+void ToyMode::blink_update(void)
+{
+    if (red_blink_pattern & (1U<<red_blink_index)) {
+        copter.relay.on(1);
+    } else {
+        copter.relay.off(1);
+    }
+    if (green_blink_pattern & (1U<<green_blink_index)) {
+        copter.relay.on(0);
+    } else {
+        copter.relay.off(0);
+    }
+    green_blink_index = (green_blink_index+1) % 16;
+    red_blink_index = (red_blink_index+1) % 16;
+    if (green_blink_index == 0 && green_blink_count > 0) {
+        green_blink_count--;
+    }
+    if (red_blink_index == 0 && red_blink_count > 0) {
+        red_blink_count--;
+    }
+
+    if (red_blink_count > 0 && green_blink_count > 0) {
+        return;
+    }
+    
+    // setup normal patterns based on flight mode and arming
+    uint16_t pattern = 0;
+    
+    if (copter.motors->armed()) {
+        // patterns when armed
+        if (AP_Notify::flags.failsafe_battery) {
+            pattern = BLINK_8;
+        } else if (copter.position_ok()) {
+            pattern = BLINK_FULL;
+        } else {
+            pattern = BLINK_1;            
+        }
+    } else {
+        // patterns when disarmed
+        if (copter.position_ok()) {
+            pattern = BLINK_MED_1;
+        } else if (copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
+            pattern = BLINK_SLOW_1;
+        } else {
+            pattern = BLINK_VSLOW;
+        }
+    }
+    if (red_blink_count == 0) {
+        red_blink_pattern = pattern;
+    }
+    if (green_blink_count == 0) {
+        green_blink_pattern = pattern;
+    }
+    if (red_blink_count == 0 && green_blink_count == 0) {
+        // get LEDs in sync
+        red_blink_index = green_blink_index;
+    }
+}
+
+// handle a mavlink message
+void ToyMode::handle_message(mavlink_message_t *msg)
+{
+    if (msg->msgid != MAVLINK_MSG_ID_NAMED_VALUE_INT) {
+        return;
+    }
+    mavlink_named_value_int_t m;
+    mavlink_msg_named_value_int_decode(msg, &m);
+    if (strncmp(m.name, "BLINKR", 10) == 0) {
+        red_blink_pattern = (uint16_t)m.value;
+        red_blink_count = m.value >> 16;
+        red_blink_index = 0;
+    } else if (strncmp(m.name, "BLINKG", 10) == 0) {
+        green_blink_pattern = (uint16_t)m.value;
+        green_blink_count = m.value >> 16;
+        green_blink_index = 0;
+    } else if (strncmp(m.name, "VNOTIFY", 10) == 0) {
+        // taking photos or video
+        if (green_blink_pattern != BLINK_2) {
+            green_blink_index = 0;
+        }
+        green_blink_pattern = BLINK_2;
+        green_blink_count = 1;
+    }
+}
+
+/*
+  send a named int to primary telem channel
+ */
+void ToyMode::send_named_int(const char *name, int32_t value)
+{
+    mavlink_msg_named_value_int_send(MAVLINK_COMM_1, AP_HAL::millis(), name, value);
+}
+
+#if TOY_MODE_ENABLED == ENABLED
 /*
   called from scheduler at 10Hz
  */
@@ -507,5 +625,7 @@ void Copter::toy_mode_update(void)
 {
     g2.toy_mode.update();
 }
+#endif
+
 
 #endif // TOY_MODE_ENABLED
