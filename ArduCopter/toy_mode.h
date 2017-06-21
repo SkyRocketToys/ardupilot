@@ -35,6 +35,7 @@ private:
     void trim_sticks(void);
     void action_arm(void);
     void blink_update(void);
+    void send_named_int(const char *name, int32_t value);
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -75,6 +76,8 @@ private:
         BLINK_2      = 0xAFFF,
         BLINK_3      = 0xABFF,
         BLINK_4      = 0xAAFF,
+        BLINK_6      = 0xAAAF,
+        BLINK_8      = 0xAAAA,
         BLINK_SLOW_1 = 0xF0FF,
         BLINK_VSLOW  = 0xF000,
         BLINK_MED_1  = 0xF0F0,
@@ -94,6 +97,8 @@ private:
     uint8_t last_mode_choice;
     int32_t left_press_counter;
     int32_t right_press_counter;
+    uint32_t last_video_toggle_ms;
+    uint32_t last_photo_ms;
     bool ignore_left_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;

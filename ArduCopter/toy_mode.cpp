@@ -286,7 +286,8 @@ void ToyMode::update()
     }
     
     enum control_mode_t new_mode = copter.control_mode;
-    
+    uint32_t now = AP_HAL::millis();
+
     /*
       implement actions
      */
@@ -295,8 +296,17 @@ void ToyMode::update()
         break;
 
     case ACTION_TAKE_PHOTO:
+        if (now - last_photo_ms > 250) {
+            send_named_int("SNAPSHOT", 1);
+            last_photo_ms = now;
+        }
+        break;
+
     case ACTION_TOGGLE_VIDEO:
-        // handled by compantion computer
+        if (now - last_video_toggle_ms > 300) {
+            send_named_int("VIDEOTOG", 1);
+            last_video_toggle_ms = now;
+        }
         break;
 
     case ACTION_MODE_ACRO:
@@ -544,7 +554,9 @@ void ToyMode::blink_update(void)
     
     if (copter.motors->armed()) {
         // patterns when armed
-        if (copter.position_ok()) {
+        if (AP_Notify::flags.failsafe_battery) {
+            pattern = BLINK_8;
+        } else if (copter.position_ok()) {
             pattern = BLINK_FULL;
         } else {
             pattern = BLINK_1;            
@@ -565,6 +577,10 @@ void ToyMode::blink_update(void)
     if (green_blink_count == 0) {
         green_blink_pattern = pattern;
     }
+    if (red_blink_count == 0 && green_blink_count == 0) {
+        // get LEDs in sync
+        red_blink_index = green_blink_index;
+    }
 }
 
 // handle a mavlink message
@@ -583,7 +599,22 @@ void ToyMode::handle_message(mavlink_message_t *msg)
         green_blink_pattern = (uint16_t)m.value;
         green_blink_count = m.value >> 16;
         green_blink_index = 0;
+    } else if (strncmp(m.name, "VNOTIFY", 10) == 0) {
+        // taking photos or video
+        if (green_blink_pattern != BLINK_2) {
+            green_blink_index = 0;
+        }
+        green_blink_pattern = BLINK_2;
+        green_blink_count = 1;
     }
+}
+
+/*
+  send a named int to primary telem channel
+ */
+void ToyMode::send_named_int(const char *name, int32_t value)
+{
+    mavlink_msg_named_value_int_send(MAVLINK_COMM_1, AP_HAL::millis(), name, value);
 }
 
 /*
