@@ -128,6 +128,9 @@ void ToyMode::update()
         return;
     }
 
+    // update LEDs
+    blink_update();
+    
     if (first_update) {
         first_update = false;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
@@ -502,6 +505,84 @@ void ToyMode::throttle_adjust(float &throttle_control)
     } else if (now - throttle_arm_ms < soft_start_ms) {
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
         throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
+    }
+}
+
+/*
+  update blinking. Blinking is done with a 16 bit pattern for each
+  LED. A count can be set for a pattern, which makes the pattern
+  persist until the count is zero. When it is zero the normal pattern
+  settings based on system status are used
+ */
+void ToyMode::blink_update(void)
+{
+    if (red_blink_pattern & (1U<<red_blink_index)) {
+        copter.relay.on(1);
+    } else {
+        copter.relay.off(1);
+    }
+    if (green_blink_pattern & (1U<<green_blink_index)) {
+        copter.relay.on(0);
+    } else {
+        copter.relay.off(0);
+    }
+    green_blink_index = (green_blink_index+1) % 16;
+    red_blink_index = (red_blink_index+1) % 16;
+    if (green_blink_index == 0 && green_blink_count > 0) {
+        green_blink_count--;
+    }
+    if (red_blink_index == 0 && red_blink_count > 0) {
+        red_blink_count--;
+    }
+
+    if (red_blink_count > 0 && green_blink_count > 0) {
+        return;
+    }
+    
+    // setup normal patterns based on flight mode and arming
+    uint16_t pattern = 0;
+    
+    if (copter.motors->armed()) {
+        // patterns when armed
+        if (copter.position_ok()) {
+            pattern = BLINK_FULL;
+        } else {
+            pattern = BLINK_1;            
+        }
+    } else {
+        // patterns when disarmed
+        if (copter.position_ok()) {
+            pattern = BLINK_MED_1;
+        } else if (copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
+            pattern = BLINK_SLOW_1;
+        } else {
+            pattern = BLINK_VSLOW;
+        }
+    }
+    if (red_blink_count == 0) {
+        red_blink_pattern = pattern;
+    }
+    if (green_blink_count == 0) {
+        green_blink_pattern = pattern;
+    }
+}
+
+// handle a mavlink message
+void ToyMode::handle_message(mavlink_message_t *msg)
+{
+    if (msg->msgid != MAVLINK_MSG_ID_NAMED_VALUE_INT) {
+        return;
+    }
+    mavlink_named_value_int_t m;
+    mavlink_msg_named_value_int_decode(msg, &m);
+    if (strncmp(m.name, "BLINKR", 10) == 0) {
+        red_blink_pattern = (uint16_t)m.value;
+        red_blink_count = m.value >> 16;
+        red_blink_index = 0;
+    } else if (strncmp(m.name, "BLINKG", 10) == 0) {
+        green_blink_pattern = (uint16_t)m.value;
+        green_blink_count = m.value >> 16;
+        green_blink_index = 0;
     }
 }
 
