@@ -1504,7 +1504,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         hrt_call_after(&wait_call, 500000, (hrt_callout)irq_timeout_trampoline, nullptr);
     } else {
         transmit16(pkt);
-        hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+        hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
     }
 }
 
