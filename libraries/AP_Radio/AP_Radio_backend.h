@@ -78,10 +78,18 @@ protected:
         return (uint8_t)radio.rssi_chan.get();
     }
 
-    uint8_t get_rate_chan(void) const {
-        return (uint8_t)radio.rate_chan.get();
+    uint8_t get_pps_chan(void) const {
+        return (uint8_t)radio.pps_chan.get();
     }
 
+    uint8_t get_tx_rssi_chan(void) const {
+        return (uint8_t)radio.tx_rssi_chan.get();
+    }
+
+    uint8_t get_tx_pps_chan(void) const {
+        return (uint8_t)radio.tx_pps_chan.get();
+    }
+    
     bool get_telem_enable(void) const {
         return radio.telem_enable.get() > 0;
     }
