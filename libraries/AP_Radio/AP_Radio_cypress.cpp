@@ -345,9 +345,21 @@ uint8_t AP_Radio_cypress::num_channels(void)
         dsm.num_channels = MAX(dsm.num_channels, ch);
     }
 
-    ch = get_rate_chan();
+    ch = get_pps_chan();
     if (ch > 0) {
         dsm.pwm_channels[ch-1] = t_status.pps;
+        dsm.num_channels = MAX(dsm.num_channels, ch);
+    }
+
+    ch = get_tx_rssi_chan();
+    if (ch > 0) {
+        dsm.pwm_channels[ch-1] = dsm.tx_rssi;
+        dsm.num_channels = MAX(dsm.num_channels, ch);
+    }
+
+    ch = get_tx_pps_chan();
+    if (ch > 0) {
+        dsm.pwm_channels[ch-1] = dsm.tx_pps;
         dsm.num_channels = MAX(dsm.num_channels, ch);
     }
     
@@ -747,7 +759,7 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
             }
         }
         if (chan == 7) {
-            // extract firmware release date
+            // extract telemetry extra data
             switch (key) {
             case 1:
                 dsm.tx_firmware_year = v;
@@ -757,6 +769,12 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                 break;
             case 3:
                 dsm.tx_firmware_day = v;
+                break;
+            case 4:
+                dsm.tx_rssi = v;
+                break;
+            case 5:
+                dsm.tx_pps = v;
                 break;
             }
         }
