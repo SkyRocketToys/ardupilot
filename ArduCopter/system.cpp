@@ -693,11 +693,7 @@ void Copter::allocate_motors(void)
     }
 
     // brushed 16kHz defaults to 16kHz pulses
-<<<<<<< HEAD
     if (motors->get_pwm_type() >= AP_Motors::PWM_TYPE_BRUSHED) {
-=======
-    if (motors->get_pwm_type() >= AP_Motors::PWM_TYPE_BRUSHED16kHz) {
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         g.rc_speed.set_default(16000);
     }
     

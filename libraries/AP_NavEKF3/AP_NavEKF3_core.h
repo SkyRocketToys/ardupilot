@@ -153,9 +153,6 @@ public:
     // Return true if magnetometer offsets are valid
     bool getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const;
 
-    // return an array of 24 floats containing the state variances
-    void getStateVariances(float var[]) const;
-
     // Return the last calculated latitude, longitude and height in WGS-84
     // If a calculated location isn't available, return a raw GPS measurement
     // The status will return true if a calculation or raw measurement is available

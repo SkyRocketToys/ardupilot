@@ -115,7 +115,6 @@ public:
         return _flags.fly_forward;
     }
 
-<<<<<<< HEAD
     /*
       set the "likely flying" flag. This is not guaranteed to be
       accurate, but is the vehicle codes best guess as to the whether
@@ -146,14 +145,6 @@ public:
             return 0;
         }
         return AP_HAL::millis() - _last_flying_ms;
-=======
-    void set_indoor_flight(bool b) {
-        _flags.indoor_flight = b;
-    }
-
-    bool get_indoor_flight(void) const {
-        return _flags.indoor_flight;
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     }
     
     AHRS_VehicleClass get_vehicle_class(void) const {
@@ -592,11 +583,7 @@ protected:
         uint8_t fly_forward             : 1;    // 1 if we can assume the aircraft will be flying forward on its X axis
         uint8_t correct_centrifugal     : 1;    // 1 if we should correct for centrifugal forces (allows arducopter to turn this off when motors are disarmed)
         uint8_t wind_estimation         : 1;    // 1 if we should do wind estimation
-<<<<<<< HEAD
         uint8_t likely_flying           : 1;    // 1 if vehicle is probably flying
-=======
-        uint8_t indoor_flight           : 1;    // 1 if we should assume indoor conditions, with bad GPS
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     } _flags;
 
     // time when likely_flying last went true

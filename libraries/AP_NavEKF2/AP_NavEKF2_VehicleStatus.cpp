@@ -362,7 +362,6 @@ void NavEKF2_core::detectFlight()
             if ((stateStruct.position.z - posDownAtTakeoff) < -1.5f) {
                 inFlight = true;
             }
-<<<<<<< HEAD
 
             // If rangefinder has increased since exiting on-ground, then we definitely are flying
             if ((rangeDataNew.rng - rngAtStartOfFlight) > 0.5f) {
@@ -374,19 +373,6 @@ void NavEKF2_core::detectFlight()
             if (_ahrs->get_time_flying_ms() > 5000) {
                 inFlight = true;
             }
-=======
-
-            // If rangefinder has increased since exiting on-ground, then we definitely are flying
-            if ((rangeDataNew.rng - rngAtStartOfFlight) > 0.5f) {
-                inFlight = true;
-            }
-
-            // If more than 15 seconds armed since exiting on-ground, then we definitely are flying
-            if ((imuSampleTime_ms - timeAtArming_ms) > 15000) {
-                inFlight = true;
-            }
-
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         }
 
     }

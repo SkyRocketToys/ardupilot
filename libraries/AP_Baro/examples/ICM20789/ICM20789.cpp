@@ -264,10 +264,7 @@ void setup()
 
     hal.scheduler->delay(1000);
 
-<<<<<<< HEAD
 #ifdef HAL_INS_MPU60x0_NAME
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     spi_dev = std::move(hal.spi->get_device(HAL_INS_MPU60x0_NAME));
 
     if (!spi_dev->get_semaphore()->take(0)) {
@@ -283,10 +280,7 @@ void setup()
         i2c_init();
         hal.scheduler->delay(1000);
     }
-<<<<<<< HEAD
 #endif
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 }
 
 

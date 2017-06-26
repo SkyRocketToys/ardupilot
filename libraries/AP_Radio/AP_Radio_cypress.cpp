@@ -345,16 +345,11 @@ uint8_t AP_Radio_cypress::num_channels(void)
         dsm.num_channels = MAX(dsm.num_channels, ch);
     }
 
-<<<<<<< HEAD
     ch = get_pps_chan();
-=======
-    ch = get_rate_chan();
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     if (ch > 0) {
         dsm.pwm_channels[ch-1] = t_status.pps;
         dsm.num_channels = MAX(dsm.num_channels, ch);
     }
-<<<<<<< HEAD
 
     ch = get_tx_rssi_chan();
     if (ch > 0) {
@@ -367,8 +362,6 @@ uint8_t AP_Radio_cypress::num_channels(void)
         dsm.pwm_channels[ch-1] = dsm.tx_pps;
         dsm.num_channels = MAX(dsm.num_channels, ch);
     }
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     if (now - last_debug_print_ms > 1000) {
         last_debug_print_ms = now;
@@ -766,11 +759,7 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
             }
         }
         if (chan == 7) {
-<<<<<<< HEAD
             // extract telemetry extra data
-=======
-            // extract firmware release date
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
             switch (key) {
             case 1:
                 dsm.tx_firmware_year = v;
@@ -781,15 +770,12 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
             case 3:
                 dsm.tx_firmware_day = v;
                 break;
-<<<<<<< HEAD
             case 4:
                 dsm.tx_rssi = v;
                 break;
             case 5:
                 dsm.tx_pps = v;
                 break;
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
             }
         }
     }
@@ -1518,11 +1504,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         hrt_call_after(&wait_call, 500000, (hrt_callout)irq_timeout_trampoline, nullptr);
     } else {
         transmit16(pkt);
-<<<<<<< HEAD
         hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
-=======
-        hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     }
 }
 

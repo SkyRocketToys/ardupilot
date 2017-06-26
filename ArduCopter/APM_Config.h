@@ -49,8 +49,5 @@
 #define ARMING_DELAY_SEC 0.1f
 #define FS_RADIO_TIMEOUT_MS 1500
 #define INITIAL_MODE ALT_HOLD
-<<<<<<< HEAD
 #define PILOT_VELZ_DOWN_RATIO 0.6
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 #define TOY_MODE_ENABLED ENABLED

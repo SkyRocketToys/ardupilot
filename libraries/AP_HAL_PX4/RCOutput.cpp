@@ -101,11 +101,7 @@ void PX4RCOutput::_init_alt_channels(void)
  */
 void PX4RCOutput::set_freq_fd(int fd, uint32_t chmask, uint16_t freq_hz, uint32_t &rate_mask) 
 {
-<<<<<<< HEAD
     if (_output_mode == MODE_PWM_BRUSHED) {
-=======
-    if (_output_mode == MODE_PWM_BRUSHED16KHZ) {
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         freq_hz /= 8; // divide by 8 for 8MHz clock
         // remember max period
         _period_max = 1000000UL/freq_hz;
@@ -246,7 +242,6 @@ void PX4RCOutput::disable_ch(uint8_t ch)
 
     _enabled_channels &= ~(1U<<ch);
     _period[ch] = PWM_IGNORE_THIS_CHANNEL;
-    _last_sent[ch] = PWM_IGNORE_THIS_CHANNEL;
 }
 
 void PX4RCOutput::set_safety_pwm(uint32_t chmask, uint16_t period_us)
@@ -336,16 +331,10 @@ void PX4RCOutput::write(uint8_t ch, uint16_t period_us)
         _max_channel = ch + 1;
     }
 
-<<<<<<< HEAD
     // keep unscaled value
     _last_sent[ch] = period_us;
         
     if (_output_mode == MODE_PWM_BRUSHED) {
-=======
-    _last_sent[ch] = period_us;
-    
-    if (_output_mode == MODE_PWM_BRUSHED16KHZ) {
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         // map from the PWM range to 0 t0 100% duty cycle. For 16kHz
         // this ends up being 0 to 500 pulse width in units of
         // 125usec.

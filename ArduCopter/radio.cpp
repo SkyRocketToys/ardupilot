@@ -190,16 +190,10 @@ void Copter::radio_passthrough_to_motors()
  */
 int16_t Copter::get_throttle_mid(void)
 {
-<<<<<<< HEAD
 #if TOY_MODE_ENABLED == ENABLED
     if (g2.toy_mode.enabled()) {
         return g2.toy_mode.get_throttle_mid();
     }
 #endif
-=======
-    if (g2.toy_mode.enabled()) {
-        return g2.toy_mode.get_throttle_mid();
-    }
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     return channel_throttle->get_control_mid();
 }

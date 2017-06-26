@@ -186,18 +186,12 @@ float Copter::get_pilot_desired_climb_rate(float throttle_control)
         return 0.0f;
     }
 
-<<<<<<< HEAD
 #if TOY_MODE_ENABLED == ENABLED
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     if (g2.toy_mode.enabled()) {
         // allow throttle to be reduced after throttle arming
         g2.toy_mode.throttle_adjust(throttle_control);
     }
-<<<<<<< HEAD
 #endif
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         
     float desired_rate = 0.0f;
     float mid_stick = get_throttle_mid();

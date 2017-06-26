@@ -39,7 +39,6 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_DISCRC",  4, AP_Radio, disable_crc, 0),
 
-<<<<<<< HEAD
     // @Param: _SIGCH
     // @DisplayName: RSSI signal strength
     // @Description: Channel to show receive RSSI signal strength, or zero for disabled
@@ -53,21 +52,6 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 16
     // @User: Advanced
     AP_GROUPINFO("_PPSCH",  6, AP_Radio, pps_chan, 0),
-=======
-    // @Param: _RSSICH
-    // @DisplayName: RSSI value channel
-    // @Description: Channel to show RSSI value, or zero for disabled
-    // @Range: 0 16
-    // @User: Advanced
-    AP_GROUPINFO("_RSSICH",  5, AP_Radio, rssi_chan, 0),
-
-    // @Param: _RATECH
-    // @DisplayName: Packet rate channel
-    // @Description: Channel to show received packet rate, or zero for disabled
-    // @Range: 0 16
-    // @User: Advanced
-    AP_GROUPINFO("_RATECH",  6, AP_Radio, rate_chan, 0),
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 
     // @Param: _TELEM
     // @DisplayName: Enable telemetry
@@ -103,7 +87,6 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Values: 0:Disabled,1:TestChan1,2:TestChan2,3:TestChan2,4:TestChan2
     // @User: Advanced
     AP_GROUPINFO("_TESTCH", 11, AP_Radio, factory_test, 0),    
-<<<<<<< HEAD
 
     // @Param: _TSIGCH
     // @DisplayName: RSSI value channel for telemetry data on transmitter
@@ -118,8 +101,6 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 16
     // @User: Advanced
     AP_GROUPINFO("_TPPSCH", 13, AP_Radio, tx_pps_chan, 0),
-=======
->>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     AP_GROUPEND
 };
