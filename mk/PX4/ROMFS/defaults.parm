@@ -1,5 +1,9 @@
 # defaults for SkyRocket streaming GPS board
+<<<<<<< HEAD
 BRD_TYPE 21
+=======
+BRD_TYPE 2
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 BRD_IO_ENABLE 0
 MOT_PWM_TYPE 3
 MOT_PWM_MIN 1000
@@ -53,10 +57,15 @@ SERIAL2_PROTOCOL 2
 # radio setup
 BRD_RADIO_TYPE 1
 BRD_RADIO_PROT 0
+<<<<<<< HEAD
 BRD_RADIO_PPSCH 8
 BRD_RADIO_SIGCH 9
 BRD_RADIO_TPPSCH 10
 BRD_RADIO_TSIGCH 11
+=======
+BRD_RADIO_RATECH 8
+BRD_RADIO_RSSICH 9
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 BRD_RADIO_TELEM 1
 RSSI_TYPE 2
 RSSI_CHANNEL 8
@@ -81,10 +90,16 @@ EK2_CHECK_SCALE 150
 # EK3 enabled for flight
 AHRS_EKF_TYPE 3
 EK3_ENABLE 1
+<<<<<<< HEAD
 EK3_CHECK_SCALE 120
 EK3_ACC_BIAS_LIM 1.0
 EK3_ABIAS_P_NSE 0.01
 EK3_MAG_CAL = 0
+=======
+EK3_CHECK_SCALE 150
+EK3_ACC_BIAS_LIM 2
+EK3_ABIAS_P_NSE 0.006
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 
 # fence
 FENCE_TYPE      3
@@ -166,7 +181,10 @@ MOT_THST_HOVER        0.3514
 MOT_THST_EXPO        -0.56
 MOT_SPIN_ARM          0.05
 MOT_SPIN_MIN          0.05
+<<<<<<< HEAD
 MOT_SPOOL_TIME        0
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 
 # control inputs
 PILOT_THR_BHV          3
@@ -185,10 +203,17 @@ RTL_ALT              400
 GND_EFFECT_COMP     1
 
 # deadzones, with auto-trim
+<<<<<<< HEAD
 RC1_DZ              15
 RC2_DZ              15
 RC3_DZ              15
 RC4_DZ              15
+=======
+RC1_DZ              10
+RC2_DZ              10
+RC3_DZ              10
+RC4_DZ              10
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 
 # pos control
 POS_XY_P              0.7

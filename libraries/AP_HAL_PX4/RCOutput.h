@@ -45,8 +45,11 @@ private:
     int _alt_fd;
     uint16_t _freq_hz;
     uint16_t _period[PX4_NUM_OUTPUT_CHANNELS];
+<<<<<<< HEAD
     // we keep the last_sent value separately, as we need to keep the unscaled
     // value for systems with brushed motors which scale outputs
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     uint16_t _last_sent[PX4_NUM_OUTPUT_CHANNELS];
     volatile uint8_t _max_channel;
     volatile bool _need_update;

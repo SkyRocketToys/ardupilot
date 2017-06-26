@@ -186,8 +186,11 @@ private:
         uint8_t tx_firmware_month;
         uint8_t tx_firmware_day;
         int8_t forced_channel = -1;
+<<<<<<< HEAD
         uint8_t tx_rssi;
         uint8_t tx_pps;
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     } dsm;
 
     struct {

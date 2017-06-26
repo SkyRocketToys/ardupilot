@@ -220,6 +220,14 @@ void NavEKF3_core::getVelNED(Vector3f &vel) const
     vel = outputDataNew.velocity + velOffsetNED;
 }
 
+// return an array of 24 floats containing the state variances
+void NavEKF3_core::getStateVariances(float var[]) const
+{
+    for (uint8_t index=0; index<24; index++) {
+        var[index] = P[index][index];
+    }
+}
+
 // Return the rate of change of vertical position in the down diection (dPosD/dt) of the body frame origin in m/s
 float NavEKF3_core::getPosDownDerivative(void) const
 {
@@ -314,7 +322,17 @@ bool NavEKF3_core::getLLH(struct Location &loc) const
 {
     if(validOrigin) {
         // Altitude returned is an absolute altitude relative to the WGS-84 spherioid
+<<<<<<< HEAD
         loc.alt =  100 * (int32_t)(ekfGpsRefHgt - (double)outputDataNew.position.z);
+=======
+        if (frontend->_originHgtMode & (1<<2)) {
+            // The reported origin height is being updated to match ekfGpsRefHgt
+            loc.alt =  100 * (int32_t)(ekfGpsRefHgt - (double)outputDataNew.position.z);
+        } else {
+            // The reported origin height is being held constant
+            loc.alt =  EKF_origin.alt - (int32_t)(100.0f * outputDataNew.position.z);
+        }
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         loc.flags.relative_alt = 0;
         loc.flags.terrain_alt = 0;
 

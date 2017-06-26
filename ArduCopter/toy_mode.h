@@ -24,9 +24,12 @@ public:
 
     // adjust throttle for throttle takeoff
     void throttle_adjust(float &throttle_control);
+<<<<<<< HEAD
 
     // handle mavlink message
     void handle_message(mavlink_message_t *msg);
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     static const struct AP_Param::GroupInfo var_info[];
     
@@ -34,8 +37,11 @@ private:
 
     void trim_sticks(void);
     void action_arm(void);
+<<<<<<< HEAD
     void blink_update(void);
     void send_named_int(const char *name, int32_t value);
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -68,6 +74,7 @@ private:
         FLAG_UPGRADE_LOITER = 1<<2,  // auto upgrade from ALT_HOLD to LOITER
         FLAG_RTL_CANCEL     = 1<<3,  // cancel RTL on large stick input
     };
+<<<<<<< HEAD
 
     enum blink_patterns {
         BLINK_FULL   = 0xFFFF,
@@ -82,6 +89,8 @@ private:
         BLINK_VSLOW  = 0xF000,
         BLINK_MED_1  = 0xF0F0,
     };
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     bool first_update;
     AP_Int8 enable;
@@ -97,12 +106,16 @@ private:
     uint8_t last_mode_choice;
     int32_t left_press_counter;
     int32_t right_press_counter;
+<<<<<<< HEAD
     uint32_t last_video_toggle_ms;
     uint32_t last_photo_ms;
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     bool ignore_left_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;
     bool upgrade_to_loiter;
+<<<<<<< HEAD
 
     // current blink indexes
     uint16_t red_blink_pattern;
@@ -111,4 +124,6 @@ private:
     uint8_t green_blink_index;
     uint16_t red_blink_count;
     uint16_t green_blink_count;
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 };

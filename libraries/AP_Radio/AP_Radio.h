@@ -99,9 +99,13 @@ private:
     AP_Int8 debug_level;
     AP_Int8 disable_crc;
     AP_Int8 rssi_chan;
+<<<<<<< HEAD
     AP_Int8 pps_chan;
     AP_Int8 tx_rssi_chan;
     AP_Int8 tx_pps_chan;
+=======
+    AP_Int8 rate_chan;
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     AP_Int8 telem_enable;
     AP_Int8 transmit_power;
     AP_Int8 fcc_test;

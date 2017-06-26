@@ -13,12 +13,18 @@ void Copter::arm_motors_check()
 {
     static int16_t arming_counter;
 
+<<<<<<< HEAD
 #if TOY_MODE_ENABLED == ENABLED
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     if (g2.toy_mode.enabled()) {
         // not armed with sticks in toy mode
         return;
     }
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     // ensure throttle is down
     if (channel_throttle->get_control_in() > 0) {

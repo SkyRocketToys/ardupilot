@@ -129,8 +129,12 @@ bool AP_OpticalFlow_Pixart::setup_sensor(void)
     } else if (id1 == 0x49 && id2 == uint8_t(~id1)) {
         model = PIXART_3901;
     } else {
+<<<<<<< HEAD
         debug("Not a recognised device\n");
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         goto failed;
+        debug("Not a recognised device\n");
     }
 
     if (model == PIXART_3900) {

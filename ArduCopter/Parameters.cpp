@@ -1017,11 +1017,17 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: ../libraries/AP_TempCalibration/AP_TempCalibration.cpp
     AP_SUBGROUPINFO(temp_calibration, "TCAL", 19, ParametersG2, AP_TempCalibration),
 
+<<<<<<< HEAD
 #if TOY_MODE_ENABLED == ENABLED
     // @Group: TMODE
     // @Path: toy_mode.cpp
     AP_SUBGROUPINFO(toy_mode, "TMODE", 20, ParametersG2, ToyMode),
 #endif
+=======
+    // @Group: TMODE
+    // @Path: toy_mode.cpp
+    AP_SUBGROUPINFO(toy_mode, "TMODE", 20, ParametersG2, ToyMode),
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     AP_GROUPEND
 };

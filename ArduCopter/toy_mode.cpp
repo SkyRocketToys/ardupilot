@@ -5,9 +5,14 @@
 // times in 0.1s units
 #define TOY_COMMAND_DELAY 15
 #define TOY_LONG_PRESS_COUNT 15
+<<<<<<< HEAD
 #define TOY_LAND_MANUAL_DISARM_COUNT 40
 #define TOY_LAND_DISARM_COUNT 1
 #define TOY_LAND_ARM_COUNT 1
+=======
+#define TOY_LAND_DISARM_COUNT 10
+#define TOY_LAND_ARM_COUNT 10
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 #define TOY_RIGHT_PRESS_COUNT 1
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
@@ -128,9 +133,12 @@ void ToyMode::update()
         return;
     }
 
+<<<<<<< HEAD
     // update LEDs
     blink_update();
     
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     if (first_update) {
         first_update = false;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
@@ -215,6 +223,7 @@ void ToyMode::update()
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
     }
+<<<<<<< HEAD
 
     // we use 150 for throttle_at_min to cope with varying stick throws
     bool throttle_at_min =
@@ -223,14 +232,26 @@ void ToyMode::update()
     // throttle threshold for throttle arming
     bool throttle_near_max =
         copter.channel_throttle->get_control_in() > 700;
+=======
+    
+    bool throttle_at_min =
+        copter.channel_throttle->get_control_in() == 0;
+
+    bool throttle_near_max =
+        copter.channel_throttle->get_control_in() > 800;
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     
     /*
       disarm if throttle is low for 1 second when landed
      */
     if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
         throttle_low_counter++;
+<<<<<<< HEAD
         const uint8_t disarm_limit = copter.mode_has_manual_throttle(copter.control_mode)?TOY_LAND_MANUAL_DISARM_COUNT:TOY_LAND_DISARM_COUNT;
         if (throttle_low_counter >= disarm_limit) {
+=======
+        if (throttle_low_counter >= TOY_LAND_DISARM_COUNT) {
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
@@ -286,8 +307,12 @@ void ToyMode::update()
     }
     
     enum control_mode_t new_mode = copter.control_mode;
+<<<<<<< HEAD
     uint32_t now = AP_HAL::millis();
 
+=======
+    
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     /*
       implement actions
      */
@@ -296,6 +321,7 @@ void ToyMode::update()
         break;
 
     case ACTION_TAKE_PHOTO:
+<<<<<<< HEAD
         if (now - last_photo_ms > 250) {
             send_named_int("SNAPSHOT", 1);
             last_photo_ms = now;
@@ -307,6 +333,10 @@ void ToyMode::update()
             send_named_int("VIDEOTOG", 1);
             last_video_toggle_ms = now;
         }
+=======
+    case ACTION_TOGGLE_VIDEO:
+        // handled by compantion computer
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
         break;
 
     case ACTION_MODE_ACRO:
@@ -509,16 +539,24 @@ void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
     const uint32_t soft_start_ms = 5000;
+<<<<<<< HEAD
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
         throttle_control = MIN(throttle_control, 500);
     } else if (now - throttle_arm_ms < soft_start_ms) {
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
+<<<<<<< HEAD
         throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
+=======
+        throttle_control = MIN(throttle_control, 500 + p * 500);
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
     }
 }
 
 /*
+<<<<<<< HEAD
   update blinking. Blinking is done with a 16 bit pattern for each
   LED. A count can be set for a pattern, which makes the pattern
   persist until the count is zero. When it is zero the normal pattern
@@ -619,13 +657,18 @@ void ToyMode::send_named_int(const char *name, int32_t value)
 
 #if TOY_MODE_ENABLED == ENABLED
 /*
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
   called from scheduler at 10Hz
  */
 void Copter::toy_mode_update(void)
 {
     g2.toy_mode.update();
 }
+<<<<<<< HEAD
 #endif
 
+=======
+>>>>>>> 096e4bfdf23cd06c3908a3e9cdcef1cc00ae1caa
 
 #endif // TOY_MODE_ENABLED
