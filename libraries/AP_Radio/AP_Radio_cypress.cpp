@@ -1411,6 +1411,7 @@ void AP_Radio_cypress::send_telem_packet(void)
     t_status.flags |= AP_Notify::flags.pre_arm_check?TELEM_FLAG_ARM_OK:0;
     t_status.flags |= AP_Notify::flags.failsafe_battery?0:TELEM_FLAG_BATT_OK;
     t_status.flags |= hal.util->get_soft_armed()?TELEM_FLAG_ARMED:0;
+    t_status.flags |= AP_Notify::flags.have_pos_abs?TELEM_FLAG_POS_OK:0;
     t_status.flight_mode = AP_Notify::flags.flight_mode;
 
     // send fw update packet for 7/8 of packets if any data pending
