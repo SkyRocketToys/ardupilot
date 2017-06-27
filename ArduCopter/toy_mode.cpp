@@ -606,6 +606,13 @@ void ToyMode::handle_message(mavlink_message_t *msg)
         }
         green_blink_pattern = BLINK_2;
         green_blink_count = 1;
+    } else if (strncmp(m.name, "WIFICHAN", 10) == 0) {
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+        AP_Radio *radio = AP_Radio::instance();
+        if (radio) {
+            radio->set_wifi_channel(m.value);
+        }
+#endif
     }
 }
 
