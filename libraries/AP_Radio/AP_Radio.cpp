@@ -210,5 +210,13 @@ uint32_t AP_Radio::get_tx_version(void)
     return 0;
 }
 
+// set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+void AP_Radio::set_wifi_channel(uint8_t channel)
+{
+    if (driver) {
+        driver->set_wifi_channel(channel);
+    }
+}
+
 #endif // HAL_RCINPUT_WITH_AP_RADIO
 

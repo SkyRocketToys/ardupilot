@@ -69,6 +69,11 @@ public:
     
     // get radio statistics structure
     const AP_Radio::stats &get_stats(void) override;
+
+    // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+    void set_wifi_channel(uint8_t channel) {
+        t_status.wifi_chan = channel;
+    }
     
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;

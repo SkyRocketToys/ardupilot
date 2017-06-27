@@ -59,6 +59,9 @@ public:
     
     // get radio statistics structure
     virtual const AP_Radio::stats &get_stats(void) = 0;
+
+    // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+    virtual void set_wifi_channel(uint8_t channel) = 0;
     
 protected:
 
