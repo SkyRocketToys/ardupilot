@@ -98,9 +98,13 @@ protected:
     }
 
     uint8_t get_transmit_power(void) const {
-        return radio.transmit_power.get();
+        return constrain_int16(radio.transmit_power.get(), 1, 8);
     }
 
+    uint8_t get_tx_max_power(void) const {
+        return constrain_int16(radio.tx_max_power.get(), 1, 8);
+    }
+    
     uint8_t get_fcc_test(void) const {
         return radio.fcc_test.get();
     }
