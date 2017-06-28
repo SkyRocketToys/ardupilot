@@ -90,6 +90,9 @@ public:
 
     // handle a data96 mavlink packet for fw upload
     void handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m);
+
+    // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+    void set_wifi_channel(uint8_t channel);
     
 private:
     AP_Radio_backend *driver;
@@ -104,6 +107,7 @@ private:
     AP_Int8 tx_pps_chan;
     AP_Int8 telem_enable;
     AP_Int8 transmit_power;
+    AP_Int8 tx_max_power;
     AP_Int8 fcc_test;
     AP_Int8 stick_mode;
     AP_Int8 factory_test;

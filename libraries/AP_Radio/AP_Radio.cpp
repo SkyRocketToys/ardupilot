@@ -63,9 +63,9 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Param: _TXPOW
     // @DisplayName: Transmit power
     // @Description: Set transmit power
-    // @Range: 0 7
+    // @Range: 1 8
     // @User: Advanced
-    AP_GROUPINFO("_TXPOW",  8, AP_Radio, transmit_power, 7),
+    AP_GROUPINFO("_TXPOW",  8, AP_Radio, transmit_power, 8),
 
     // @Param: _FCCTST
     // @DisplayName: Put radio into FCC test mode
@@ -101,6 +101,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 16
     // @User: Advanced
     AP_GROUPINFO("_TPPSCH", 13, AP_Radio, tx_pps_chan, 0),
+
+    // @Param: _TXMAX
+    // @DisplayName: Transmitter transmit power
+    // @Description: Set transmitter maximum transmit power 
+    // @Range: 1 8
+    // @User: Advanced
+    AP_GROUPINFO("_TXMAX",  14, AP_Radio, tx_max_power, 4),
     
     AP_GROUPEND
 };
@@ -208,6 +215,14 @@ uint32_t AP_Radio::get_tx_version(void)
         return driver->get_tx_version();
     }
     return 0;
+}
+
+// set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+void AP_Radio::set_wifi_channel(uint8_t channel)
+{
+    if (driver) {
+        driver->set_wifi_channel(channel);
+    }
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO

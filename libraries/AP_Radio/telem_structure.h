@@ -15,12 +15,15 @@ enum telem_type {
 #define TELEM_FLAG_ARM_OK  (1U<<1)
 #define TELEM_FLAG_BATT_OK (1U<<2)
 #define TELEM_FLAG_ARMED   (1U<<4)
+#define TELEM_FLAG_POS_OK  (1U<<5)
 
 struct telem_status {
     uint8_t pps; // packets per second received
     uint8_t rssi; // lowpass rssi
     uint8_t flags; // TELEM_FLAG_*
     uint8_t flight_mode; // flight mode
+    uint8_t wifi_chan;
+    uint8_t tx_max;
 };
 
 // play a tune
