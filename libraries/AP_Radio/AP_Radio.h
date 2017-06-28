@@ -107,6 +107,7 @@ private:
     AP_Int8 tx_pps_chan;
     AP_Int8 telem_enable;
     AP_Int8 transmit_power;
+    AP_Int8 tx_max_power;
     AP_Int8 fcc_test;
     AP_Int8 stick_mode;
     AP_Int8 factory_test;

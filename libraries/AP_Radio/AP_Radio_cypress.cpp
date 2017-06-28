@@ -1141,8 +1141,8 @@ void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t so
         write_register(CYRF_RX_OVERRIDE, dsm.last_discrc?CYRF_DIS_RXCRC:0);
     }
 
-    if (get_transmit_power() != dsm.last_transmit_power) {
-        dsm.last_transmit_power = get_transmit_power();
+    if (get_transmit_power() != dsm.last_transmit_power+1) {
+        dsm.last_transmit_power = get_transmit_power()-1;
         debug(3,"Cypress: TXPOWER=%u\n", dsm.last_transmit_power);
         write_register(CYRF_TX_CFG, CYRF_DATA_CODE_LENGTH | CYRF_DATA_MODE_8DR | dsm.last_transmit_power);
     }
@@ -1413,6 +1413,7 @@ void AP_Radio_cypress::send_telem_packet(void)
     t_status.flags |= hal.util->get_soft_armed()?TELEM_FLAG_ARMED:0;
     t_status.flags |= AP_Notify::flags.have_pos_abs?TELEM_FLAG_POS_OK:0;
     t_status.flight_mode = AP_Notify::flags.flight_mode;
+    t_status.tx_max = get_tx_max_power();
 
     // send fw update packet for 7/8 of packets if any data pending
     if (fwupload.length != 0 &&
