@@ -44,6 +44,8 @@
 #define COMPASS_MAX_INSTANCES 3
 #define COMPASS_MAX_BACKEND   3
 
+// fwd declaration of AP_AHRS
+class AP_AHRS;
 
 class Compass
 {
@@ -305,6 +307,9 @@ public:
     uint16_t get_offsets_max(void) const {
         return (uint16_t)_offset_max.get();
     }
+
+    // perform a magnetometer calibration assuming a fixed position in a known field
+    uint8_t fixed_mag_cal(const AP_AHRS &ahrs, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg);
     
 private:
     /// Register a new compas driver, allocating an instance number
