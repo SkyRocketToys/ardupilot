@@ -239,7 +239,7 @@ void ToyMode::update()
     }
 
     /*
-      arm if throttle is low for 1 second when landed
+      arm if throttle is high for 1 second when landed
      */
     if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed()) {
         throttle_high_counter++;
