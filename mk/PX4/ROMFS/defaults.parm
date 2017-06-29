@@ -157,7 +157,7 @@ TCAL_ENABLED           2
 TCAL_BARO_EXP        1.2
 
 # landing
-LAND_SPEED_HIGH      100
+LAND_SPEED_HIGH      150
 
 # logging
 LOG_BACKEND_TYPE       2
@@ -203,7 +203,7 @@ WPNAV_LOIT_MAXA      800
 WPNAV_LOIT_MINA      250
 WPNAV_LOIT_SPEED     800
 WPNAV_SPEED          750
-RTL_SPEED            400
+RTL_SPEED            600
 
 # GPS
 GPS_NAVFILTER        6
