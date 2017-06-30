@@ -78,6 +78,7 @@ private:
         BLINK_4      = 0xAAFF,
         BLINK_6      = 0xAAAF,
         BLINK_8      = 0xAAAA,
+        BLINK_NO_RX  = 0x1111,
         BLINK_SLOW_1 = 0xF0FF,
         BLINK_VSLOW  = 0xF000,
         BLINK_MED_1  = 0xF0F0,

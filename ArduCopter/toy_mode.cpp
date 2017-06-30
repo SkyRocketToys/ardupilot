@@ -144,7 +144,10 @@ void ToyMode::update()
 
     if (copter.failsafe.radio || ch5_in < 900) {
         // failsafe handling is outside the scope of toy mode, it does
-        // normal failsafe actions
+        // normal failsafe actions, just setup a blink pattern
+        green_blink_pattern = BLINK_NO_RX;
+        red_blink_pattern = BLINK_NO_RX;
+        red_blink_index = green_blink_index;
         return;
     }
         
