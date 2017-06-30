@@ -489,14 +489,12 @@ void ToyMode::action_arm(void)
     } else {
         // non-GPS mode
         copter.fence.enable(false);
-        if (copter.control_mode == primary_mode[0]) {
-            copter.init_arm_motors(false);
-            if (!copter.motors->armed()) {
-                AP_Notify::events.arming_failed = true;
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
-            } else {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
-            }
+        copter.init_arm_motors(false);
+        if (!copter.motors->armed()) {
+            AP_Notify::events.arming_failed = true;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
+        } else {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
         }
     }
 }
