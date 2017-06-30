@@ -834,6 +834,19 @@ AP_GPS_UBLOX::_parse_gps(void)
     }
 #endif // UBLOX_RXM_RAW_LOGGING
 
+    if (_class == CLASS_MGA) {
+        switch(_msg_id) {
+        case MSG_MGA_ACK:
+            _mga_handle_ack();
+            break;
+        default:
+            unexpected_message();
+        }
+        return false;
+    }
+
+    _mga_check_report();
+
     if (_class != CLASS_NAV) {
         unexpected_message();
         return false;
@@ -1333,5 +1346,34 @@ void AP_GPS_UBLOX::Write_DataFlash_Log_Startup_messages() const
                                            state.instance+1,
                                            _version.hwVersion,
                                            _version.swVersion);
+    }
+}
+
+/*
+  handle a MGA-ACK message
+ */
+void AP_GPS_UBLOX::_mga_handle_ack(void)
+{
+    _mga.last_ack_ms = AP_HAL::millis();
+    if (_buffer.mga_ack.type == 1) {
+        _mga.ack_count++;
+    } else {
+        _mga.nack_count++;
+    }
+}
+
+/*
+  check for reporting MGA ACKs
+ */
+void AP_GPS_UBLOX::_mga_check_report(void)
+{
+    // if we haven't seen an MGA-ACK for 2s then report count
+    if (_mga.last_ack_ms != 0 && AP_HAL::millis() - _mga.last_ack_ms > 2000) {
+        _mga.last_ack_ms = 0;
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, 
+                                         "MGA: ack:%u nack:%u",
+                                         _mga.ack_count,
+                                         _mga.nack_count);
+        _mga.ack_count = _mga.nack_count = 0;
     }
 }
