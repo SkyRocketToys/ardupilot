@@ -116,6 +116,10 @@ protected:
     uint8_t get_factory_test(void) const {
         return radio.factory_test.get();
     }
+
+    uint8_t get_tx_buzzer_adjust(void) const {
+        return radio.tx_buzzer_adjust.get();
+    }
     
     AP_Radio &radio;
 };
