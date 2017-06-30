@@ -86,7 +86,7 @@ private:
         BLINK_MED_1  = 0xF0F0,
     };
     
-    bool first_update;
+    bool done_first_update;
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
     AP_Int8 actions[9];
