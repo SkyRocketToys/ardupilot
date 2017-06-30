@@ -132,8 +132,8 @@ void ToyMode::update()
     // update LEDs
     blink_update();
     
-    if (first_update) {
-        first_update = false;
+    if (!done_first_update) {
+        done_first_update = true;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         throttle_mid = copter.channel_throttle->get_control_mid();
     }
