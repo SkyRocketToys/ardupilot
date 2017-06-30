@@ -108,6 +108,13 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 1 8
     // @User: Advanced
     AP_GROUPINFO("_TXMAX",  14, AP_Radio, tx_max_power, 4),
+
+    // @Param: _BZOFS
+    // @DisplayName: Transmitter buzzer adjustment
+    // @Description: Set transmitter buzzer note adjustment (adjust frequency up)
+    // @Range: 0 40
+    // @User: Advanced
+    AP_GROUPINFO("_BZOFS",  15, AP_Radio, tx_buzzer_adjust, 25),
     
     AP_GROUPEND
 };

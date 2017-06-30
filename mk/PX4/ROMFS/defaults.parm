@@ -72,7 +72,7 @@ SERVO4_FUNCTION  35
 
 # H class quad
 FRAME_CLASS 1
-FRAME_TYPE 3
+FRAME_TYPE 1
 
 # disable EK2
 EK2_ENABLE 1
@@ -148,8 +148,8 @@ FLTMODE6               2
 
 # failsafes
 FS_THR_ENABLE          1
-FS_BATT_ENABLE         1
-FS_BATT_VOLTAGE      3.3
+FS_BATT_ENABLE         2
+FS_BATT_VOLTAGE      3.4
 FS_GCS_ENABLE          0
 
 # baro
@@ -157,7 +157,7 @@ TCAL_ENABLED           2
 TCAL_BARO_EXP        1.2
 
 # landing
-LAND_SPEED_HIGH      100
+LAND_SPEED_HIGH      150
 
 # logging
 LOG_BACKEND_TYPE       2
@@ -203,7 +203,7 @@ WPNAV_LOIT_MAXA      800
 WPNAV_LOIT_MINA      250
 WPNAV_LOIT_SPEED     800
 WPNAV_SPEED          750
-RTL_SPEED            400
+RTL_SPEED            600
 
 # GPS
 GPS_NAVFILTER        6

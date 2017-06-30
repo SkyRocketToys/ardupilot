@@ -337,6 +337,13 @@ private:
         uint8_t globalFlags;
         uint16_t reserved;
     };
+    struct PACKED ubx_mga_ack {
+        uint8_t type;
+        uint8_t version;
+        uint8_t errorCode;
+        uint8_t msgId;
+        uint8_t payload[4];
+    };
 #if UBLOX_RXM_RAW_LOGGING
     struct PACKED ubx_rxm_raw {
         int32_t iTOW;
@@ -419,6 +426,7 @@ private:
         ubx_rxm_rawx rxm_rawx;
 #endif
         ubx_ack_ack ack;
+        ubx_mga_ack mga_ack;
     } _buffer;
 
     enum ubs_protocol_bytes {
@@ -429,6 +437,7 @@ private:
         CLASS_CFG = 0x06,
         CLASS_MON = 0x0A,
         CLASS_RXM = 0x02,
+        CLASS_MGA = 0x13,
         MSG_ACK_NACK = 0x00,
         MSG_ACK_ACK = 0x01,
         MSG_POSLLH = 0x2,
@@ -449,7 +458,8 @@ private:
         MSG_MON_VER = 0x04,
         MSG_NAV_SVINFO = 0x30,
         MSG_RXM_RAW = 0x10,
-        MSG_RXM_RAWX = 0x15
+        MSG_RXM_RAWX = 0x15,
+        MSG_MGA_ACK = 0x60,
     };
     enum ubx_gnss_identifier {
         GNSS_GPS     = 0x00,
@@ -570,4 +580,14 @@ private:
     uint8_t _ubx_msg_log_index(uint8_t ubx_msg) {
         return (uint8_t)(ubx_msg + (state.instance * UBX_MSG_TYPES));
     }
+
+    // mga status
+    struct {
+        uint32_t last_ack_ms;
+        uint16_t ack_count;
+        uint16_t nack_count;
+    } _mga;
+
+    void _mga_handle_ack(void);
+    void _mga_check_report(void);
 };

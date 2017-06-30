@@ -226,6 +226,9 @@ enum {
 
 #define DSM_MAX_CHANNEL 0x4F
 
+#define DSM_SCAN_MIN_CH 8
+#define DSM_SCAN_MAX_CH 70
+
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
 
@@ -1414,6 +1417,7 @@ void AP_Radio_cypress::send_telem_packet(void)
     t_status.flags |= AP_Notify::flags.have_pos_abs?TELEM_FLAG_POS_OK:0;
     t_status.flight_mode = AP_Notify::flags.flight_mode;
     t_status.tx_max = get_tx_max_power();
+    t_status.note_adjust = get_tx_buzzer_adjust();
 
     // send fw update packet for 7/8 of packets if any data pending
     if (fwupload.length != 0 &&
@@ -1467,7 +1471,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         return;
     case 1:
     case 4:
-        channel = 0;
+        channel = DSM_SCAN_MIN_CH;
         break;
     case 2:
     case 5:
@@ -1476,7 +1480,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
     case 3:
     case 6:
     default:
-        channel = DSM_MAX_CHANNEL-1;
+        channel = DSM_SCAN_MAX_CH;
         break;
     }
 
