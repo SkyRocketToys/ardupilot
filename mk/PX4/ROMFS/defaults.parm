@@ -168,8 +168,8 @@ MOT_BAT_VOLT_MAX      4.2
 MOT_BAT_VOLT_MIN      3.3
 MOT_THST_HOVER        0.3514
 MOT_THST_EXPO        -0.56
-MOT_SPIN_ARM          0.05
-MOT_SPIN_MIN          0.05
+MOT_SPIN_ARM          0.03
+MOT_SPIN_MIN          0.03
 MOT_SPOOL_TIME        0
 
 # control inputs
