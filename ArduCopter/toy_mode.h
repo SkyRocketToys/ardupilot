@@ -59,6 +59,8 @@ private:
         ACTION_DISARM       = 18,
         ACTION_TOGGLE_MODE  = 19,
         ACTION_ARM_LAND_RTL = 20,
+        ACTION_TOGGLE_SIMPLE = 21,
+        ACTION_TOGGLE_SSIMPLE = 22,
     };
 
     // these are bitmask indexes for TMODE_FLAGS
@@ -98,12 +100,12 @@ private:
     uint8_t last_mode_choice;
     int32_t left_press_counter;
     int32_t right_press_counter;
-    uint32_t last_video_toggle_ms;
     uint32_t last_photo_ms;
     bool ignore_left_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;
     bool upgrade_to_loiter;
+    uint32_t last_action_ms;
 
     // current blink indexes
     uint16_t red_blink_pattern;
