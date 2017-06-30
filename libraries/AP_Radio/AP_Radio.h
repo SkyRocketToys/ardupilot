@@ -111,6 +111,7 @@ private:
     AP_Int8 fcc_test;
     AP_Int8 stick_mode;
     AP_Int8 factory_test;
+    AP_Int8 tx_buzzer_adjust;
     
     static AP_Radio *_instance;
 };

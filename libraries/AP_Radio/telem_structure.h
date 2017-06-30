@@ -24,6 +24,7 @@ struct telem_status {
     uint8_t flight_mode; // flight mode
     uint8_t wifi_chan;
     uint8_t tx_max;
+    uint8_t note_adjust;
 };
 
 // play a tune
