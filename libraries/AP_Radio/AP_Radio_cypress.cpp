@@ -229,6 +229,8 @@ enum {
 #define DSM_SCAN_MIN_CH 8
 #define DSM_SCAN_MAX_CH 70
 
+#define FCC_SUPPORT_CW_MODE 0
+
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
 
@@ -1498,6 +1500,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         set_channel(channel);
     }
 
+#if FCC_SUPPORT_CW_MODE
     if (get_fcc_test() > 3) {
         // continuous preamble transmit is closest approximation to CW
         // that is possible with this chip
@@ -1512,6 +1515,10 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         transmit16(pkt);
         hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
     }
+#else
+    transmit16(pkt);
+    hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#endif
 }
 
 // handle a data96 mavlink packet for fw upload
