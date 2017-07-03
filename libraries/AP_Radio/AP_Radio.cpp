@@ -84,7 +84,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Param: _TESTCH
     // @DisplayName: Set radio to factory test channel
     // @Description: This sets the radio to a fixed test channel for factory testing. Using a fixed channel avoids the need for binding in factory testing.
-    // @Values: 0:Disabled,1:TestChan1,2:TestChan2,3:TestChan2,4:TestChan2
+    // @Values: 0:Disabled,1:TestChan1,2:TestChan2,3:TestChan3,4:TestChan4
     // @User: Advanced
     AP_GROUPINFO("_TESTCH", 11, AP_Radio, factory_test, 0),    
 
