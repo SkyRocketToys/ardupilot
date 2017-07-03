@@ -229,6 +229,8 @@ enum {
 #define DSM_SCAN_MIN_CH 8
 #define DSM_SCAN_MAX_CH 70
 
+#define FCC_SUPPORT_CW_MODE 0
+
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
 
@@ -1044,6 +1046,9 @@ void AP_Radio_cypress::irq_handler(void)
         break;
 
     case STATE_SEND_FCC:
+        // stop transmit oscillator
+        write_register(CYRF_RX_IRQ_STATUS, CYRF_RXOW_IRQ);
+        write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN);
         break;
         
     default:
@@ -1490,14 +1495,13 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         debug(1,"FCC channel %u\n", channel);
         dsm.forced_channel = channel;
     
-        write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
-        write_register(CYRF_RX_ABORT, 0);
         radio_set_config(cyrf_config, ARRAY_SIZE(cyrf_config));
         radio_set_config(cyrf_transfer_config, ARRAY_SIZE(cyrf_transfer_config));
 
         set_channel(channel);
     }
 
+#if FCC_SUPPORT_CW_MODE
     if (get_fcc_test() > 3) {
         // continuous preamble transmit is closest approximation to CW
         // that is possible with this chip
@@ -1509,9 +1513,17 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         write_register(CYRF_TX_CTRL, CYRF_TX_GO);
         hrt_call_after(&wait_call, 500000, (hrt_callout)irq_timeout_trampoline, nullptr);
     } else {
+        write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+        write_register(CYRF_RX_ABORT, 0);
         transmit16(pkt);
         hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
     }
+#else
+    write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
+    write_register(CYRF_RX_ABORT, 0);
+    transmit16(pkt);
+    hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#endif
 }
 
 // handle a data96 mavlink packet for fw upload
