@@ -215,9 +215,31 @@ void ToyMode::update()
     } else {
         right_press_counter = 0;
     }
+
+    uint32_t now = AP_HAL::millis();
+
+    /*
+      some actions shouldn't repeat too fast
+     */
+    switch (action) {
+    case ACTION_TAKE_PHOTO:
+    case ACTION_TOGGLE_VIDEO:
+    case ACTION_TOGGLE_MODE:
+    case ACTION_TOGGLE_SIMPLE:
+    case ACTION_TOGGLE_SSIMPLE:
+    case ACTION_ARM_LAND_RTL:
+        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
+            action = ACTION_NONE;
+        }
+        break;
+
+    default:
+        break;
+    }
     
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
+        last_action_ms = now;
     }
 
     // we use 150 for throttle_at_min to cope with varying stick throws
@@ -290,7 +312,6 @@ void ToyMode::update()
     }
     
     enum control_mode_t new_mode = copter.control_mode;
-    uint32_t now = AP_HAL::millis();
 
     /*
       implement actions
@@ -300,16 +321,10 @@ void ToyMode::update()
         break;
 
     case ACTION_TAKE_PHOTO:
-        if (now - last_photo_ms > 250) {
-            send_named_int("SNAPSHOT", 1);
-            last_photo_ms = now;
-        }
+        send_named_int("SNAPSHOT", 1);
         break;
 
     case ACTION_TOGGLE_VIDEO:
-        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
-            break;
-        }
         send_named_int("VIDEOTOG", 1);
         break;
 
@@ -381,31 +396,19 @@ void ToyMode::update()
         break;
 
     case ACTION_TOGGLE_MODE:
-        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
-            break;
-        }
         last_mode_choice = (last_mode_choice+1) % 2;
         new_mode = control_mode_t(primary_mode[last_mode_choice].get());
         break;
 
     case ACTION_TOGGLE_SIMPLE:
-        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
-            break;
-        }
         copter.set_simple_mode(copter.ap.simple_mode?0:1);
         break;
 
     case ACTION_TOGGLE_SSIMPLE:
-        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
-            break;
-        }
         copter.set_simple_mode(copter.ap.simple_mode?0:2);
         break;
         
     case ACTION_ARM_LAND_RTL:
-        if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
-            break;
-        }
         if (!copter.motors->armed()) {
             action_arm();
         } else if (new_mode == RTL) {
@@ -424,10 +427,6 @@ void ToyMode::update()
         break;
     }
 
-    if (action != ACTION_NONE) {
-        last_action_ms = now;
-    }
-        
     if (!copter.motors->armed() && (copter.control_mode == LAND || copter.control_mode == RTL)) {
         // revert back to last primary flight mode if disarmed after landing
         new_mode = control_mode_t(primary_mode[last_mode_choice].get());
