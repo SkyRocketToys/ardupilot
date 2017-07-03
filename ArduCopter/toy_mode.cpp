@@ -149,9 +149,6 @@ void ToyMode::update()
         green_blink_pattern = BLINK_NO_RX;
         red_blink_pattern = BLINK_NO_RX;
         red_blink_index = green_blink_index;
-
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "TX Failsafe needs to trigger");
-        
         return;
     }
         
