@@ -576,26 +576,15 @@ void ToyMode::blink_update(void)
     
     // setup normal patterns based on flight mode and arming
     uint16_t pattern = 0;
-    
-    if (copter.motors->armed()) {
-        // patterns when armed
-        if (AP_Notify::flags.failsafe_battery) {
-            pattern = BLINK_8;
-        } else if (copter.position_ok()) {
-            pattern = BLINK_FULL;
-        } else {
-            pattern = BLINK_1;            
-        }
+
+    // full on when we can see the TX, except for battery failsafe,
+    // when we blink rapidly
+    if (copter.motors->armed() && AP_Notify::flags.failsafe_battery) {
+        pattern = BLINK_8;
     } else {
-        // patterns when disarmed
-        if (copter.position_ok()) {
-            pattern = BLINK_MED_1;
-        } else if (copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-            pattern = BLINK_SLOW_1;
-        } else {
-            pattern = BLINK_VSLOW;
-        }
+        pattern = BLINK_FULL;
     }
+
     if (red_blink_count == 0) {
         red_blink_pattern = pattern;
     }
