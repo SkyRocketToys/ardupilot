@@ -9,7 +9,7 @@
 #define TOY_LAND_DISARM_COUNT 1
 #define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
-#define TOY_ACTION_DELAY_MS 300
+#define TOY_ACTION_DELAY_MS 200
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
