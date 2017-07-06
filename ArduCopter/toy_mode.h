@@ -107,6 +107,9 @@ private:
     bool upgrade_to_loiter;
     uint32_t last_action_ms;
 
+    // time when we were last told we are recording video
+    uint32_t last_video_ms;
+    
     // current blink indexes
     uint16_t red_blink_pattern;
     uint16_t green_blink_pattern;
