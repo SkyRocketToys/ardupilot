@@ -1420,6 +1420,7 @@ void AP_Radio_cypress::send_telem_packet(void)
     t_status.flags |= AP_Notify::flags.failsafe_battery?0:TELEM_FLAG_BATT_OK;
     t_status.flags |= hal.util->get_soft_armed()?TELEM_FLAG_ARMED:0;
     t_status.flags |= AP_Notify::flags.have_pos_abs?TELEM_FLAG_POS_OK:0;
+    t_status.flags |= AP_Notify::flags.video_recording?TELEM_FLAG_VIDEO:0;
     t_status.flight_mode = AP_Notify::flags.flight_mode;
     t_status.tx_max = get_tx_max_power();
     t_status.note_adjust = get_tx_buzzer_adjust();
