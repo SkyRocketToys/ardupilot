@@ -188,7 +188,8 @@ float Copter::get_pilot_desired_climb_rate(float throttle_control)
 
 #if TOY_MODE_ENABLED == ENABLED
     if (g2.toy_mode.enabled()) {
-        // allow throttle to be reduced after throttle arming
+        // allow throttle to be reduced after throttle arming and for
+        // slower descent close to the ground
         g2.toy_mode.throttle_adjust(throttle_control);
     }
 #endif

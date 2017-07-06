@@ -222,6 +222,9 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     // Start the arming delay
     ap.in_arming_delay = true;
 
+    // remember the height when we armed
+    arming_altitude_m = inertial_nav.get_altitude() * 0.01;
+    
     // return success
     return true;
 }
