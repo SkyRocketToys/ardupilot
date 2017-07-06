@@ -275,13 +275,13 @@ void ToyMode::update()
                 /*
                   support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
                  */
-                if (copter.set_mode(ALT_HOLD, MODE_REASON_TMODE)) {
+                if (set_and_remember_mode(ALT_HOLD, MODE_REASON_TMODE)) {
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
                     copter.fence.enable(false);
                     if (!copter.init_arm_motors(true)) {
                         // go back to LOITER
                         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
-                        copter.set_mode(LOITER, MODE_REASON_TMODE);
+                        set_and_remember_mode(LOITER, MODE_REASON_TMODE);
                     } else {
                         upgrade_to_loiter = true;
                     }
@@ -297,7 +297,7 @@ void ToyMode::update()
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
-        } else if (copter.position_ok() && copter.set_mode(LOITER, MODE_REASON_TMODE)) {
+        } else if (copter.position_ok() && set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
         }
@@ -308,10 +308,11 @@ void ToyMode::update()
          labs(copter.channel_pitch->get_control_in()) > 3000 ||
          throttle_near_max)) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
-        copter.set_mode(LOITER, MODE_REASON_TMODE);
+        set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
     
-    enum control_mode_t new_mode = copter.control_mode;
+    enum control_mode_t old_mode = copter.control_mode;
+    enum control_mode_t new_mode = old_mode;
 
     /*
       implement actions
@@ -411,13 +412,19 @@ void ToyMode::update()
     case ACTION_ARM_LAND_RTL:
         if (!copter.motors->armed()) {
             action_arm();
-        } else if (new_mode == RTL) {
-            // toggle between RTL and LAND
-            new_mode = LAND;
-        } else if (new_mode == LAND) {
-            // toggle between LAND and RTL
-            new_mode = RTL;
-        } else if (copter.mode_requires_GPS(new_mode)) {
+        } else if (old_mode == RTL) {
+            // switch between RTL and LOITER when in GPS modes
+            new_mode = LOITER;
+        } else if (old_mode == LAND) {
+            if (last_set_mode == LAND || !copter.position_ok()) {
+                // this is a land that we asked for, or we don't have good positioning
+                new_mode = ALT_HOLD;
+            } else if (copter.mode_requires_GPS(last_set_mode)) {
+                new_mode = LOITER;
+            } else {
+                new_mode = ALT_HOLD;
+            }
+        } else if (copter.mode_requires_GPS(old_mode)) {
             // if we're in a GPS mode, then RTL
             new_mode = RTL;
         } else {
@@ -438,17 +445,33 @@ void ToyMode::update()
         } else {
             copter.fence.enable(false);
         }
-        if (copter.set_mode(new_mode, MODE_REASON_TX_COMMAND)) {
+        if (set_and_remember_mode(new_mode, MODE_REASON_TX_COMMAND)) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: mode %s", copter.flight_mode_string(new_mode));
         } else {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: mode %s FAILED", copter.flight_mode_string(new_mode));
             if (new_mode == RTL) {
                 // if we can't RTL then land
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LANDING");
-                copter.set_mode(LAND, MODE_REASON_TMODE);
+                set_and_remember_mode(LAND, MODE_REASON_TMODE);
             }
         }
     }
+}
+
+
+/*
+  set a mode, remembering what mode we set, and the previous mode we were in
+ */
+bool ToyMode::set_and_remember_mode(control_mode_t mode, mode_reason_t reason)
+{
+    if (copter.control_mode == mode) {
+        return true;
+    }
+    if (!copter.set_mode(mode, reason)) {
+        return false;
+    }
+    last_set_mode = mode;
+    return true;
 }
 
 /*
