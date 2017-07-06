@@ -593,6 +593,14 @@ void ToyMode::blink_update(void)
         red_blink_count--;
     }
 
+    // let the TX know we are recording video
+    uint32_t now = AP_HAL::millis();
+    if (now - last_video_ms < 1000) {
+        AP_Notify::flags.video_recording = 1;
+    } else {
+        AP_Notify::flags.video_recording = 0;
+    }
+    
     if (red_blink_count > 0 && green_blink_count > 0) {
         return;
     }
@@ -643,6 +651,9 @@ void ToyMode::handle_message(mavlink_message_t *msg)
         }
         green_blink_pattern = BLINK_2;
         green_blink_count = 1;
+        last_video_ms = AP_HAL::millis();
+        // immediately update AP_Notify recording flag
+        AP_Notify::flags.video_recording = 1;
     } else if (strncmp(m.name, "WIFICHAN", 10) == 0) {
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
         AP_Radio *radio = AP_Radio::instance();
