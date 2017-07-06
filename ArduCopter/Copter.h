@@ -334,6 +334,9 @@ private:
 
     RCMapper rcmap = RCMapper::create();
 
+    // intertial nav alt when we armed
+    float arming_altitude_m;
+    
     // board specific config
     AP_BoardConfig BoardConfig = AP_BoardConfig::create();
 

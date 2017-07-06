@@ -10,6 +10,8 @@
 #define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
 #define TOY_ACTION_DELAY_MS 200
+#define TOY_DESCENT_SLOW_HEIGHT 5
+#define TOY_DESCENT_SLOW_MIN 300
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
@@ -564,7 +566,15 @@ void ToyMode::throttle_adjust(float &throttle_control)
         float p = (now - throttle_arm_ms) / float(soft_start_ms);
         throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
     }
+    
+    // limit descent rate close to the ground
+    if (throttle_control < TOY_DESCENT_SLOW_MIN && copter.motors->armed() && !copter.ap.land_complete &&
+        (copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m) < TOY_DESCENT_SLOW_HEIGHT) {
+        // limit descent rate close to the ground
+        throttle_control = TOY_DESCENT_SLOW_MIN;
+    }
 }
+
 
 /*
   update blinking. Blinking is done with a 16 bit pattern for each
