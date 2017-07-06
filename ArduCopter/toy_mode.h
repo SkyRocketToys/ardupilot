@@ -36,6 +36,7 @@ private:
     void action_arm(void);
     void blink_update(void);
     void send_named_int(const char *name, int32_t value);
+    bool set_and_remember_mode(control_mode_t mode, mode_reason_t reason);
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -113,4 +114,7 @@ private:
     uint8_t green_blink_index;
     uint16_t red_blink_count;
     uint16_t green_blink_count;
+
+    // remember the last mode we set
+    control_mode_t last_set_mode = LOITER;
 };
