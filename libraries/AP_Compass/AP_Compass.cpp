@@ -89,10 +89,10 @@ const AP_Param::GroupInfo Compass::var_info[] = {
 
     // @Param: AUTODEC
     // @DisplayName: Auto Declination
-    // @Description: Enable or disable the automatic calculation of the declination based on gps location
-    // @Values: 0:Disabled,1:Enabled
+    // @Description: Enable or disable the automatic calculation of the declination based on gps location. If set to 1 then the declination is set but not saved. If set to 2 then it is set and saved
+    // @Values: 0:Disabled,1:Enabled,2:EnabledAndSave
     // @User: Advanced
-    AP_GROUPINFO("AUTODEC",5, Compass, _auto_declination, 1),
+    AP_GROUPINFO("AUTODEC",5, Compass, _auto_declination, 2),
 
     // @Param: MOTCT
     // @DisplayName: Motor interference compensation type
@@ -847,11 +847,15 @@ Compass::set_initial_location(int32_t latitude, int32_t longitude)
     // if automatic declination is configured, then compute
     // the declination based on the initial GPS fix
     if (_auto_declination) {
+        float dec = radians(AP_Declination::get_declination(
+                                (float)latitude / 10000000,
+                                (float)longitude / 10000000));
         // Set the declination based on the lat/lng from GPS
-        _declination.set(radians(
-                AP_Declination::get_declination(
-                    (float)latitude / 10000000,
-                    (float)longitude / 10000000)));
+        if (_auto_declination.get() == 1) {
+            _declination.set(dec);
+        } else {
+            _declination.set_and_save(dec);
+        }
     }
 }
 
