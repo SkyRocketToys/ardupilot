@@ -645,6 +645,13 @@ private:
         float takeoff_alt_cm;
     } gndeffect_state;
 
+    // crash checking
+    struct {
+        uint16_t counter;
+        float filtered_climb_rate;
+        uint32_t last_trigger_ms;
+    } crash;
+    
     // set when we are upgrading parameters from 3.4
     bool upgrading_frame_params;
     

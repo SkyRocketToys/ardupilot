@@ -1,7 +1,7 @@
 #include "Copter.h"
 
 // Code to detect a crash main ArduCopter code
-#define CRASH_CHECK_TRIGGER_SEC         2       // 2 seconds inverted indicates a crash
+#define CRASH_CHECK_TRIGGER_SEC         3       // 3 seconds inverted indicates a crash
 #define CRASH_CHECK_ANGLE_DEVIATION_DEG 30.0f   // 30 degrees beyond angle max is signal we are inverted
 #define CRASH_CHECK_ACCEL_MAX           3.0f    // vehicle must be accelerating less than 3m/s/s to be considered crashed
 
@@ -10,44 +10,69 @@
 // called at MAIN_LOOP_RATE
 void Copter::crash_check()
 {
-    static uint16_t crash_counter;  // number of iterations vehicle may have been crashed
-
     // return immediately if disarmed, or crash checking disabled
     if (!motors->armed() || ap.land_complete || g.fs_crash_check == 0) {
-        crash_counter = 0;
+        crash.counter = 0;
         return;
     }
 
     // return immediately if we are not in an angle stabilize flight mode or we are flipping
-    if (control_mode == ACRO || control_mode == FLIP) {
-        crash_counter = 0;
+    if (control_mode == ACRO || control_mode == FLIP || control_mode == SPORT) {
+        crash.counter = 0;
         return;
     }
 
     // vehicle not crashed if 1hz filtered acceleration is more than 3m/s (1G on Z-axis has been subtracted)
     if (land_accel_ef_filter.get().length() >= CRASH_CHECK_ACCEL_MAX) {
-        crash_counter = 0;
+        crash.counter = 0;
         return;
     }
 
+    bool climb_rate_error = false;
+    bool angle_error = false;
+
     // check for angle error over 30 degrees
-    const float angle_error = attitude_control->get_att_error_angle_deg();
-    if (angle_error <= CRASH_CHECK_ANGLE_DEVIATION_DEG) {
-        crash_counter = 0;
+    float angle_error_deg = attitude_control->get_att_error_angle_deg();
+    angle_error = (angle_error_deg > CRASH_CHECK_ANGLE_DEVIATION_DEG);
+    
+    // calculate filtered climb rate. We use the barometric climb rate
+    // as the inertial climb rate is often badly off when we are
+    // crashed
+    crash.filtered_climb_rate = 0.97 * crash.filtered_climb_rate + barometer.get_climb_rate() * 0.03;
+    float scaled_throttle = motors->get_throttle() * ahrs.cos_roll() * ahrs.cos_pitch();
+
+    if (fabsf(crash.filtered_climb_rate) < 0.5f && scaled_throttle > motors->get_throttle_hover()*1.2) {
+        // we should be climbing and we aren't
+        climb_rate_error = true;
+    }
+
+    static uint32_t last_log;
+    uint32_t now = AP_HAL::millis();
+    if (now - last_log > 25) {
+        last_log = now;
+        DataFlash_Class::instance()->Log_Write("CCHK", "TimeUS,Count,FCRt,AErr,SThr", "QHfff",
+                                               AP_HAL::micros64(),
+                                               crash.counter, (double)crash.filtered_climb_rate,
+                                               (double)angle_error_deg, (double)scaled_throttle);
+    }
+
+    if (!angle_error && !climb_rate_error) {
+        crash.counter = 0;
         return;
     }
 
     // we may be crashing
-    crash_counter++;
+    crash.counter++;    
 
     // check if crashing for 2 seconds
-    if (crash_counter >= (CRASH_CHECK_TRIGGER_SEC * scheduler.get_loop_rate_hz())) {
+    if (crash.counter >= (CRASH_CHECK_TRIGGER_SEC * scheduler.get_loop_rate_hz())) {
         // log an error in the dataflash
         Log_Write_Error(ERROR_SUBSYSTEM_CRASH_CHECK, ERROR_CODE_CRASH_CHECK_CRASH);
         // send message to gcs
         gcs_send_text(MAV_SEVERITY_EMERGENCY,"Crash: Disarming");
         // disarm motors
         init_disarm_motors();
+        crash.last_trigger_ms = now;
     }
 }
 

@@ -640,6 +640,14 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         return false;
     }
 
+    if (AP_HAL::millis() - copter.crash.last_trigger_ms < 3000) {
+        // we just recently crashed. Prevent immediate re-arm
+        if (display_failure) {
+            gcs_send_text(MAV_SEVERITY_CRITICAL,"Arm: recent crash");
+        }
+        return false;
+    }
+
     // always check gps
     if (!pre_arm_gps_checks(display_failure)) {
         return false;
