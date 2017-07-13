@@ -120,6 +120,14 @@ protected:
     uint8_t get_tx_buzzer_adjust(void) const {
         return radio.tx_buzzer_adjust.get();
     }
+
+    uint8_t get_autobind_time(void) const {
+        return radio.auto_bind_time.get();
+    }
+
+    uint8_t get_autobind_rssi(void) const {
+        return radio.auto_bind_rssi.get();
+    }
     
     AP_Radio &radio;
 };
