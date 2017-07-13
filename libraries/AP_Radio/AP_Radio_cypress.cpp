@@ -231,6 +231,8 @@ enum {
 
 #define FCC_SUPPORT_CW_MODE 0
 
+#define AUTOBIND_CHANNEL 12
+
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
 
@@ -282,7 +284,8 @@ bool AP_Radio_cypress::reset(void)
     radio_init();
     dev->get_semaphore()->give();
 
-    if (dsm.protocol == DSM_NONE) {
+    if (dsm.protocol == DSM_NONE &&
+        get_autobind_time() == 0) {
         start_recv_bind();
     }
 
@@ -704,6 +707,25 @@ void AP_Radio_cypress::map_stick_mode(uint16_t *channels)
 }
 
 /*
+  check if we are the 2nd RX bound to this TX
+ */
+void AP_Radio_cypress::check_double_bind(void)
+{
+    if (dsm.tx_pps <= dsm.telem_send_count ||
+        get_autobind_time() == 0) {
+        return;
+    }
+    // the TX has received more telemetry packets in the last second
+    // than we have ever sent. There must be another RX sending
+    // telemetry packets. We will reset our mfg_id and go back waiting
+    // for a new bind packet, hopefully with the right TX
+    debug(1,"Double-bind detected\n");
+    memset(dsm.mfg_id, 1, sizeof(dsm.mfg_id));
+    dsm.last_recv_us = 0;
+    dsm_setup_transfer_dsmx();
+}
+
+/*
   parse channels from a packet
  */
 bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
@@ -780,6 +802,8 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                 break;
             case 5:
                 dsm.tx_pps = v;
+                dsm.have_tx_pps = true;
+                check_double_bind();
                 break;
             }
         }
@@ -818,6 +842,14 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         ok = false;
     }
 
+    if (state == STATE_AUTOBIND) {
+        uint8_t rssi = read_register(CYRF_RSSI) & 0x1F;
+        debug(3,"bind RSSI %u\n", rssi);
+        if (rssi < get_autobind_rssi()) {
+            ok = false;
+        }
+    }
+    
     if (ok) {
         uint8_t mfg_id[4] = {uint8_t(~pkt[0]), uint8_t(~pkt[1]), uint8_t(~pkt[2]), uint8_t(~pkt[3])};
         uint8_t num_chan = pkt[11];
@@ -833,14 +865,20 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
             write_register(CYRF_RX_OVERRIDE, CYRF_DIS_RXCRC);
         }
 
-        dsm_setup_transfer_dsmx();
         dsm.protocol = (enum dsm_protocol)protocol;
+        dsm_setup_transfer_dsmx();
 
         debug(1, "BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
               mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
               num_chan,
               protocol,
               is_DSM2());
+
+        dsm.last_recv_us = AP_HAL::micros();
+
+        if (is_DSM2()) {
+            dsm2_start_sync();
+        }
         
         dsm.need_bind_save = true;
     }
@@ -918,12 +956,18 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             }
             
             if (get_telem_enable()) {
-                if (packet_dt_us < 5000) {
+                if (packet_dt_us < 5000 &&
+                    (get_autobind_time() == 0 || dsm.have_tx_pps)) {
                     /*
                       we have just received two packets rapidly, which
                       means we have about 7ms before the next
                       one. That gives time for a telemetry packet. We
                       send it 1ms after we receive the incoming packet
+
+                      If auto-bind is enabled we don't send telemetry
+                      till we've received a tx_pps value from the
+                      TX. This allows us to detect double binding (two
+                      RX bound to the same TX)
                     */
                     state = STATE_SEND_TELEM;
                     hrt_call_after(&wait_call, 1000, (hrt_callout)irq_timeout_trampoline, nullptr);
@@ -949,7 +993,9 @@ void AP_Radio_cypress::start_receive(void)
     write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN);
 
     dsm.receive_start_us = AP_HAL::micros();
-    if (state == STATE_BIND) {
+    if (state == STATE_AUTOBIND) {
+        dsm.receive_timeout_usec = 90000;
+    } else if (state == STATE_BIND) {
         dsm.receive_timeout_usec = 15000;
     } else {
         dsm.receive_timeout_usec = 12000;
@@ -979,7 +1025,6 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
 
     if (rx_status & CYRF_RXE_IRQ) {
         uint8_t reason = read_register(CYRF_RX_STATUS);
-        //hal.console->printf("reason=%u\n", reason);
         if (reason & CYRF_BAD_CRC) {
             dsm.crc_errors++;
             if (dsm.crc_errors > 20) {
@@ -1000,6 +1045,10 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
         }
     }
 
+    if (state == STATE_AUTOBIND) {
+        state = STATE_RECV;
+    }
+    
     if (state != STATE_SEND_TELEM) {
         start_receive();
     }
@@ -1035,6 +1084,8 @@ void AP_Radio_cypress::irq_handler(void)
     uint8_t tx_status = read_status_debounced(CYRF_TX_IRQ_STATUS);
 
     switch (state) {
+    case STATE_AUTOBIND:
+        // fallthrough
     case STATE_RECV:
     case STATE_BIND:
         irq_handler_recv(rx_status);
@@ -1084,6 +1135,7 @@ void AP_Radio_cypress::irq_timeout(void)
     case STATE_SEND_FCC:
         send_FCC_test_packet();
         break;
+    case STATE_AUTOBIND:
     case STATE_SEND_TELEM_WAIT:
         state = STATE_RECV;
         // fall through
@@ -1250,6 +1302,21 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         return;
     }
 
+    if (get_autobind_time() != 0 &&
+        dsm.last_recv_us == 0 &&
+        now - dsm.last_autobind_send > 300*1000UL &&
+        now > get_autobind_time() * 1000*1000UL &&
+        state == STATE_RECV) {
+        // try to receive an auto-bind packet
+        dsm_set_channel(AUTOBIND_CHANNEL, true, 0, 0, 0);
+
+        state = STATE_AUTOBIND;
+        
+        debug(3,"recv autobind %u\n", now - dsm.last_autobind_send);
+        dsm.last_autobind_send = now;
+        return;
+    }
+    
     if (is_DSM2() && dsm.sync < DSM2_OK) {
         if (now - dsm.last_chan_change_us > 15000) {
             dsm.current_rf_channel = (dsm.current_rf_channel+1) % DSM_MAX_CHANNEL;
@@ -1447,6 +1514,7 @@ void AP_Radio_cypress::send_telem_packet(void)
         pkt.type = TELEM_STATUS;
         pkt.payload.status = t_status;
         pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
+        dsm.telem_send_count++;
     }
     
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);

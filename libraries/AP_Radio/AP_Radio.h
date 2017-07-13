@@ -112,6 +112,8 @@ private:
     AP_Int8 stick_mode;
     AP_Int8 factory_test;
     AP_Int8 tx_buzzer_adjust;
+    AP_Int8 auto_bind_time;
+    AP_Int8 auto_bind_rssi;
     
     static AP_Radio *_instance;
 };

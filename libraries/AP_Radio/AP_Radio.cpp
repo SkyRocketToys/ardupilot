@@ -115,6 +115,20 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Range: 0 40
     // @User: Advanced
     AP_GROUPINFO("_BZOFS",  15, AP_Radio, tx_buzzer_adjust, 25),
+
+    // @Param: _ABTIME
+    // @DisplayName: Auto-bind time
+    // @Description: When non-zero this sets the time with no transmitter packets before we start looking for auto-bind packets.
+    // @Range: 0 120
+    // @User: Advanced
+    AP_GROUPINFO("_ABTIME",  16, AP_Radio, auto_bind_time, 0),
+
+    // @Param: _ABLVL
+    // @DisplayName: Auto-bind level
+    // @Description: This sets the minimum RSSI of an auto-bind packet for it to be accepted. This should be set so that auto-bind will only happen at short range to minimise the change of an auto-bind happening accidentially
+    // @Range: 0 31
+    // @User: Advanced
+    AP_GROUPINFO("_ABLVL",  17, AP_Radio, auto_bind_rssi, 0),
     
     AP_GROUPEND
 };

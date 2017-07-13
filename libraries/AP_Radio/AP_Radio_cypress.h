@@ -94,6 +94,7 @@ private:
     enum {
         STATE_RECV,
         STATE_BIND,
+        STATE_AUTOBIND,
         STATE_SEND_TELEM,
         STATE_SEND_TELEM_WAIT,
         STATE_SEND_FCC
@@ -193,6 +194,9 @@ private:
         int8_t forced_channel = -1;
         uint8_t tx_rssi;
         uint8_t tx_pps;
+        uint32_t last_autobind_send;
+        bool have_tx_pps;
+        uint32_t telem_send_count;
     } dsm;
 
     struct {
@@ -262,5 +266,8 @@ private:
 
     // re-sync DSM2
     void dsm2_start_sync(void);
+
+    // check for double binding
+    void check_double_bind(void);
 };
 
