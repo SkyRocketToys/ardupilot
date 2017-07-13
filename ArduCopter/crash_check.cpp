@@ -29,6 +29,7 @@ void Copter::crash_check()
     }
 
     bool climb_rate_error = false;
+    bool controls_saturated = false;
     bool angle_error = false;
 
     // check for angle error over 30 degrees
@@ -41,22 +42,42 @@ void Copter::crash_check()
     crash.filtered_climb_rate = 0.97 * crash.filtered_climb_rate + barometer.get_climb_rate() * 0.03;
     float scaled_throttle = motors->get_throttle() * ahrs.cos_roll() * ahrs.cos_pitch();
 
-    if (fabsf(crash.filtered_climb_rate) < 0.5f && scaled_throttle > motors->get_throttle_hover()*1.2) {
-        // we should be climbing and we aren't
-        climb_rate_error = true;
+#ifdef CRASH_CHECK_THROTTLE_THRESHOLD
+    Vector3f att_target = attitude_control->get_att_target_euler_cd();
+    // only check throttle when target angle is less than 20 degrees
+    if (fabsf(att_target.x) + fabsf(att_target.y) < 2000) {
+        if (fabsf(crash.filtered_climb_rate) < CRASH_CHECK_CLIMB_THRESHOLD &&
+            (scaled_throttle > CRASH_CHECK_THROTTLE_THRESHOLD || motors->limit.throttle_upper)) {
+            // we should be climbing and we aren't
+            climb_rate_error = true;
+        }
+    }
+#endif
+
+    // if roll or pitch controller is saturated for the crash check time then its a crash
+    if (motors->limit.roll_pitch) {
+        controls_saturated = true;
     }
 
     static uint32_t last_log;
     uint32_t now = AP_HAL::millis();
     if (now - last_log > 25) {
         last_log = now;
-        DataFlash_Class::instance()->Log_Write("CCHK", "TimeUS,Count,FCRt,AErr,SThr", "QHfff",
+        uint8_t flags = 0;
+        if (motors->limit.roll_pitch) {
+            flags |= 1;
+        }
+        if (motors->limit.throttle_upper) {
+            flags |= 2;
+        }
+        DataFlash_Class::instance()->Log_Write("CCHK", "TimeUS,Count,FCRt,AErr,SThr,Flags", "QHfffB",
                                                AP_HAL::micros64(),
                                                crash.counter, (double)crash.filtered_climb_rate,
-                                               (double)angle_error_deg, (double)scaled_throttle);
+                                               (double)angle_error_deg, (double)scaled_throttle, flags);
+                                               
     }
 
-    if (!angle_error && !climb_rate_error) {
+    if (!angle_error && !climb_rate_error && !controls_saturated) {
         crash.counter = 0;
         return;
     }
