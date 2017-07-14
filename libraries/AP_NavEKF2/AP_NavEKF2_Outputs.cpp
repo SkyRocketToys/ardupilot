@@ -279,7 +279,7 @@ bool NavEKF2_core::getPosNE(Vector2f &posNE) const
     return false;
 }
 
-// Write the last calculated D position of the body frame origin relative to the EKF origin (m).
+// Write the last calculated D position of the body frame origin relative to the reference point (m).
 // Return true if the estimate is valid
 bool NavEKF2_core::getPosD(float &posD) const
 {
@@ -299,7 +299,6 @@ bool NavEKF2_core::getPosD(float &posD) const
     return filterStatus.flags.vert_pos;
 
 }
-
 // return the estimated height of body frame origin above ground level
 bool NavEKF2_core::getHAGL(float &HAGL) const
 {
@@ -317,7 +316,7 @@ bool NavEKF2_core::getLLH(struct Location &loc) const
 {
     if(validOrigin) {
         // Altitude returned is an absolute altitude relative to the WGS-84 spherioid
-        loc.alt =  100 * (int32_t)(ekfGpsRefHgt - (double)outputDataNew.position.z);
+        loc.alt = EKF_origin.alt - outputDataNew.position.z*100;
         loc.flags.relative_alt = 0;
         loc.flags.terrain_alt = 0;
 
