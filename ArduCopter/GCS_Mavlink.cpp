@@ -946,10 +946,12 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 
     case MAVLINK_MSG_ID_STATUSTEXT:
     {
+#if 0
         // ignore any statustext messages not from our GCS:
         if (msg->sysid != copter.g.sysid_my_gcs) {
             break;
         }
+#endif
         mavlink_statustext_t packet;
         mavlink_msg_statustext_decode(msg, &packet);
         char text[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1+4] = { 'G','C','S',':'};
