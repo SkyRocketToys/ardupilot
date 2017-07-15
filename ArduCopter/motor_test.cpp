@@ -16,6 +16,7 @@ static uint8_t motor_test_seq;              // motor sequence number of motor be
 static uint8_t motor_test_count;            // number of motors to test
 static uint8_t motor_test_throttle_type;    // motor throttle type (0=throttle percentage, 1=PWM, 2=pilot throttle channel pass-through)
 static uint16_t motor_test_throttle_value;  // throttle to be sent to motor, value depends upon it's type
+static mavlink_channel_t motor_test_chan;   // channel to send result to
 
 // motor_test_output - checks for timeout and sends updates to motors objects
 void Copter::motor_test_output()
@@ -125,7 +126,7 @@ bool Copter::mavlink_motor_test_check(mavlink_channel_t chan, bool check_rc)
 
 // mavlink_motor_test_start - start motor test - spin a single motor at a specified pwm
 //  returns MAV_RESULT_ACCEPTED on success, MAV_RESULT_FAILED on failure
-uint8_t Copter::mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value,
+void Copter::mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value,
                                          float timeout_sec, uint8_t motor_count)
 {
     if (motor_count == 0) {
@@ -140,7 +141,8 @@ uint8_t Copter::mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_s
            supplied
         */
         if (!mavlink_motor_test_check(chan, throttle_type != 1)) {
-            return MAV_RESULT_FAILED;
+            mavlink_msg_command_ack_send(chan, MAV_CMD_DO_MOTOR_TEST, MAV_RESULT_FAILED);
+            return;
         } else {
             // start test
             ap.motor_test = true;
@@ -172,13 +174,11 @@ uint8_t Copter::mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_s
     motor_test_count = motor_count;
     motor_test_throttle_type = throttle_type;
     motor_test_throttle_value = throttle_value;
+    motor_test_chan = chan;
 
     if (motor_test_throttle_type == MOTOR_TEST_COMPASS_CAL) {
         compass.per_motor_calibration_start();
     }            
-                
-    // return success
-    return MAV_RESULT_ACCEPTED;
 }
 
 // motor_test_stop - stops the motor test
@@ -213,4 +213,6 @@ void Copter::motor_test_stop()
     
     // turn off notify leds
     AP_Notify::flags.esc_calibration = false;
+
+    mavlink_msg_command_ack_send(motor_test_chan, MAV_CMD_DO_MOTOR_TEST, MAV_RESULT_ACCEPTED);
 }

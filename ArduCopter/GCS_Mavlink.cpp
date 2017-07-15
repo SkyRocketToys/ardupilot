@@ -1419,9 +1419,10 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
             // param4 : timeout (in seconds)
             // param5 : num_motors (in sequence)
             // param6 : compass learning (0: disabled, 1: enabled)
-            result = copter.mavlink_motor_test_start(chan, (uint8_t)packet.param1, (uint8_t)packet.param2, (uint16_t)packet.param3,
-                                                     packet.param4, (uint8_t)packet.param5);
-            break;
+            copter.mavlink_motor_test_start(chan, (uint8_t)packet.param1, (uint8_t)packet.param2, (uint16_t)packet.param3,
+                                            packet.param4, (uint8_t)packet.param5);
+            // result is returned on completion of test
+            return;
 
 #if GRIPPER_ENABLED == ENABLED
         case MAV_CMD_DO_GRIPPER:
