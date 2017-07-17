@@ -193,6 +193,7 @@ struct PACKED log_BARO {
     uint32_t sample_time_ms;
     float   drift_offset;
     float   ground_temp;
+    float   p_correction;
 };
 
 struct PACKED log_AHRS {
@@ -843,8 +844,8 @@ struct PACKED log_Beacon {
 #define ACC_FMT "QQfff"
 
 // see "struct sensor" in AP_Baro.h and "Log_Write_Baro":
-#define BARO_LABELS "TimeUS,Alt,Press,Temp,CRt,SMS,Offset,GndTemp"
-#define BARO_FMT   "QffcfIff"
+#define BARO_LABELS "TimeUS,Alt,Press,Temp,CRt,SMS,Offset,GndTemp,PCorr"
+#define BARO_FMT   "QffcfIfff"
 
 #define ESC_LABELS "TimeUS,RPM,Volt,Curr,Temp"
 #define ESC_FMT   "Qcccc"

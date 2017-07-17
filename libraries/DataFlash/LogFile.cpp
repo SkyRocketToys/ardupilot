@@ -380,6 +380,7 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
         sample_time_ms: baro.get_last_update(0),
         drift_offset  : drift_offset,
         ground_temp   : ground_temp,
+        p_correction  : baro.get_pressure_correction(0),
     };
     WriteBlock(&pkt, sizeof(pkt));
 
@@ -394,6 +395,7 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
             sample_time_ms: baro.get_last_update(1),
             drift_offset  : drift_offset,
             ground_temp   : ground_temp,
+            p_correction  : baro.get_pressure_correction(1),
         };
         WriteBlock(&pkt2, sizeof(pkt2));
     }
@@ -409,6 +411,7 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
             sample_time_ms: baro.get_last_update(2),
             drift_offset  : drift_offset,
             ground_temp   : ground_temp,
+            p_correction  : baro.get_pressure_correction(2),
         };
         WriteBlock(&pkt3, sizeof(pkt3));
     }
