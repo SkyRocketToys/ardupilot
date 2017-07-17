@@ -45,11 +45,15 @@ public:
     // pressure in Pascal. Divide by 100 for millibars or hectopascals
     float get_pressure(void) const { return get_pressure(_primary); }
     float get_pressure(uint8_t instance) const { return sensors[instance].pressure; }
-
+   
     // temperature in degrees C
     float get_temperature(void) const { return get_temperature(_primary); }
     float get_temperature(uint8_t instance) const { return sensors[instance].temperature; }
 
+    // get pressure correction in Pascal. Divide by 100 for millibars or hectopascals
+    float get_pressure_correction(void) const { return get_pressure_correction(_primary); }
+    float get_pressure_correction(uint8_t instance) const { return sensors[instance].p_correction; }
+    
     // accumulate a reading on sensors. Some backends without their
     // own thread or a timer may need this.
     void accumulate(void);
