@@ -1612,7 +1612,7 @@ void AP_Radio_cypress::handle_data_packet(mavlink_channel_t chan, const mavlink_
         if (m.type == 43) {
             // sending a tune to play - for development testing
             fwupload.fw_type = TELEM_PLAY;
-            fwupload.length = MIN(m.len, 64);
+            fwupload.length = MIN(m.len, 90);
             fwupload.offset = 0;
             memcpy(&fwupload.pending_data[0], &m.data[0], fwupload.length);
         } else {
