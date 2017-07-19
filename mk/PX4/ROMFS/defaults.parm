@@ -113,8 +113,8 @@ ANGLE_MAX 3500
 ATC_ACCEL_R_MAX    160000
 ATC_ACCEL_P_MAX    160000
 ATC_ACCEL_Y_MAX     54000
-ATC_ANG_PIT_P          14.77
-ATC_ANG_RLL_P          15.75
+ATC_ANG_PIT_P          8.0
+ATC_ANG_RLL_P          8.0
 ATC_ANG_YAW_P          7.16
 ATC_RAT_PIT_D          0.0069
 ATC_RAT_PIT_FILT      10
@@ -202,6 +202,7 @@ RC4_DZ              15
 POS_XY_P              0.7
 VEL_XY_I              0.3
 VEL_XY_P              0.6
+VEL_XY_FILT_HZ        1.0
 WPNAV_LOIT_JERK     4000
 WPNAV_LOIT_MAXA      800
 WPNAV_LOIT_MINA      250
