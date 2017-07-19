@@ -61,8 +61,8 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     AP_GROUPINFO("_TELEM",  7, AP_Radio, telem_enable, 0),
 
     // @Param: _TXPOW
-    // @DisplayName: Transmit power
-    // @Description: Set transmit power
+    // @DisplayName: Telemetry Transmit power
+    // @Description: Set telemetry transmit power. This is the power level (from 1 to 8) for telemetry packets sent from the RX to the TX
     // @Range: 1 8
     // @User: Advanced
     AP_GROUPINFO("_TXPOW",  8, AP_Radio, transmit_power, 8),
@@ -104,7 +104,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
 
     // @Param: _TXMAX
     // @DisplayName: Transmitter transmit power
-    // @Description: Set transmitter maximum transmit power 
+    // @Description: Set transmitter maximum transmit power (from 1 to 8)
     // @Range: 1 8
     // @User: Advanced
     AP_GROUPINFO("_TXMAX",  14, AP_Radio, tx_max_power, 4),
