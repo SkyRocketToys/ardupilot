@@ -1685,8 +1685,9 @@ void GCS_MAVLINK::handle_data_packet(mavlink_message_t *msg)
     mavlink_data96_t m;
     mavlink_msg_data96_decode(msg, &m);
     switch (m.type) {
-    case 42: {
-        // pass to AP_Radio (for firmware upload)
+    case 42:
+    case 43: {
+        // pass to AP_Radio (for firmware upload and playing test tunes)
         AP_Radio *radio = AP_Radio::instance();
         if (radio != nullptr) {
             radio->handle_data_packet(chan, m);
