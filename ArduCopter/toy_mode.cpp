@@ -287,6 +287,7 @@ void ToyMode::update()
                         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
                     } else {
                         upgrade_to_loiter = true;
+                        AP_Notify::flags.hybrid_loiter = true;
                     }
                 }
             } else {
@@ -300,6 +301,7 @@ void ToyMode::update()
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
+            AP_Notify::flags.hybrid_loiter = false;
         } else if (copter.position_ok() && set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
