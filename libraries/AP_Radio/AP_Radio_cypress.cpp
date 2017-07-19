@@ -1497,17 +1497,18 @@ void AP_Radio_cypress::send_telem_packet(void)
         fwupload.length > fwupload.acked &&
         ((fwupload.counter++ & 0x07) != 0) &&
         sem->take_nonblocking()) {
-        pkt.type = TELEM_FW;
+        pkt.type = fwupload.fw_type;
         pkt.payload.fw.seq = fwupload.sequence;
         uint32_t len = fwupload.length>fwupload.acked?fwupload.length - fwupload.acked:0;
         pkt.payload.fw.len = len<=8?len:8;
         pkt.payload.fw.offset = fwupload.offset+fwupload.acked;
         memcpy(&pkt.payload.fw.data[0], &fwupload.pending_data[fwupload.acked], pkt.payload.fw.len);
         fwupload.len = pkt.payload.fw.len;
-        debug(4,"sent fw seq=%u offset=%u len=%u\n",
-              pkt.payload.fw.seq,
-              pkt.payload.fw.offset,
-              pkt.payload.fw.len);              
+        debug(4, "sent fw seq=%u offset=%u len=%u type=%u\n",
+               pkt.payload.fw.seq,
+               pkt.payload.fw.offset,
+               pkt.payload.fw.len,
+               pkt.type);
         sem->give();
         pkt.crc = crc_crc8((const uint8_t *)&pkt.type, 15);
     } else {
@@ -1608,7 +1609,17 @@ void AP_Radio_cypress::handle_data_packet(mavlink_channel_t chan, const mavlink_
         fwupload.length = MIN(m.len-4, 92);
         fwupload.acked = 0;
         fwupload.sequence++;
-        memcpy(&fwupload.pending_data[0], &m.data[4], fwupload.length);
+        if (m.type == 43) {
+            // sending a tune to play - for development testing
+            fwupload.fw_type = TELEM_PLAY;
+            fwupload.length = MIN(m.len, 64);
+            fwupload.offset = 0;
+            memcpy(&fwupload.pending_data[0], &m.data[0], fwupload.length);
+        } else {
+            // sending a chunk of firmware OTA upload
+            fwupload.fw_type = TELEM_FW;
+            memcpy(&fwupload.pending_data[0], &m.data[4], fwupload.length);
+        }
         sem->give();
     } 
 }

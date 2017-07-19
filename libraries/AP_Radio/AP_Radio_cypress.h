@@ -208,6 +208,7 @@ private:
         uint32_t length;
         uint32_t acked;
         uint8_t len;
+        enum telem_type fw_type;
         uint8_t pending_data[92];
     } fwupload;
     
