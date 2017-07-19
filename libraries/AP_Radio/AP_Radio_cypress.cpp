@@ -227,6 +227,7 @@ enum {
 #define DSM_MAX_CHANNEL 0x4F
 
 #define DSM_SCAN_MIN_CH 8
+#define DSM_SCAN_MID_CH 40
 #define DSM_SCAN_MAX_CH 70
 
 #define FCC_SUPPORT_CW_MODE 0
@@ -1550,7 +1551,7 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         break;
     case 2:
     case 5:
-        channel = DSM_MAX_CHANNEL/2;
+        channel = DSM_SCAN_MID_CH;
         break;
     case 3:
     case 6:
