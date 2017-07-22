@@ -6,9 +6,8 @@
 
 #include "ap_version.h"
 
-#define THISFIRMWARE "APM:Copter V3.6-dev"
-
 // the following line is parsed by the autotest scripts
+#define THISFIRMWARE "APM:Copter V3.6-SRT1"
 #define FIRMWARE_VERSION 3,6,0,FIRMWARE_VERSION_TYPE_DEV
 
 #define FW_MAJOR 3
