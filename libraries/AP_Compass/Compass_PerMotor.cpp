@@ -139,6 +139,15 @@ void Compass_PerMotor::calibration_start(void)
         count[i] = 0;
         start_ms[i] = 0;
     }
+
+    // we need to ensure we get current data by throwing away several
+    // samples. The offsets may have just changed from an offset
+    // calibration
+    for (uint8_t i=0; i<4; i++) {
+        compass.read();
+        hal.scheduler->delay(50);
+    }
+    
     base_field = compass.get_field(0);
     running = true;
 
