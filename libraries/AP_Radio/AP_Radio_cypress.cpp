@@ -1307,6 +1307,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         dsm.last_recv_us == 0 &&
         now - dsm.last_autobind_send > 300*1000UL &&
         now > get_autobind_time() * 1000*1000UL &&
+        get_factory_test() == 0 &&
         state == STATE_RECV) {
         // try to receive an auto-bind packet
         dsm_set_channel(AUTOBIND_CHANNEL, true, 0, 0, 0);
