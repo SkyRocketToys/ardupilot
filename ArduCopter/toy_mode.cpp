@@ -680,6 +680,12 @@ void ToyMode::handle_message(mavlink_message_t *msg)
             radio->set_wifi_channel(m.value);
         }
 #endif
+    } else if (strncmp(m.name, "LOGDISARM", 10) == 0) {
+        enum ap_var_type vtype;
+        AP_Int8 *log_disarmed = (AP_Int8 *)AP_Param::find("LOG_DISARMED", &vtype);
+        if (log_disarmed) {
+            log_disarmed->set(int8_t(m.value));
+        }
     }
 }
 
