@@ -1559,6 +1559,12 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
             }
             break;
 
+        case MAV_CMD_FIXED_MAG_CAL_FIELD: {
+            Vector3f field(packet.param1, packet.param2, packet.param3);
+            result = copter.compass.fixed_mag_cal_field(field);
+            break;
+        }
+
         case MAV_CMD_FIXED_MAG_CAL:
             result = copter.compass.fixed_mag_cal(copter.ahrs, packet.param1, packet.param2, packet.param3, packet.param4);
             break;
