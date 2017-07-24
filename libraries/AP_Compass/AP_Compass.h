@@ -309,6 +309,7 @@ public:
     }
 
     // perform a magnetometer calibration assuming a fixed position in a known field
+    uint8_t fixed_mag_cal_field(const Vector3f &field);
     uint8_t fixed_mag_cal(const AP_AHRS &ahrs, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg);
     
 private:

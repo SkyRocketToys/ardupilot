@@ -348,16 +348,51 @@ uint8_t Compass::handle_mag_cal_command(const mavlink_command_long_t &packet)
   perform a magnetometer calibration assuming a fixed position in a known field
 
   This is an alternative magnetometer calibration method that involves
-  placing the vehicle at a known yaw, with a known earths declination,
-  inclination and field intensity.
+  placing the vehicle at a known yaw, with a known earths field
 */
-uint8_t Compass::fixed_mag_cal(const AP_AHRS &ahrs, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg)
+uint8_t Compass::fixed_mag_cal_field(const Vector3f &mag_bf)
 {
     if (hal.util->get_soft_armed()) {
         // refuse while armed
         return MAV_RESULT_FAILED;
     }
-    
+
+    // reset diagonals and off-diagonals
+    for (uint8_t i=0; i<get_count(); i++) {
+        set_and_save_diagonals(i, Vector3f(1,1,1));
+        set_and_save_offdiagonals(i, Vector3f());
+    }
+
+    // read two samples to clear use of diagonals
+    read();
+    hal.scheduler->delay(100);
+    read();
+
+    for (uint8_t i=0; i<get_count(); i++) {
+        const Vector3f &field = get_field(i);
+        const Vector3f &ofs = get_offsets(i);
+        Vector3f correction = mag_bf - field;
+        Vector3f new_offset = ofs + correction;
+
+        // save offsets
+        set_offsets(i, new_offset);
+        save_offsets(i);
+    }
+
+    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Finished fixed calibration");
+
+    return MAV_RESULT_ACCEPTED;
+}
+
+/*
+  perform a magnetometer calibration assuming a fixed position in a known field
+
+  This is an alternative magnetometer calibration method that involves
+  placing the vehicle at a known yaw, with a known earths declination,
+  inclination and field intensity.
+*/
+uint8_t Compass::fixed_mag_cal(const AP_AHRS &ahrs, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg)
+{
     // create earth field
     Vector3f mag_ef(intensity_mgauss, 0.0, 0.0);
     Matrix3f R;
@@ -369,23 +404,6 @@ uint8_t Compass::fixed_mag_cal(const AP_AHRS &ahrs, float declination_deg, float
     
     // Rotate field into body frame
     Vector3f mag_bf = dcm.transposed() * mag_ef;
-
-    for (uint8_t i=0; i<get_count(); i++) {
-        const Vector3f &field = get_field(i);
-        const Vector3f &ofs = get_offsets(i);
-        Vector3f correction = mag_bf - field;
-        Vector3f new_offset = ofs + correction;
-
-        // reset diagonals and off-diagonals
-        set_and_save_diagonals(i, Vector3f(1,1,1));
-        set_and_save_offdiagonals(i, Vector3f());
-
-        // save offsets
-        set_offsets(i, new_offset);
-        save_offsets(i);
-    }
-
-    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Finished fixed calibration");
-
-    return MAV_RESULT_ACCEPTED;
+    
+    return fixed_mag_cal_field(mag_bf);
 }
