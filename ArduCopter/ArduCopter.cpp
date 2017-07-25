@@ -407,6 +407,17 @@ void Copter::ten_hz_logging_loop()
         Log_Write_Proximity();
         Log_Write_Beacon();
     }
+
+    Vector3f mag_variances;
+    if (EKF2.getMagStateVariances(0, mag_variances)) {
+        DataFlash_Class::instance()->Log_Write("EK2M", "TimeUS,MVarX,MVarY,MVarZ", "Qfff",
+                                               AP_HAL::micros64(),
+                                               mag_variances.x,
+                                               mag_variances.y,
+                                               mag_variances.z);
+    }
+
+
 #if FRAME_CONFIG == HELI_FRAME
     Log_Write_Heli();
 #endif
