@@ -28,7 +28,7 @@
 void
 Compass::learn_offsets(void)
 {
-    if (_learn == 0) {
+    if (_learn != LEARN_INTERNAL) {
         // auto-calibration is disabled
         return;
     }
