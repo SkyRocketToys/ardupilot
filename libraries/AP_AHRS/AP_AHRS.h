@@ -529,6 +529,14 @@ public:
     virtual bool resetHeightDatum(void) {
         return false;
     }
+
+    // tell the active EKF to save some of the learnt compass offsets
+    // from a flight. Called on disarm after a good
+    // landing. learn_proportion is from 0 to 1, and indicates how
+    // much of the learnt offsets to apply to the compass
+    virtual bool save_learnt_compass_offsets(float learn_proportion) {
+        return false;
+    }
     
     // get_variances - provides the innovations normalised using the innovation variance where a value of 0
     // indicates prefect consistency between the measurement and the EKF solution and a value of of 1 is the maximum
