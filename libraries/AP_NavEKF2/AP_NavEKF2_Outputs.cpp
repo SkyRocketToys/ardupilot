@@ -392,13 +392,10 @@ bool NavEKF2_core::getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const
 {
     // compass offsets are valid if we have finalised magnetic field initialisation, magnetic field learning is not prohibited,
     // primary compass is valid and state variances have converged
-    const float maxMagVar = 5E-6f;
-    bool variancesConverged = (P[19][19] < maxMagVar) && (P[20][20] < maxMagVar) && (P[21][21] < maxMagVar);
     if ((mag_idx == magSelectIndex) &&
             finalInflightMagInit &&
             !inhibitMagStates &&
-            _ahrs->get_compass()->healthy(magSelectIndex) &&
-            variancesConverged) {
+        _ahrs->get_compass()->healthy(magSelectIndex)) {
         magOffsets = _ahrs->get_compass()->get_offsets(magSelectIndex) - stateStruct.body_magfield*1000.0f;
         return true;
     } else {
@@ -407,6 +404,20 @@ bool NavEKF2_core::getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const
     }
 }
 
+// return magnetometer state variances
+bool NavEKF2_core::getMagStateVariances(uint8_t mag_idx, Vector3f &magVariances) const
+{
+    if (mag_idx != magSelectIndex ||
+        !_ahrs->get_compass()->healthy(magSelectIndex)) {
+        return false;
+    }
+    magVariances.x = P[19][19];
+    magVariances.y = P[20][20];
+    magVariances.z = P[21][21];
+    return true;
+}
+
+    
 // return the index for the active magnetometer
 uint8_t NavEKF2_core::getActiveMag() const
 {

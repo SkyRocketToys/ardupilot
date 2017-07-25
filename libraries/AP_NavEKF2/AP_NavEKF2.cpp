@@ -994,6 +994,24 @@ bool NavEKF2::getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const
     return false;
 }
 
+// Return magnetometer state variances
+bool NavEKF2::getMagStateVariances(uint8_t mag_idx, Vector3f &magVariances) const
+{
+    if (!core) {
+        return false;
+    }
+    // try the primary first, else loop through all of the cores and return when one has offsets for this mag instance
+    if (core[primary].getMagStateVariances(mag_idx, magVariances)) {
+        return true;
+    }
+    for (uint8_t i=0; i<num_cores; i++) {
+        if(core[i].getMagStateVariances(mag_idx, magVariances)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Return the last calculated latitude, longitude and height in WGS-84
 // If a calculated location isn't available, return a raw GPS measurement
 // The status will return true if a calculation or raw measurement is available
