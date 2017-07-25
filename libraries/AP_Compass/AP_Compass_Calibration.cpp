@@ -357,13 +357,17 @@ uint8_t Compass::fixed_mag_cal_field(const Vector3f &mag_bf)
         return MAV_RESULT_FAILED;
     }
 
+#if 0
+    // note: removed to allow external set of ODI and DIA values
+    
     // reset diagonals and off-diagonals
     for (uint8_t i=0; i<get_count(); i++) {
         set_and_save_diagonals(i, Vector3f(1,1,1));
         set_and_save_offdiagonals(i, Vector3f());
     }
+#endif
 
-    // read two samples to clear use of diagonals
+    // read two samples to clear possible change of diagonals
     read();
     hal.scheduler->delay(100);
     read();
