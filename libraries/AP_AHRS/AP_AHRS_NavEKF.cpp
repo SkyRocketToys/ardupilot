@@ -1626,5 +1626,67 @@ uint8_t AP_AHRS_NavEKF::get_primary_gyro_index(void) const
     return _ins.get_primary_gyro();
 }
 
+// tell the active EKF to save some of the learnt compass offsets
+// from a flight. Called on disarm after a good
+// landing. learn_proportion is from 0 to 1, and indicates how
+// much of the learnt offsets to apply to the compass
+bool AP_AHRS_NavEKF::save_learnt_compass_offsets(float learn_proportion)
+{
+    switch (active_EKF_type()) {
+    case EKF_TYPE_NONE:
+        return false;
+
+    case EKF_TYPE2: {
+        if (!_compass) {
+            return false;
+        }
+        uint8_t primary = _compass->get_primary();
+        Vector3f learned_bias, mag_state_variances;
+        const Vector3f &saved_bias = _compass->get_offsets(primary);
+        if (EKF2.getMagOffsets(primary, learned_bias) &&
+            EKF2.getMagStateVariances(primary, mag_state_variances) &&
+            _compass->healthy(primary)) {
+            const float assumed_saved_variance = 5.0e-6;
+            Vector3f new_bias;
+            /*
+              weight the update of the learned bias using the state variance
+             */
+            for (uint8_t i=0; i<3; i++) {
+                float weighting = mag_state_variances[i] / (assumed_saved_variance + mag_state_variances[i]);
+                weighting = constrain_float(weighting, 0, learn_proportion);
+                new_bias[i] = learned_bias[i] * weighting + saved_bias[i] * (1 - weighting);
+            }
+            _compass->set_and_save_offsets(primary, new_bias);
+            return true;
+        }
+        break;
+    }
+
+    case EKF_TYPE3: {
+        if (!_compass) {
+            return false;
+        }
+        uint8_t primary = _compass->get_primary();
+        Vector3f ekf_offsets;
+        const Vector3f &mag_offsets = _compass->get_offsets(primary);
+        if (EKF3.getMagOffsets(primary, ekf_offsets) && _compass->healthy(primary)) {
+            _compass->set_and_save_offsets(primary, mag_offsets - (ekf_offsets*learn_proportion));
+            return true;
+        }
+        break;
+    }
+        
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    case EKF_TYPE_SITL: {
+        return false;
+    }
+#endif
+        
+    default:
+        break;
+    }
+    return false;
+}
+
 #endif // AP_AHRS_NAVEKF_AVAILABLE
 
