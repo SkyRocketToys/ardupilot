@@ -101,11 +101,9 @@ void Sub::init_disarm_motors()
 
     // save compass offsets learned by the EKF if enabled
     if (ahrs.use_compass() && compass.get_learn_type() == Compass::LEARN_EKF) {
-        for (uint8_t i=0; i<COMPASS_MAX_INSTANCES; i++) {
-            Vector3f magOffsets;
-            if (ahrs.getMagOffsets(i, magOffsets)) {
-                compass.set_and_save_offsets(i, magOffsets);
-            }
+        // save some compass offsets
+        if (ahrs.save_learnt_compass_offsets(0.35)) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "saved compass offsets");        
         }
     }
 
