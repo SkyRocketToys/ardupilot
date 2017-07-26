@@ -1654,7 +1654,7 @@ bool AP_AHRS_NavEKF::save_learnt_compass_offsets(float learn_proportion)
             for (uint8_t i=0; i<3; i++) {
                 float weighting = mag_state_variances[i] / (assumed_saved_variance + mag_state_variances[i]);
                 weighting = constrain_float(weighting, 0, learn_proportion);
-                new_bias[i] = learned_bias[i] * weighting + saved_bias[i] * (1 - weighting);
+                new_bias[i] = learned_bias[i] * (1-weighting) + saved_bias[i] * weighting;
             }
             _compass->set_and_save_offsets(primary, new_bias);
             return true;
