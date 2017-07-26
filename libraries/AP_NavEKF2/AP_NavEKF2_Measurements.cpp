@@ -237,9 +237,10 @@ void NavEKF2_core::readMagData()
         Vector3f nowMagOffsets = _ahrs->get_compass()->get_offsets(magSelectIndex);
         bool changeDetected = lastMagOffsetsValid && (nowMagOffsets != lastMagOffsets);
         if (changeDetected) {
-            // zero the learned magnetometer bias states
-            stateStruct.body_magfield.zero();
-            // clear the measurement buffer
+            // Adjust the magnetometer bias states so there is no step change in magnetometer innovations
+            // Note: ekf bias states have opposite sign to compass offsets where offsets are added and biases are subtracted to correct the mag data.
+            stateStruct.body_magfield += (nowMagOffsets - lastMagOffsets) * 0.001f;
+            // clear the measurement buffer to prevent use of any data corrected using the old offsets
             storedMag.reset();
         }
         lastMagOffsets = nowMagOffsets;
