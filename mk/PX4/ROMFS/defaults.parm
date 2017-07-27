@@ -174,6 +174,7 @@ MOT_THST_HOVER        0.3514
 MOT_THST_EXPO        -0.56
 MOT_SPIN_ARM          0.03
 MOT_SPIN_MIN          0.03
+MOT_SPIN_MAX          1.0
 MOT_SPOOL_TIME        0
 MOT_HOVER_LEARN       1
 
