@@ -1,7 +1,8 @@
 #include "Copter.h"
 
 // Code to detect a crash main ArduCopter code
-#define CRASH_CHECK_TRIGGER_SEC         3       // 3 seconds inverted indicates a crash
+#define CRASH_CHECK_TRIGGER_SEC         3       // 3 seconds indicates a crash
+#define CRASH_CHECK_TRIGGER_SEC         3       // 3 seconds indicates a crash
 #define CRASH_CHECK_ANGLE_DEVIATION_DEG 30.0f   // 30 degrees beyond angle max is signal we are inverted
 #define CRASH_CHECK_ACCEL_MAX           3.0f    // vehicle must be accelerating less than 3m/s/s to be considered crashed
 
@@ -31,6 +32,7 @@ void Copter::crash_check()
     bool climb_rate_error = false;
     bool controls_saturated = false;
     bool angle_error = false;
+    uint32_t now = AP_HAL::millis();
 
     // check for angle error over 30 degrees
     float angle_error_deg = attitude_control->get_att_error_angle_deg();
@@ -59,10 +61,8 @@ void Copter::crash_check()
         controls_saturated = true;
     }
 
-    static uint32_t last_log;
-    uint32_t now = AP_HAL::millis();
-    if (now - last_log > 25) {
-        last_log = now;
+    if (now - crash.last_log > 25) {
+        crash.last_log = now;
         uint8_t flags = 0;
         if (motors->limit.roll_pitch) {
             flags |= 1;
@@ -87,10 +87,20 @@ void Copter::crash_check()
 
     // check if crashing for 2 seconds
     if (crash.counter >= (CRASH_CHECK_TRIGGER_SEC * scheduler.get_loop_rate_hz())) {
+        if (!angle_error && climb_rate_error && !controls_saturated && control_mode != LAND) {
+            // this could be a false positive due to inability to
+            // climb at high throttle. This happens when battery is
+            // low in wind. Go into LAND rather than disarming
+            gcs_send_text(MAV_SEVERITY_EMERGENCY,"Crash: obstruction landing");
+            set_mode(LAND, MODE_REASON_OBSTRUCTION);
+            crash.counter = 0;
+            return;
+        }
         // log an error in the dataflash
         Log_Write_Error(ERROR_SUBSYSTEM_CRASH_CHECK, ERROR_CODE_CRASH_CHECK_CRASH);
         // send message to gcs
         gcs_send_text(MAV_SEVERITY_EMERGENCY,"Crash: Disarming");
+
         // disarm motors
         init_disarm_motors();
         crash.last_trigger_ms = now;

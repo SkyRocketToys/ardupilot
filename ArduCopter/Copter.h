@@ -650,6 +650,7 @@ private:
         uint16_t counter;
         float filtered_climb_rate;
         uint32_t last_trigger_ms;
+        uint32_t last_log;
     } crash;
     
     // set when we are upgrading parameters from 3.4
