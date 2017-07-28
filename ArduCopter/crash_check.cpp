@@ -94,6 +94,7 @@ void Copter::crash_check()
             gcs_send_text(MAV_SEVERITY_EMERGENCY,"Crash: obstruction landing");
             set_mode(LAND, MODE_REASON_OBSTRUCTION);
             crash.counter = 0;
+            crash.last_trigger_ms = now;
             return;
         }
         // log an error in the dataflash
