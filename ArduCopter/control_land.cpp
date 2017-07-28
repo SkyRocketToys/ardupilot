@@ -95,7 +95,12 @@ void Copter::land_nogps_run()
 
     // process pilot inputs
     if (!failsafe.radio) {
-        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
+        // check for land cancel by pilot, but not if we've triggered
+        // a crash in last 2 seconds, to cope with LAND from
+        // obstruction detection
+        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
+            rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+            millis() - crash.last_trigger_ms > 2000) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
             set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
@@ -220,7 +225,12 @@ void Copter::land_run_horizontal_control()
     
     // process pilot inputs
     if (!failsafe.radio) {
-        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
+        // check for land cancel by pilot, but not if we've triggered
+        // a crash in last 2 seconds, to cope with LAND from
+        // obstruction detection
+        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
+            rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+            millis() - crash.last_trigger_ms > 2000) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
             if (!set_mode(LOITER, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
