@@ -357,25 +357,39 @@ uint8_t Compass::fixed_mag_cal_field(const Vector3f &mag_bf)
         return MAV_RESULT_FAILED;
     }
 
-#if 0
-    // note: removed to allow external set of ODI and DIA values
-    
-    // reset diagonals and off-diagonals
-    for (uint8_t i=0; i<get_count(); i++) {
-        set_and_save_diagonals(i, Vector3f(1,1,1));
-        set_and_save_offdiagonals(i, Vector3f());
-    }
-#endif
+    /*
+      we can't just adjust the offsets by the difference in field, as
+      the ODI and DIA values affect the corrections applied by the
+      offsets. We need to invert the correction matrix if we can, and
+      use that to calculate the right offsets. If we can't invert it
+      then we use it without the eliptical correction.
+     */
 
-    // read two samples to clear possible change of diagonals
+    // read two samples to clear possible change of eliptical corrections
     read();
     hal.scheduler->delay(100);
     read();
 
     for (uint8_t i=0; i<get_count(); i++) {
+        const Vector3f &diagonals = _state[i].diagonals.get();
+        const Vector3f &offdiagonals = _state[i].offdiagonals.get();
         const Vector3f &field = get_field(i);
         const Vector3f &ofs = get_offsets(i);
-        Vector3f correction = mag_bf - field;
+        // form eliptical correction matrix
+        Matrix3f mat(
+            diagonals.x, offdiagonals.x, offdiagonals.y,
+            offdiagonals.x,    diagonals.y, offdiagonals.z,
+            offdiagonals.y, offdiagonals.z,    diagonals.z
+            );
+        Vector3f correction;
+        if (mat.invert()) {
+            Vector3f v1 = mat * field;
+            Vector3f v2 = mat * mag_bf;
+            correction = v2 - v1;
+        } else {
+            // is this the best we can do??
+            correction = mag_bf - field;
+        }
         Vector3f new_offset = ofs + correction;
 
         // save offsets
