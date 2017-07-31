@@ -399,6 +399,7 @@ private:
 
     // RTL
     RTLState rtl_state;  // records state of rtl (initial climb, returning home, etc)
+    bool rtl_pilot_steering;
     bool rtl_state_complete; // set to true if the current state is completed
 
     struct {
@@ -946,6 +947,7 @@ private:
     void rtl_run();
     void rtl_climb_start();
     void rtl_return_start();
+    void rtl_stick_mixing(float &nav_roll, float &nav_pitch);
     void rtl_climb_return_run();
     void rtl_loiterathome_start();
     void rtl_loiterathome_run();
