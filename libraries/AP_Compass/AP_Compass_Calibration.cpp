@@ -66,7 +66,9 @@ Compass::_start_calibration(uint8_t i, bool retry, float delay)
     _calibrator[i].start(retry, delay, get_offsets_max());
 
     // disable compass learning both for calibration and after completion
-    _learn.set_and_save(0);
+    if (_learn.get() == 1) {
+        _learn.set_and_save(0);
+    }
 
     return true;
 }
