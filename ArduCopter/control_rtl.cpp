@@ -126,6 +126,56 @@ void Copter::rtl_return_start()
     set_auto_yaw_mode(get_default_auto_yaw_mode(true));
 }
 
+
+/*
+  input pilot stick mixing during RTL
+ */
+void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch)
+{
+#if RTL_STICK_MIXING == ENABLED
+    if (failsafe.radio) {
+        // don't stick mix when no RC input
+        return;
+    }
+
+    int16_t roll_in = channel_roll->get_control_in();
+    int16_t pitch_in = channel_pitch->get_control_in();
+    if (roll_in || pitch_in) {
+        rtl_pilot_steering = true;
+    } else {
+        if (rtl_pilot_steering) {
+            hal.console->printf("RTL shift origin\n");
+            rtl_return_start();
+        }
+        rtl_pilot_steering = false;
+        return;
+    }
+    
+    // get pilot desired lean angles, using alt_hold angle limits
+    float pilot_roll, pilot_pitch;
+    float angle_limit = attitude_control->get_althold_lean_angle_max();
+    
+    get_pilot_desired_lean_angles(roll_in, pitch_in, pilot_roll, pilot_pitch,
+                                  angle_limit);
+
+    if (pilot_roll > 0.5 * angle_limit) {
+        pilot_roll = (3*pilot_roll - angle_limit);
+    } else if (pilot_roll < -0.5*angle_limit) {
+        pilot_roll = (3*pilot_roll + angle_limit);
+    }
+    nav_roll += pilot_roll;
+    nav_roll = constrain_float(nav_roll, -angle_limit, angle_limit);
+
+    if (pilot_pitch > 0.5*angle_limit) {
+        pilot_pitch = (3*pilot_pitch - angle_limit);
+    } else if (pilot_pitch < -0.5f) {
+        pilot_pitch = (3*pilot_pitch + angle_limit);
+    }
+    nav_pitch += pilot_pitch;
+    nav_pitch = constrain_float(nav_pitch, -angle_limit, angle_limit);
+#endif
+}
+
 // rtl_climb_return_run - implements the initial climb, return home and descent portions of RTL which all rely on the wp controller
 //      called by rtl_run at 100hz or more
 void Copter::rtl_climb_return_run()
@@ -165,13 +215,18 @@ void Copter::rtl_climb_return_run()
     // call z-axis position controller (wpnav should have already updated it's alt target)
     pos_control->update_z_controller();
 
+    float nav_roll = wp_nav->get_roll();
+    float nav_pitch = wp_nav->get_pitch();
+
+    rtl_stick_mixing(nav_roll, nav_pitch);
+    
     // call attitude controller
     if (auto_yaw_mode == AUTO_YAW_HOLD) {
         // roll & pitch from waypoint controller, yaw rate from pilot
-        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), target_yaw_rate, get_smoothing_gain());
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(nav_roll, nav_pitch, target_yaw_rate, get_smoothing_gain());
     }else{
         // roll, pitch from waypoint controller, yaw heading from auto_heading()
-        attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
+        attitude_control->input_euler_angle_roll_pitch_yaw(nav_roll, nav_pitch, get_auto_heading(),true, get_smoothing_gain());
     }
 
     // check if we've completed this stage of RTL
