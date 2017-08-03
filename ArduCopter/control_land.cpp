@@ -9,7 +9,8 @@ static bool land_pause;
 bool Copter::land_init(bool ignore_checks)
 {
     // check if we have GPS and decide which LAND we're going to do
-    land_with_gps = position_ok();
+    // if we were in ALT_HOLD then we may be flying indoors, so don't use GPS for landing
+    land_with_gps = position_ok() && control_mode != ALT_HOLD;
     if (land_with_gps) {
         // set target to stopping point
         Vector3f stopping_point;
