@@ -472,7 +472,9 @@ void NavEKF2_core::readGpsData()
             }
 
             // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
-            if (_ahrs->get_gps().have_vertical_velocity() && frontend->_fusionModeGPS == 0) {
+            if (_ahrs->get_gps().have_vertical_velocity() &&
+                frontend->_fusionModeGPS == 0 &&
+                !_ahrs->get_indoor_mode()) {
                 useGpsVertVel = true;
             } else {
                 useGpsVertVel = false;
