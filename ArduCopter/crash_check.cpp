@@ -23,8 +23,15 @@ void Copter::crash_check()
         return;
     }
 
-    // vehicle not crashed if 1hz filtered acceleration is more than 3m/s (1G on Z-axis has been subtracted)
-    if (land_accel_ef_filter.get().length() >= CRASH_CHECK_ACCEL_MAX) {
+    // check for angle error over 30 degrees
+    float angle_error_deg = attitude_control->get_att_error_angle_deg();
+    
+    // vehicle not crashed if 1hz filtered acceleration is more than
+    // 3m/s (1G on Z-axis has been subtracted) this does not apply if
+    // angle error is 45 degrees - that is to account for being upside
+    // down on the ground and getting large accel input    
+    if (land_accel_ef_filter.get().length() >= CRASH_CHECK_ACCEL_MAX &&
+        angle_error_deg < 1.5*CRASH_CHECK_ANGLE_DEVIATION_DEG) {
         crash.counter = 0;
         return;
     }
@@ -34,8 +41,6 @@ void Copter::crash_check()
     bool angle_error = false;
     uint32_t now = AP_HAL::millis();
 
-    // check for angle error over 30 degrees
-    float angle_error_deg = attitude_control->get_att_error_angle_deg();
     angle_error = (angle_error_deg > CRASH_CHECK_ANGLE_DEVIATION_DEG);
     
     // calculate filtered climb rate. We use the barometric climb rate
