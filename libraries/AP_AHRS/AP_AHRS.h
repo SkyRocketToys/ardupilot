@@ -115,6 +115,14 @@ public:
         return _flags.fly_forward;
     }
 
+    void set_indoor_mode(bool b) {
+        _flags.indoor_mode = b;
+    }
+
+    bool get_indoor_mode(void) const {
+        return _flags.indoor_mode;
+    }
+    
     /*
       set the "likely flying" flag. This is not guaranteed to be
       accurate, but is the vehicle codes best guess as to the whether
@@ -592,6 +600,7 @@ protected:
         uint8_t correct_centrifugal     : 1;    // 1 if we should correct for centrifugal forces (allows arducopter to turn this off when motors are disarmed)
         uint8_t wind_estimation         : 1;    // 1 if we should do wind estimation
         uint8_t likely_flying           : 1;    // 1 if vehicle is probably flying
+        uint8_t indoor_mode             : 1;    // 1 if vehicle is probably indoors
     } _flags;
 
     // time when likely_flying last went true
