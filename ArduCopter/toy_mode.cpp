@@ -141,6 +141,9 @@ void ToyMode::update()
         throttle_mid = copter.channel_throttle->get_control_mid();
     }
 
+    // set ALT_HOLD as indoors for the EKF (disables GPS vertical velocity fusion)
+    copter.ahrs.set_indoor_mode(copter.control_mode == ALT_HOLD);
+    
     uint16_t ch5_in = hal.rcin->read(CH_5);
     uint16_t ch6_in = hal.rcin->read(CH_6);
     uint16_t ch7_in = hal.rcin->read(CH_7);
