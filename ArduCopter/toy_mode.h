@@ -32,7 +32,7 @@ public:
     
 private:
 
-    void trim_sticks(void);
+    void trim_update(void);
     void action_arm(void);
     void blink_update(void);
     void send_named_int(const char *name, int32_t value);
@@ -86,13 +86,18 @@ private:
         BLINK_VSLOW  = 0xF000,
         BLINK_MED_1  = 0xF0F0,
     };
-    
+
     bool done_first_update;
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
     AP_Int8 actions[9];
-    AP_Int8 trim_arm;
+    AP_Int8 trim_auto;
     AP_Int16 flags;
+
+    struct {
+        uint32_t start_ms;
+        uint16_t chan[4];
+    } trim;
     
     uint32_t power_counter;
     uint32_t throttle_low_counter;

@@ -93,12 +93,12 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_LEFT_LONG", 11, ToyMode, actions[7], ACTION_NONE),
 
-    // @Param: _TRIM_ARM
-    // @DisplayName: Stick trim on arming
-    // @Description: This is the amount of automatic stick trim that can be applied on arming. It is a percentage of total stick movement. When arming, the stick trim values will be automatically set to the current stick inputs if they are less than this limit.
-    // @Range: 0 50
+    // @Param: _TRIM_AUTO
+    // @DisplayName: Stick auto trim limit
+    // @Description: This is the amount of automatic stick trim that can be applied when disarmed with sticks not moving. It is a PWM limit value away from 1500
+    // @Range: 0 100
     // @User: Standard
-    AP_GROUPINFO("_TRIM_ARM", 12, ToyMode, trim_arm, 20),
+    AP_GROUPINFO("_TRIM_AUTO", 12, ToyMode, trim_auto, 50),
 
     // @Param: _RIGHT
     // @DisplayName: Tmode right action
@@ -138,9 +138,13 @@ void ToyMode::update()
     if (!done_first_update) {
         done_first_update = true;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
-        throttle_mid = copter.channel_throttle->get_control_mid();
     }
 
+    // check if we should auto-trim
+    if (trim_auto > 0) {
+        trim_update();
+    }
+            
     // set ALT_HOLD as indoors for the EKF (disables GPS vertical velocity fusion)
     copter.ahrs.set_indoor_mode(copter.control_mode == ALT_HOLD);
     
@@ -480,27 +484,94 @@ bool ToyMode::set_and_remember_mode(control_mode_t mode, mode_reason_t reason)
 }
 
 /*
-  automatic stick trimming
+  automatic stick trimming. This works while disarmed by looking for
+  zero rc-input changes for 4 seconds, and assuming sticks are
+  centered. Trim is saved
  */
-void ToyMode::trim_sticks(void)
+void ToyMode::trim_update(void)
 {
-    uint16_t limit = trim_arm * 0.01 * ROLL_PITCH_YAW_INPUT_MAX;
-
-    if (labs(copter.channel_roll->get_control_in()) >= limit ||
-        labs(copter.channel_pitch->get_control_in()) >= limit ||
-        labs(copter.channel_yaw->get_control_in()) >= limit ||
-        labs(copter.channel_throttle->get_control_in() - 500) >= trim_arm * 0.01 * 1000) {
-        // inputs too large to auto-trim
+    if (hal.util->get_soft_armed() || copter.failsafe.radio) {
+        // only when disarmed and with RC link
+        trim.start_ms = 0;
         return;
     }
 
-    // auto-trim roll, pitch and yaw
-    copter.channel_roll->set_radio_trim(copter.channel_roll->get_radio_in());
-    copter.channel_pitch->set_radio_trim(copter.channel_pitch->get_radio_in());
-    copter.channel_yaw->set_radio_trim(copter.channel_yaw->get_radio_in());
+    // get throttle mid from channel trim
+    uint16_t throttle_trim = copter.channel_throttle->get_radio_trim();
+    if (abs(throttle_trim - 1500) <= trim_auto) {
+        RC_Channel *ch = copter.channel_throttle;
+        uint16_t ch_min = ch->get_radio_min();
+        uint16_t ch_max = ch->get_radio_max();
+        // remember the throttle midpoint
+        int16_t new_value = 1000UL * (throttle_trim - ch_min) / (ch_max - ch_min);
+        if (new_value != throttle_mid) {
+            throttle_mid = new_value;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: thr mid %d\n",
+                                             throttle_mid);
+        }
+    }
+    
+    uint16_t chan[4];
+    if (hal.rcin->read(chan, 4) != 4) {
+        trim.start_ms = 0;
+        return;
+    }
 
-    // remember the throttle trim
-    throttle_mid = copter.channel_throttle->get_control_in();
+    const uint16_t noise_limit = 2;
+    for (uint8_t i=0; i<4; i++) {
+        if (abs(chan[i] - 1500) > trim_auto) {
+            // not within limit
+            trim.start_ms = 0;
+            return;
+        }
+    }
+
+    uint32_t now = AP_HAL::millis();
+    
+    if (trim.start_ms == 0) {
+        // start timer
+        memcpy(trim.chan, chan, 4*sizeof(uint16_t));
+        trim.start_ms = now;
+        return;
+    }
+
+    
+    for (uint8_t i=0; i<4; i++) {
+        if (abs(trim.chan[i] - chan[i]) > noise_limit) {
+            // detected stick movement
+            memcpy(trim.chan, chan, 4*sizeof(uint16_t));
+            trim.start_ms = now;
+            return;
+        }
+    }
+
+    if (now - trim.start_ms < 4000) {
+        // not steady for long enough yet
+        return;
+    }
+
+    // reset timer so we don't trigger too often
+    trim.start_ms = 0;
+    
+    uint8_t need_trim = 0;
+    for (uint8_t i=0; i<4; i++) {
+        RC_Channel *ch = RC_Channels::rc_channel(i);
+        if (ch && abs(chan[i] - ch->get_radio_trim()) > noise_limit) {
+            need_trim |= 1U<<i;
+        }
+    }
+    if (need_trim == 0) {
+        return;
+    }
+    for (uint8_t i=0; i<4; i++) {
+        if (need_trim & (1U<<i)) {
+            RC_Channel *ch = RC_Channels::rc_channel(i);
+            ch->set_and_save_radio_trim(chan[i]);
+        }
+    }
+
+    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: trim %u %u %u %u\n",
+                                     chan[0], chan[1], chan[2], chan[3]);
 }
 
 /*
@@ -510,11 +581,6 @@ void ToyMode::action_arm(void)
 {
     bool needs_gps = copter.mode_requires_GPS(copter.control_mode);
 
-    // check if we should auto-trim
-    if (trim_arm > 0) {
-        trim_sticks();
-    }
-        
     // don't arm if sticks aren't in deadzone, to prevent pot problems
     // on TX causing flight control issues
     bool sticks_centered =
