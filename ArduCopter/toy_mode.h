@@ -122,6 +122,7 @@ private:
     uint8_t green_blink_index;
     uint16_t red_blink_count;
     uint16_t green_blink_count;
+    uint16_t blink_disarm;
 
     // remember the last mode we set
     control_mode_t last_set_mode = LOITER;
