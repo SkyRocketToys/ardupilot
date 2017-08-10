@@ -27,6 +27,8 @@ public:
 
     // handle mavlink message
     void handle_message(mavlink_message_t *msg);
+
+    void load_test_run(void);
     
     static const struct AP_Param::GroupInfo var_info[];
     
@@ -64,6 +66,7 @@ private:
         ACTION_ARM_LAND_RTL = 20,
         ACTION_TOGGLE_SIMPLE = 21,
         ACTION_TOGGLE_SSIMPLE = 22,
+        ACTION_LOAD_TEST = 23,
     };
 
     // these are bitmask indexes for TMODE_FLAGS
@@ -137,4 +140,25 @@ private:
 
     // remember the last mode we set
     control_mode_t last_set_mode = LOITER;
+
+    struct load_data {
+        uint16_t m[4];
+    };
+
+    enum load_type {
+        LOAD_TYPE_CONSTANT=0,
+        LOAD_TYPE_LOG1=1,
+        LOAD_TYPE_LOG2=2,
+    };
+    
+    struct {
+        bool running;
+        uint32_t row;
+        uint8_t filter_counter;
+        AP_Float load_mul;
+        AP_Int8  load_filter;
+        AP_Int8  load_type;
+    } load_test;
+    
+    static const struct load_data load_data1[];
 };

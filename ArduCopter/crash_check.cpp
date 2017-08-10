@@ -12,7 +12,7 @@
 void Copter::crash_check()
 {
     // return immediately if disarmed, or crash checking disabled
-    if (!motors->armed() || ap.land_complete || g.fs_crash_check == 0) {
+    if (!motors->armed() || ap.land_complete || g.fs_crash_check == 0 || g2.toy_mode.load_test.running) {
         crash.counter = 0;
         return;
     }
