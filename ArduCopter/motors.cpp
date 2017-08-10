@@ -82,7 +82,7 @@ void Copter::auto_disarm_check()
 
     // exit immediately if we are already disarmed, or if auto
     // disarming is disabled
-    if (!motors->armed() || disarm_delay_ms == 0 || control_mode == THROW) {
+    if (!motors->armed() || disarm_delay_ms == 0 || control_mode == THROW || g2.toy_mode.load_test.running) {
         auto_disarm_begin = tnow_ms;
         return;
     }
@@ -307,7 +307,9 @@ void Copter::motors_output()
     SRV_Channels::output_ch_all();
     
     // check if we are performing the motor test
-    if (ap.motor_test) {
+    if (g2.toy_mode.load_test.running) {
+        g2.toy_mode.load_test_run();
+    } else if (ap.motor_test) {
         motor_test_output();
     } else {
         bool interlock = motors->armed() && !ap.in_arming_delay && (!ap.using_interlock || ap.motor_interlock_switch) && !ap.motor_emergency_stop;

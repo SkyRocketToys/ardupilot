@@ -40,56 +40,56 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _ACTION1
     // @DisplayName: Tmode action 1
     // @Description: This is the action taken for the left action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION1", 4, ToyMode, actions[0], ACTION_TOGGLE_VIDEO),
 
     // @Param: _ACTION2
     // @DisplayName: Tmode action 2
     // @Description: This is the action taken for the right action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION2", 5, ToyMode, actions[1], ACTION_TAKE_PHOTO),
 
     // @Param: _ACTION3
     // @DisplayName: Tmode action 3
     // @Description: This is the action taken for the power button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION3", 6, ToyMode, actions[2], ACTION_DISARM),
 
     // @Param: _ACTION4
     // @DisplayName: Tmode action 4
     // @Description: This is the action taken for the left action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION4", 7, ToyMode, actions[3], ACTION_NONE),
 
     // @Param: _ACTION5
     // @DisplayName: Tmode action 5
     // @Description: This is the action taken for the right action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION5", 8, ToyMode, actions[4], ACTION_NONE),
 
     // @Param: _ACTION6
     // @DisplayName: Tmode action 6
     // @Description: This is the action taken for the power button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_ACTION6", 9, ToyMode, actions[5], ACTION_NONE),
 
     // @Param: _LEFT
     // @DisplayName: Tmode left action
     // @Description: This is the action taken for the left button (mode button) being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_LEFT", 10, ToyMode, actions[6], ACTION_TOGGLE_MODE),
 
     // @Param: _LEFT_LONG
     // @DisplayName: Tmode left long action
     // @Description: This is the action taken for a long press of the left button (home button)
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_LEFT_LONG", 11, ToyMode, actions[7], ACTION_NONE),
 
@@ -103,7 +103,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _RIGHT
     // @DisplayName: Tmode right action
     // @Description: This is the action taken for the right button (RTL) being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
     AP_GROUPINFO("_RIGHT", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
 
@@ -114,13 +114,64 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
 
+    // @Param: _VMIN
+    // @DisplayName: Min voltage for output limiting
+    // @Description: This is the battery voltage below which no output limiting is done
+    // @Range: 0 5
+    // @Increment: 0.01
+    // @User: Advanced
     AP_GROUPINFO("_VMIN", 15, ToyMode, filter.volt_min, 3.5),
+
+    // @Param: _VMAX
+    // @DisplayName: Max voltage for output limiting
+    // @Description: This is the battery voltage above which thrust min is used
+    // @Range: 0 5
+    // @Increment: 0.01
+    // @User: Advanced
     AP_GROUPINFO("_VMAX", 16, ToyMode, filter.volt_max, 3.8),
-    AP_GROUPINFO("_TMIN", 17, ToyMode, filter.thrust_min, 0.9),
-    AP_GROUPINFO("_TMAX", 18, ToyMode, filter.thrust_max, 1.0),
     
+    // @Param: _TMIN
+    // @DisplayName: Min thrust multiplier
+    // @Description: This sets the thrust multiplier when voltage is high
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_TMIN", 17, ToyMode, filter.thrust_min, 1.0),
+
+    // @Param: _TMAX
+    // @DisplayName: Max thrust multiplier
+    // @Description: This sets the thrust multiplier when voltage is low
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_TMAX", 18, ToyMode, filter.thrust_max, 1.0),
+ 
+    // @Param: _LOAD_MUL
+    // @DisplayName: Load test multiplier
+    // @Description: This scales the load test output, as a value between 0 and 1
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_MUL", 19, ToyMode, load_test.load_mul, 1.0),
+    
+    // @Param: _LOAD_FILT
+    // @DisplayName: Load test filter
+    // @Description: This filters the load test output. A value of 1 means no filter. 2 means values are repeated once. 3 means values are repeated 3 times, etc
+    // @Range: 0 100
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_FILT", 20, ToyMode, load_test.load_filter, 1),
+    
+    // @Param: _LOAD_TYPE
+    // @DisplayName: Load test type
+    // @Description: This sets the type of load test
+    // @Values: 0:ConstantThrust,1:LogReplay1,2:LogReplay2
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_TYPE", 21, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
+   
     AP_GROUPEND
 };
+
+#include "load_data1.h"
 
 ToyMode::ToyMode()
 {
@@ -135,6 +186,10 @@ void ToyMode::update()
     if (!enable) {
         // not enabled
         return;
+    }
+
+    if (!copter.motors->armed()) {
+        load_test.running = false;
     }
 
     // keep filtered battery voltage for thrust limiting
@@ -247,6 +302,7 @@ void ToyMode::update()
     case ACTION_TOGGLE_SIMPLE:
     case ACTION_TOGGLE_SSIMPLE:
     case ACTION_ARM_LAND_RTL:
+    case ACTION_LOAD_TEST:
         if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
             action = ACTION_NONE;
         }
@@ -450,6 +506,27 @@ void ToyMode::update()
             new_mode = LAND;
         }
         break;
+
+    case ACTION_LOAD_TEST:
+        if (copter.motors->armed() && !load_test.running) {
+            break;
+        }
+        if (load_test.running) {
+            load_test.running = false;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off");
+            copter.init_disarm_motors();
+            copter.set_mode(ALT_HOLD, MODE_REASON_TMODE);
+        } else {
+            copter.set_mode(ALT_HOLD, MODE_REASON_TMODE);
+            copter.fence.enable(false);
+            if (copter.init_arm_motors(true)) {
+                load_test.running = true;
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test on");
+            } else {
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test failed");
+            }
+        }
+        break;
     }
 
     if (!copter.motors->armed() && (copter.control_mode == LAND || copter.control_mode == RTL)) {
@@ -458,6 +535,8 @@ void ToyMode::update()
     }
     
     if (new_mode != copter.control_mode) {
+        load_test.running = false;
+        
         if (copter.mode_requires_GPS(new_mode)) {
             copter.fence.enable(true);
         } else {
@@ -799,6 +878,57 @@ void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
                                            (double)thrust_mul,
                                            pwm[0], pwm[1], pwm[2], pwm[3]);
                                            
+}
+
+/*
+  run a motor load test - used for endurance checking in factory tests
+ */
+void ToyMode::load_test_run(void)
+{
+    uint16_t pwm[4] {};
+    switch ((enum load_type)load_test.load_type.get()) {
+    case LOAD_TYPE_LOG1:
+        for (uint8_t i=0; i<4; i++) {
+            pwm[i] = load_data1[load_test.row].m[i];
+        }
+        load_test.filter_counter++;
+        if (load_test.filter_counter >= load_test.load_filter.get()) {
+            load_test.filter_counter = 0;
+            load_test.row = (load_test.row + 1) % ARRAY_SIZE(load_data1);
+        }
+        break;
+        
+    case LOAD_TYPE_LOG2:
+        // like log1, but all the same
+        for (uint8_t i=0; i<4; i++) {
+            pwm[i] = load_data1[load_test.row].m[0];
+        }
+        load_test.filter_counter++;
+        if (load_test.filter_counter >= load_test.load_filter.get()) {
+            load_test.filter_counter = 0;
+            load_test.row = (load_test.row + 1) % ARRAY_SIZE(load_data1);
+        }
+        break;
+
+    case LOAD_TYPE_CONSTANT:
+        for (uint8_t i=0; i<4; i++) {
+            pwm[i] = 500;
+        }
+        break;
+    default:
+        return;
+    }
+    for (uint8_t i=0; i<4; i++) {
+        pwm[i] *= load_test.load_mul;
+        // write, with conversion to 1000 to 2000 range
+        hal.rcout->write(i, 1000 + pwm[i]*2);
+    }
+
+    if (copter.failsafe.battery) {
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off (battery)");
+        copter.init_disarm_motors();
+        load_test.running = false;
+    }    
 }
 
 #endif // TOY_MODE_ENABLED

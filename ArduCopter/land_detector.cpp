@@ -104,7 +104,7 @@ void Copter::set_land_complete(bool b)
     }
     ap.land_complete = b;
 
-    g2.stats.set_flying(!b);
+    g2.stats.set_flying(!b || g2.toy_mode.load_test.running);
 
     // tell AHRS flying state
     ahrs.set_likely_flying(!b);
