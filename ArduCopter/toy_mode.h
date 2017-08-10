@@ -37,6 +37,8 @@ private:
     void blink_update(void);
     void send_named_int(const char *name, int32_t value);
     bool set_and_remember_mode(control_mode_t mode, mode_reason_t reason);
+
+    void thrust_limiting(float *thrust, uint8_t num_motors);
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -122,6 +124,16 @@ private:
     uint8_t green_blink_index;
     uint16_t red_blink_count;
     uint16_t green_blink_count;
+
+    struct {
+        AP_Float volt_min;
+        AP_Float volt_max;
+        AP_Float thrust_min;
+        AP_Float thrust_max;
+    } filter;
+    
+    // low-pass voltage
+    float filtered_voltage = 4.0;
 
     // remember the last mode we set
     control_mode_t last_set_mode = LOITER;

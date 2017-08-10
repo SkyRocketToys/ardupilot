@@ -113,6 +113,11 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel
     // @User: Standard
     AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
+
+    AP_GROUPINFO("_VMIN", 15, ToyMode, filter.volt_min, 3.5),
+    AP_GROUPINFO("_VMAX", 16, ToyMode, filter.volt_max, 3.8),
+    AP_GROUPINFO("_TMIN", 17, ToyMode, filter.thrust_min, 0.9),
+    AP_GROUPINFO("_TMAX", 18, ToyMode, filter.thrust_max, 1.0),
     
     AP_GROUPEND
 };
@@ -132,12 +137,16 @@ void ToyMode::update()
         return;
     }
 
+    // keep filtered battery voltage for thrust limiting
+    filtered_voltage = 0.99 * filtered_voltage + 0.01 * copter.battery.voltage();
+    
     // update LEDs
     blink_update();
     
     if (!done_first_update) {
         done_first_update = true;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
+        copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
     }
 
     // check if we should auto-trim
@@ -773,5 +782,23 @@ void Copter::toy_mode_update(void)
 }
 #endif
 
+/*
+  limit maximum thrust based on voltage
+ */
+void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
+{
+    float thrust_mul = linear_interpolate(filter.thrust_max, filter.thrust_min, filtered_voltage, filter.volt_min, filter.volt_max);
+    for (uint8_t i=0; i<num_motors; i++) {
+        thrust[i] *= thrust_mul;
+    }
+    uint16_t pwm[4];
+    hal.rcout->read(pwm, 4);
+    DataFlash_Class::instance()->Log_Write("THST", "TimeUS,Vol,Mul,M1,M2,M3,M4", "QffHHHH",
+                                           AP_HAL::micros64(),
+                                           (double)filtered_voltage,
+                                           (double)thrust_mul,
+                                           pwm[0], pwm[1], pwm[2], pwm[3]);
+                                           
+}
 
 #endif // TOY_MODE_ENABLED
