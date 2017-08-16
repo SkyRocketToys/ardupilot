@@ -69,6 +69,8 @@ private:
         ACTION_LOAD_TEST = 23,
     };
 
+    enum toy_action last_action;
+
     // these are bitmask indexes for TMODE_FLAGS
     enum toy_flags {
         FLAG_THR_DISARM     = 1<<0,  // disarm on low throttle

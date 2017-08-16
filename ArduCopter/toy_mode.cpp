@@ -296,19 +296,31 @@ void ToyMode::update()
       some actions shouldn't repeat too fast
      */
     switch (action) {
-    case ACTION_TAKE_PHOTO:
     case ACTION_TOGGLE_VIDEO:
     case ACTION_TOGGLE_MODE:
     case ACTION_TOGGLE_SIMPLE:
     case ACTION_TOGGLE_SSIMPLE:
     case ACTION_ARM_LAND_RTL:
     case ACTION_LOAD_TEST:
+        if (last_action == action ||
+            now - last_action_ms < TOY_ACTION_DELAY_MS) {
+            // for the above actions, button must be released before
+            // it will activate again
+            last_action = action;
+            action = ACTION_NONE;
+        }
+        break;
+        
+    case ACTION_TAKE_PHOTO:
+        // allow photo continuous shooting
         if (now - last_action_ms < TOY_ACTION_DELAY_MS) {
+            last_action = action;
             action = ACTION_NONE;
         }
         break;
 
     default:
+        last_action = action;
         break;
     }
     
