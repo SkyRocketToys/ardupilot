@@ -349,7 +349,8 @@ void NavEKF2_core::checkAttitudeAlignmentStatus()
             gpsYawResetRequest = false;
         } else {
             magYawResetRequest = false;
-            gpsYawResetRequest = true;
+            // disabled for compass learn functionality
+            gpsYawResetRequest = false;
         }
     }
 }
