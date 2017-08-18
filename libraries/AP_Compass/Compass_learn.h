@@ -44,7 +44,7 @@ private:
     struct sample new_sample;
     bool sample_available;
     Vector3f last_field;
-    static const uint32_t min_field_change = 40;
+    static const uint32_t min_field_change = 60;
 
     Vector3f best_offsets;
     float best_error;

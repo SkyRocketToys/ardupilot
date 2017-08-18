@@ -110,7 +110,7 @@ void CompassLearn::update(void)
     if (!converged && sem->take_nonblocking()) {
         // stop updating the offsets once converged
         compass.set_offsets(0, best_offsets);
-        if (num_samples > 100 && best_error < 25 && worst_error > 200) {
+        if (num_samples > 100 && best_error < 50 && worst_error > 65) {
             // set the offsets and enable compass for EKF use
             compass.save_offsets(0);
             compass.set_use_for_yaw(0, true);
@@ -172,8 +172,9 @@ void CompassLearn::process_sample(const struct sample &s)
             predicted_offsets[i] = offsets;
         } else {
             // lowpass the predicted offsets and the error
-            predicted_offsets[i] = predicted_offsets[i] * 0.95 + offsets * 0.05;
-            errors[i] = errors[i] * 0.95 + delta * 0.05;
+            const float learn_rate = 0.92;
+            predicted_offsets[i] = predicted_offsets[i] * learn_rate + offsets * (1-learn_rate);
+            errors[i] = errors[i] * learn_rate + delta * (1-learn_rate);
         }
 
         // keep track of the current best prediction
