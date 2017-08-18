@@ -94,6 +94,7 @@
 #include <AP_VisualOdom/AP_VisualOdom.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_TempCalibration/AP_TempCalibration.h>
+#include <AP_Compass/Compass_learn.h>
 
 // Configuration
 #include "defines.h"
@@ -206,6 +207,7 @@ private:
     AP_Baro barometer = AP_Baro::create();
     Compass compass = Compass::create();
     AP_InertialSensor ins = AP_InertialSensor::create();
+    CompassLearn compass_learn{ahrs, compass};
 
     RangeFinder rangefinder = RangeFinder::create(serial_manager, ROTATION_PITCH_270);
     struct {
