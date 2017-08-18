@@ -361,10 +361,12 @@ void Copter::update_batt_compass(void)
         // update compass with throttle value - used for compassmot
         compass.set_throttle(motors->get_throttle());
         compass.set_voltage(battery.voltage());
-        compass.read();
-        // log compass information
-        if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
-            DataFlash.Log_Write_Compass(compass);
+        if (compass.read()) {
+            // log compass information
+            if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
+                DataFlash.Log_Write_Compass(compass);
+            }
+            compass_learn.update();
         }
     }
 }
