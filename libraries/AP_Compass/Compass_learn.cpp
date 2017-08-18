@@ -61,7 +61,10 @@ void CompassLearn::update(void)
             offdiagonals.x,    diagonals.y, offdiagonals.z,
             offdiagonals.y, offdiagonals.z,    diagonals.z
             );
-        mat.invert();
+        if (!mat.invert()) {
+            // if we can't invert, use the identity matrix
+            mat.identity();
+        }
 
         // set initial error to field intensity
         for (uint16_t i=0; i<num_sectors; i++) {
@@ -85,6 +88,7 @@ void CompassLearn::update(void)
     if (sem->take_nonblocking()) {
         // give a sample to the backend to process
         new_sample.field = field;
+        new_sample.offsets = compass.get_offsets(0);
         new_sample.attitude = Vector3f(ahrs.roll, ahrs.pitch, ahrs.yaw);
         sample_available = true;
         last_field = field;
@@ -93,19 +97,25 @@ void CompassLearn::update(void)
     }
 
     if (sample_available) {
-        DataFlash_Class::instance()->Log_Write("COFS", "TimeUS,OfsX,OfsY,OfsZ,Var", "Qffff",
+        DataFlash_Class::instance()->Log_Write("COFS", "TimeUS,OfsX,OfsY,OfsZ,Var,Yaw,WVar", "Qffffff",
                                                AP_HAL::micros64(),
                                                best_offsets.x,
                                                best_offsets.y,
                                                best_offsets.z,
-                                               best_error);
+                                               best_error,
+                                               best_yaw_deg,
+                                               worst_error);
     }
 
-    if (!converged && num_samples > 100 && best_error < 20 && sem->take_nonblocking()) {
-        // set the offsets and enable compass for EKF use
+    if (!converged && sem->take_nonblocking()) {
+        // stop updating the offsets once converged
         compass.set_offsets(0, best_offsets);
-        compass.set_use_for_yaw(0, true);
-        converged = true;
+        if (num_samples > 100 && best_error < 25 && worst_error > 200) {
+            // set the offsets and enable compass for EKF use
+            compass.save_offsets(0);
+            compass.set_use_for_yaw(0, true);
+            converged = true;
+        }
         sem->give();
     }
 }
@@ -135,7 +145,7 @@ void CompassLearn::io_timer(void)
 void CompassLearn::process_sample(const struct sample &s)
 {
     uint16_t besti = 0;
-    float bestv = 0;
+    float bestv = 0, worstv=0;
 
     /*
       we run through the 72 possible yaw error values, and for each
@@ -155,23 +165,32 @@ void CompassLearn::process_sample(const struct sample &s)
         // calculate a value for the compass offsets for this yaw error
         Vector3f v1 = mat * s.field;
         Vector3f v2 = mat * expected_field;
-        Vector3f offsets = (v2 - v1) + compass.get_offsets(0);
+        Vector3f offsets = (v2 - v1) + s.offsets;
         float delta = (offsets - predicted_offsets[i]).length();
 
-        // lowpass the predicted offsets and the error
-        predicted_offsets[i] = predicted_offsets[i] * 0.95 + offsets * 0.05;
-        errors[i] = errors[i] * 0.95 + delta * 0.05;
+        if (num_samples == 1) {
+            predicted_offsets[i] = offsets;
+        } else {
+            // lowpass the predicted offsets and the error
+            predicted_offsets[i] = predicted_offsets[i] * 0.95 + offsets * 0.05;
+            errors[i] = errors[i] * 0.95 + delta * 0.05;
+        }
 
         // keep track of the current best prediction
         if (i == 0 || errors[i] < bestv) {
             besti = i;
             bestv = errors[i];
         }
+        if (i == 0 || errors[i] > worstv) {
+            worstv = errors[i];
+        }
     }
 
     if (sem->take_nonblocking()) {
         best_offsets = predicted_offsets[besti];
         best_error = bestv;
+        worst_error = worstv;
+        best_yaw_deg = wrap_360(degrees(s.attitude.z) + besti * (360/num_sectors));
         sem->give();
     }
 }
