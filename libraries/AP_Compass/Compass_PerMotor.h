@@ -20,7 +20,8 @@ public:
     }
     
     void set_voltage(float _voltage) {
-        voltage = _voltage;
+        // simple low-pass on voltage
+        voltage = 0.9 * voltage + 0.1 * _voltage;
     }
 
     void calibration_start(void);
