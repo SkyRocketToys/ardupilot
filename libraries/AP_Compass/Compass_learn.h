@@ -31,8 +31,9 @@ private:
     AP_HAL::Semaphore *sem;    
     
     struct sample {
-        // milliGauss body field
+        // milliGauss body field and offsets
         Vector3f field;
+        Vector3f offsets;
 
         // euler radians attitude
         Vector3f attitude;
@@ -43,10 +44,12 @@ private:
     struct sample new_sample;
     bool sample_available;
     Vector3f last_field;
-    static const uint32_t min_field_change = 20;
+    static const uint32_t min_field_change = 40;
 
     Vector3f best_offsets;
     float best_error;
+    float best_yaw_deg;
+    float worst_error;
     bool converged;
 
     void io_timer(void);
