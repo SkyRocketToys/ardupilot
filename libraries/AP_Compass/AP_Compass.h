@@ -57,6 +57,8 @@ public:
     Compass(const Compass &other) = delete;
     Compass &operator=(const Compass&) = delete;
 
+    friend class CompassLearn;
+
     /// Initialize the compass device.
     ///
     /// @returns    True if the compass was initialized OK, false if it was not
@@ -160,6 +162,12 @@ public:
     const Vector3f &get_offsets(uint8_t i) const { return _state[i].offset; }
     const Vector3f &get_offsets(void) const { return get_offsets(get_primary()); }
 
+    const Vector3f &get_diagonals(uint8_t i) const { return _state[i].diagonals; }
+    const Vector3f &get_diagonals(void) const { return get_diagonals(get_primary()); }
+
+    const Vector3f &get_offdiagonals(uint8_t i) const { return _state[i].offdiagonals; }
+    const Vector3f &get_offdiagonals(void) const { return get_offdiagonals(get_primary()); }
+    
     /// Sets the initial location used to get declination
     ///
     /// @param  latitude             GPS Latitude.
@@ -188,6 +196,10 @@ public:
     /// return true if the compass should be used for yaw calculations
     bool use_for_yaw(uint8_t i) const;
     bool use_for_yaw(void) const;
+
+    void set_use_for_yaw(uint8_t i, bool use) {
+        _state[i].use_for_yaw.set(use);
+    }
 
     /// Sets the local magnetic field declination.
     ///
