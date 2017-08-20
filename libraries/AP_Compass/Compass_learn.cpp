@@ -97,20 +97,21 @@ void CompassLearn::update(void)
     }
 
     if (sample_available) {
-        DataFlash_Class::instance()->Log_Write("COFS", "TimeUS,OfsX,OfsY,OfsZ,Var,Yaw,WVar", "Qffffff",
+        DataFlash_Class::instance()->Log_Write("COFS", "TimeUS,OfsX,OfsY,OfsZ,Var,Yaw,WVar,N", "QffffffI",
                                                AP_HAL::micros64(),
                                                best_offsets.x,
                                                best_offsets.y,
                                                best_offsets.z,
                                                best_error,
                                                best_yaw_deg,
-                                               worst_error);
+                                               worst_error,
+                                               num_samples);
     }
 
     if (!converged && sem->take_nonblocking()) {
         // stop updating the offsets once converged
         compass.set_offsets(0, best_offsets);
-        if (num_samples > 100 && best_error < 50 && worst_error > 65) {
+        if (num_samples > 30 && best_error < 50 && worst_error > 65) {
             // set the offsets and enable compass for EKF use
             compass.save_offsets(0);
             compass.set_use_for_yaw(0, true);
@@ -182,12 +183,14 @@ void CompassLearn::process_sample(const struct sample &s)
             besti = i;
             bestv = errors[i];
         }
+        // also keep the worst error. This is used as part of the convergence test
         if (i == 0 || errors[i] > worstv) {
             worstv = errors[i];
         }
     }
 
     if (sem->take_nonblocking()) {
+        // pass the current estimate to the front-end
         best_offsets = predicted_offsets[besti];
         best_error = bestv;
         worst_error = worstv;
