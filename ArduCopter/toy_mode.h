@@ -142,6 +142,8 @@ private:
     // low-pass voltage
     float filtered_voltage = 4.0;
 
+    uint8_t motor_log_counter;
+
     // remember the last mode we set
     control_mode_t last_set_mode = LOITER;
 
