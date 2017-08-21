@@ -23,7 +23,8 @@ CompassLearn::CompassLearn(AP_AHRS &_ahrs, Compass &_compass) :
  */
 void CompassLearn::update(void)
 {
-    if (!hal.util->get_soft_armed() || ahrs.get_time_flying_ms() < 3000) {
+    if (converged || compass.get_learn_type() != Compass::LEARN_INFLIGHT ||
+        !hal.util->get_soft_armed() || ahrs.get_time_flying_ms() < 3000) {
         // only learn when flying and with enough time to be clear of
         // the ground
         return;
@@ -112,9 +113,11 @@ void CompassLearn::update(void)
         // stop updating the offsets once converged
         compass.set_offsets(0, best_offsets);
         if (num_samples > 30 && best_error < 50 && worst_error > 65) {
-            // set the offsets and enable compass for EKF use
+            // set the offsets and enable compass for EKF use. Let the
+            // EKF learn the remaining compass offset error
             compass.save_offsets(0);
             compass.set_use_for_yaw(0, true);
+            compass.set_learn_type(Compass::LEARN_EKF, true);
             converged = true;
         }
         sem->give();
