@@ -83,7 +83,7 @@ void CompassLearn::update(void)
     Vector3f field = compass.get_field(0);
     Vector3f attitude = Vector3f(ahrs.roll, ahrs.pitch, ahrs.yaw);
     Vector3f attitude_change = attitude_change - last_attitude;
-    if (radians(attitude_change.length()) < min_attitude_change) {
+    if (degrees(attitude_change.length()) < min_attitude_change) {
         return;
     }
     
