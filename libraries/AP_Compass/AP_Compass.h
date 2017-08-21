@@ -307,7 +307,8 @@ public:
     enum LearnType {
         LEARN_NONE=0,
         LEARN_INTERNAL=1,
-        LEARN_EKF=2
+        LEARN_EKF=2,
+        LEARN_INFLIGHT=3
     };
 
     // return the chosen learning type
@@ -315,6 +316,15 @@ public:
         return (enum LearnType)_learn.get();
     }
 
+    // set the learning type
+    void set_learn_type(enum LearnType type, bool save) {
+        if (save) {
+            _learn.set_and_save((int8_t)type);
+        } else {
+            _learn.set((int8_t)type);
+        }
+    }
+    
     // return maximum allowed compass offsets
     uint16_t get_offsets_max(void) const {
         return (uint16_t)_offset_max.get();
