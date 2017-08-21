@@ -185,7 +185,7 @@ public:
     }
 
     // learn offsets accessor
-    bool learn_offsets_enabled() const { return _learn; }
+    bool learn_offsets_enabled() const { return _learn == LEARN_INFLIGHT; }
 
     /// Perform automatic offset updates
     ///
