@@ -965,7 +965,9 @@ void ToyMode::arm_check_compass(void)
     Vector3f offsets = copter.compass.get_offsets();
     float field = copter.compass.get_field().length();
     
-    if (offsets.length() > copter.compass.get_offsets_max() || field < 200 || field > 800) {
+    if (offsets.length() > copter.compass.get_offsets_max() ||
+        field < 200 || field > 800 ||
+        !copter.compass.configured()) {
         if (copter.compass.get_learn_type() != Compass::LEARN_INFLIGHT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: enable compass learning");
             copter.compass.set_learn_type(Compass::LEARN_INFLIGHT, false);
