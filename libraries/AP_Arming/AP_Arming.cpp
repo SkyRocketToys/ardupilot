@@ -273,7 +273,7 @@ bool AP_Arming::compass_checks(bool report)
     if ((checks_to_perform) & ARMING_CHECK_ALL ||
         (checks_to_perform) & ARMING_CHECK_COMPASS) {
 
-        if (!_compass.use_for_yaw()) {
+        if (!_compass.learn_offsets_enabled() && !_compass.use_for_yaw()) {
             // compass use is disabled
             return true;
         }
@@ -308,28 +308,25 @@ bool AP_Arming::compass_checks(bool report)
             return false;
         }
 
-#if 0
-        /*
-          these checks have moved to tmode code, which uses LEARN_INFLIGHT compass learning when they are out of range
-         */
-        // check for unreasonable compass offsets
-        Vector3f offsets = _compass.get_offsets();
-        if (offsets.length() > _compass.get_offsets_max()) {
-            if (report) {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Compass offsets too high");
+        if (!_compass.learn_offsets_enabled()) {
+            // check for unreasonable compass offsets
+            Vector3f offsets = _compass.get_offsets();
+            if (offsets.length() > _compass.get_offsets_max()) {
+                if (report) {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Compass offsets too high");
+                }
+                return false;
             }
-            return false;
-        }
-
-        // check for unreasonable mag field length
-        float mag_field = _compass.get_field().length();
-        if (mag_field > AP_ARMING_COMPASS_MAGFIELD_MAX || mag_field < AP_ARMING_COMPASS_MAGFIELD_MIN) {
-            if (report) {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Check mag field");
+            
+            // check for unreasonable mag field length
+            float mag_field = _compass.get_field().length();
+            if (mag_field > AP_ARMING_COMPASS_MAGFIELD_MAX || mag_field < AP_ARMING_COMPASS_MAGFIELD_MIN) {
+                if (report) {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Check mag field");
+                }
+                return false;
             }
-            return false;
         }
-#endif
 
         // check all compasses point in roughly same direction
         if (!_compass.consistent()) {
