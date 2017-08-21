@@ -81,8 +81,9 @@ void CompassLearn::update(void)
     }
 
     Vector3f field = compass.get_field(0);
-    Vector3f field_change = field - last_field;
-    if (field_change.length() < min_field_change) {
+    Vector3f attitude = Vector3f(ahrs.roll, ahrs.pitch, ahrs.yaw);
+    Vector3f attitude_change = attitude_change - last_attitude;
+    if (radians(attitude_change.length()) < min_attitude_change) {
         return;
     }
     
@@ -90,9 +91,9 @@ void CompassLearn::update(void)
         // give a sample to the backend to process
         new_sample.field = field;
         new_sample.offsets = compass.get_offsets(0);
-        new_sample.attitude = Vector3f(ahrs.roll, ahrs.pitch, ahrs.yaw);
+        new_sample.attitude = attitude;
         sample_available = true;
-        last_field = field;
+        last_attitude = attitude;
         num_samples++;
         sem->give();
     }
