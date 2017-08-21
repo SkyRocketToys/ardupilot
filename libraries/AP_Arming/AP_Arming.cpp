@@ -308,6 +308,10 @@ bool AP_Arming::compass_checks(bool report)
             return false;
         }
 
+#if 0
+        /*
+          these checks have moved to tmode code, which uses LEARN_INFLIGHT compass learning when they are out of range
+         */
         // check for unreasonable compass offsets
         Vector3f offsets = _compass.get_offsets();
         if (offsets.length() > _compass.get_offsets_max()) {
@@ -325,6 +329,7 @@ bool AP_Arming::compass_checks(bool report)
             }
             return false;
         }
+#endif
 
         // check all compasses point in roughly same direction
         if (!_compass.consistent()) {
