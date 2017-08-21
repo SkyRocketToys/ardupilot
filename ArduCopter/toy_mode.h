@@ -41,6 +41,7 @@ private:
     bool set_and_remember_mode(control_mode_t mode, mode_reason_t reason);
 
     void thrust_limiting(float *thrust, uint8_t num_motors);
+    void arm_check_compass(void);
     
     enum toy_action {
         ACTION_NONE         = 0,

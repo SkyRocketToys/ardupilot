@@ -358,6 +358,7 @@ void ToyMode::update()
         throttle_high_counter++;
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle arm");
+            arm_check_compass();
             if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
                 /*
                   support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
@@ -692,6 +693,8 @@ void ToyMode::action_arm(void)
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: sticks not centered\n");
         return;
     }
+
+    arm_check_compass();
     
     if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
         // we want GPS and checks are passing, arm and enable fence
@@ -948,6 +951,24 @@ void ToyMode::load_test_run(void)
         copter.init_disarm_motors();
         load_test.running = false;
     }    
+}
+
+/*
+  if we try to arm and the compass is out of range then we enable
+  inflight compass learning
+ */
+void ToyMode::arm_check_compass(void)
+{
+    // check for unreasonable compass offsets
+    Vector3f offsets = copter.compass.get_offsets();
+    float field = copter.compass.get_field().length();
+    
+    if (offsets.length() > copter.compass.get_offsets_max() || field < 200 || field > 800) {
+        if (copter.compass.get_learn_type() != Compass::LEARN_INFLIGHT) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: enable compass learning");
+            copter.compass.set_learn_type(Compass::LEARN_INFLIGHT, false);
+        }
+    }
 }
 
 #endif // TOY_MODE_ENABLED
