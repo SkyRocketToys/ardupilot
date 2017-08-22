@@ -806,6 +806,15 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                 dsm.have_tx_pps = true;
                 check_double_bind();
                 break;
+            case 6:
+                if (v != dsm.tx_bl_version) {
+                    if (v == 2) {
+                        // TX with new filter gets a default power of 6
+                        set_tx_max_power_default(6);
+                    }
+                }
+                dsm.tx_bl_version = v;
+                break;
             }
         }
     }
