@@ -593,6 +593,8 @@ private:
     // zero stored variables
     void InitialiseVariables();
 
+    void InitialiseVariablesMag();
+
     // reset the horizontal position states uing the last GPS measurement
     void ResetPosition(void);
 
