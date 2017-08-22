@@ -197,6 +197,7 @@ private:
         uint32_t last_autobind_send;
         bool have_tx_pps;
         uint32_t telem_send_count;
+        uint8_t tx_bl_version;
     } dsm;
 
     struct {

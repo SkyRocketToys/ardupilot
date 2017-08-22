@@ -104,6 +104,10 @@ protected:
     uint8_t get_tx_max_power(void) const {
         return constrain_int16(radio.tx_max_power.get(), 1, 8);
     }
+
+    void set_tx_max_power_default(uint8_t v) {
+        return radio.tx_max_power.set_default(v);
+    }
     
     uint8_t get_fcc_test(void) const {
         return radio.fcc_test.get();
