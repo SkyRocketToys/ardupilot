@@ -128,7 +128,7 @@ ATC_ACCEL_Y_MAX     54000
 ATC_ANG_PIT_P          8.0
 ATC_ANG_RLL_P          8.0
 ATC_ANG_YAW_P          7.16
-ATC_RAT_PIT_D          0.002
+ATC_RAT_PIT_D          0.0069
 ATC_RAT_PIT_FILT      10
 ATC_RAT_PIT_IMAX       0.5
 ATC_RAT_PIT_I          0.0834
