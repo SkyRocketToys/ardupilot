@@ -944,7 +944,7 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             }
             return;
         }
-        if (ok && (!is_DSM2() || dsm.sync == DSM2_OK)) {
+        if (ok && (!is_DSM2() || dsm.sync >= DSM2_SYNC_B)) {
             ok = parse_dsm_channels(pkt);
         }
         if (ok) {
@@ -1331,19 +1331,17 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         return;
     }
     
-    if (is_DSM2() && dsm.sync < DSM2_OK) {
+    if (is_DSM2() && dsm.sync == DSM2_SYNC_A) {
         if (now - dsm.last_chan_change_us > 15000) {
-            dsm.current_rf_channel = (dsm.current_rf_channel+1) % DSM_MAX_CHANNEL;
+            // only even channels for DSM2 scan
+            dsm.current_rf_channel &= ~1;
+            dsm.current_rf_channel = (dsm.current_rf_channel+2) % DSM_MAX_CHANNEL;
             dsm.last_chan_change_us = now;
         }
         //hal.console->printf("%u chan=%u\n", AP_HAL::micros(), dsm.current_rf_channel);
         dsm_set_channel(dsm.current_rf_channel, is_DSM2(),
                         dsm.sop_col, dsm.data_col,
                         dsm.sync==DSM2_SYNC_B?~dsm.crc_seed:dsm.crc_seed);
-        if (dsm.sync == DSM2_SYNC_B &&
-            now - dsm.last_recv_us > 5000000) {
-            dsm2_start_sync();
-        }
         return;
     }
     
@@ -1369,6 +1367,14 @@ void AP_Radio_cypress::dsm_choose_channel(void)
         if (!is_DSM2()) {
             dsm.crc_seed = ~dsm.crc_seed;
         }
+    }
+
+    if (is_DSM2() && dsm.sync == DSM2_SYNC_B && dsm.current_channel == 1) {
+        // scan to next channelb
+        do {
+            dsm.channels[1] &= ~1;
+            dsm.channels[1] = (dsm.channels[1]+2) % DSM_MAX_CHANNEL;
+        } while (dsm.channels[1] == dsm.channels[0]);
     }
     
     dsm.current_rf_channel = dsm.channels[dsm.current_channel];
