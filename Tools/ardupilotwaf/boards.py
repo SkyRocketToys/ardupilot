@@ -239,6 +239,29 @@ class sitl(Board):
                 'winmm',
             ]
 
+class chibios(Board):
+    toolchain = 'arm-none-eabi'
+    
+    def configure_env(self, cfg, env):
+        super(chibios, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD = 'HAL_BOARD_CHIBIOS',
+            HAVE_OCLOEXEC = 0,
+            HAVE_STD_NULLPTR_T = 0,
+        )
+
+        env.AP_LIBRARIES += [
+            'AP_HAL_ChibiOS',
+        ]
+        env.GIT_SUBMODULES += [
+            'ChibiOS',
+        ]
+        cfg.load('chibios')
+    def build(self, bld):
+        super(chibios, self).build(bld)
+        bld.load('chibios')
+
 class linux(Board):
     def configure_env(self, cfg, env):
         super(linux, self).configure_env(cfg, env)
