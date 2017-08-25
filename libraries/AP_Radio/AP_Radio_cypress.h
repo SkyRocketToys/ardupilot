@@ -174,6 +174,7 @@ private:
         uint32_t receive_timeout_usec;
 
         uint32_t last_recv_us;
+        uint32_t last_parse_us;
         uint32_t last_recv_chan;
         uint32_t last_chan_change_us;
         uint16_t num_channels;
