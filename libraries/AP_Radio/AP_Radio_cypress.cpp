@@ -409,7 +409,8 @@ void AP_Radio_cypress::check_fw_ack(void)
  */
 uint32_t AP_Radio_cypress::last_recv_us(void)
 {
-    return dsm.last_recv_us;
+    // we use the parse time, so it matches when channel values are filled in
+    return dsm.last_parse_us;
 }
 
 /*
@@ -756,6 +757,8 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
 
     memcpy(dsm.pwm_channels, pwm_channels, num_values*sizeof(uint16_t));
 
+    dsm.last_parse_us = AP_HAL::micros();
+    
     // suppress channel 8 ack values
     dsm.num_channels = num_values==8?7:num_values;
 
