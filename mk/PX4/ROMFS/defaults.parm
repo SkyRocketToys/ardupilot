@@ -230,3 +230,5 @@ GPS_SAVE_CFG         2
 GPS_TYPE             2
 GPS_HDOP_GOOD        160
 
+# throw mode
+THROW_NEXTMODE       5
