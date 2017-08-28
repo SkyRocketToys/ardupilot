@@ -112,7 +112,7 @@ bool AP_Compass_LIS3MDL::init()
     /* register the compass instance in the frontend */
     compass_instance = register_compass();
 
-    printf("Found a LIS3MDL on 0x%x as compass %u\n", dev->get_bus_id(), compass_instance);
+    printf("Found a LIS3MDL on 0x%x as compass %u\n", (unsigned int)dev->get_bus_id(), (unsigned int)compass_instance);
     
     set_rotation(compass_instance, rotation);
 

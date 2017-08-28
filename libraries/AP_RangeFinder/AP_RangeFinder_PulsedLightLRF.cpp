@@ -189,7 +189,7 @@ bool AP_RangeFinder_PulsedLightLRF::init(void)
         }
     }
 
-    printf("Found LidarLite device=0x%x v2=%d\n", _dev->get_bus_id(), (int)v2_hardware);
+    printf("Found LidarLite device=0x%x v2=%d\n", (unsigned int)_dev->get_bus_id(), (int)v2_hardware);
     
     _dev->get_semaphore()->give();
 

@@ -159,7 +159,7 @@ bool AP_Compass_IST8310::init()
     _instance = register_compass();
 
     printf("%s found on bus %u id %u address 0x%02x\n", name,
-           _dev->bus_num(), _dev->get_bus_id(), _dev->get_bus_address());
+           (unsigned int)_dev->bus_num(), (unsigned int)_dev->get_bus_id(), (unsigned int)_dev->get_bus_address());
 
     set_rotation(_instance, _rotation);
 
