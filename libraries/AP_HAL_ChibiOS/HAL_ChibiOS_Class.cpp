@@ -10,6 +10,7 @@
 static Empty::UARTDriver uartADriver;
 static Empty::UARTDriver uartBDriver;
 static Empty::UARTDriver uartCDriver;
+static Empty::I2CDeviceManager i2cDeviceManager;
 static Empty::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
 static Empty::Storage storageDriver;
@@ -28,6 +29,7 @@ HAL_ChibiOS::HAL_ChibiOS() :
         nullptr,            /* no uartD */
         nullptr,            /* no uartE */
         nullptr,            /* no uartF */
+        &i2cDeviceManager,
         &spiDeviceManager,
         &analogIn,
         &storageDriver,
@@ -37,7 +39,9 @@ HAL_ChibiOS::HAL_ChibiOS() :
         &rcoutDriver,
         &schedulerInstance,
         &utilInstance,
-        &opticalFlowDriver)
+        &opticalFlowDriver,
+        nullptr
+        )
 {}
 
 void HAL_ChibiOS::run(int argc, char* const argv[], Callbacks* callbacks) const
