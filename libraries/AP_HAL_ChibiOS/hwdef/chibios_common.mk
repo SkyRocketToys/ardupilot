@@ -1,3 +1,8 @@
+#
+# Include the dependency files, should be the last of the makefile
+#
+-include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
+
 # ARM Cortex-Mx common makefile scripts and rules.
 
 ##############################################################################
@@ -33,14 +38,18 @@ ifeq ($(USE_FPU_OPT),)
 endif
 
 # FPU-related options
-ifneq ($(USE_FPU),no)
-	OPT    += $(USE_FPU_OPT)
-	DDEFS  += -DCORTEX_USE_FPU=TRUE
-	DADEFS += -DCORTEX_USE_FPU=TRUE
-else
-	DDEFS  += -DCORTEX_USE_FPU=FALSE
-	DADEFS += -DCORTEX_USE_FPU=FALSE
+ifeq ($(USE_FPU),)
+  USE_FPU = no
 endif
+ifneq ($(USE_FPU),no)
+  OPT    += $(USE_FPU_OPT)
+  DDEFS  += -DCORTEX_USE_FPU=TRUE
+  DADEFS += -DCORTEX_USE_FPU=TRUE
+else
+  DDEFS  += -DCORTEX_USE_FPU=FALSE
+  DADEFS += -DCORTEX_USE_FPU=FALSE
+endif
+
 # Process stack size
 ifeq ($(USE_PROCESS_STACKSIZE),)
   LDOPT := $(LDOPT),--defsym=__process_stack_size__=0x400
@@ -73,9 +82,13 @@ ifdef SREC
 endif
 
 # Source files groups and paths
-TCSRC   += $(CSRC)
-TCPPSRC += $(CPPSRC)
-
+ifeq ($(USE_THUMB),yes)
+  TCSRC   += $(CSRC)
+  TCPPSRC += $(CPPSRC)
+else
+  ACSRC   += $(CSRC)
+  ACPPSRC += $(CPPSRC)
+endif
 ASRC      := $(ACSRC) $(ACPPSRC)
 TSRC      := $(TCSRC) $(TCPPSRC)
 SRCPATHS  := $(sort $(dir $(ASMXSRC)) $(dir $(ASMSRC)) $(dir $(ASRC)) $(dir $(TSRC)))
@@ -112,22 +125,43 @@ ASFLAGS   = $(MCFLAGS) -Wa,-amhls=$(LSTDIR)/$(notdir $(<:.s=.lst)) $(ADEFS)
 ASXFLAGS  = $(MCFLAGS) -Wa,-amhls=$(LSTDIR)/$(notdir $(<:.S=.lst)) $(ADEFS)
 CFLAGS    = $(MCFLAGS) $(OPT) $(COPT) $(CWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.c=.lst)) $(DEFS)
 CPPFLAGS  = $(MCFLAGS) $(OPT) $(CPPOPT) $(CPPWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.cpp=.lst)) $(DEFS)
-PASSCPPFLAGS = $(MCFLAGS) $(OPT) $(CPPOPT) $(CPPWARN) $(DEFS)
 LDFLAGS   = $(MCFLAGS) $(OPT) -nostartfiles $(LLIBDIR) -Wl,-Map=$(BUILDDIR)/$(PROJECT).map,--cref,--no-warn-mismatch,--library-path=$(RULESPATH)/ld,--script=$(LDSCRIPT)$(LDOPT)
 
 # Thumb interwork enabled only if needed because it kills performance.
-CFLAGS   += -DTHUMB_PRESENT
-CPPFLAGS += -DTHUMB_PRESENT
-PASSCPPFLAGS += -DTHUMB_PRESENT
-ASFLAGS  += -DTHUMB_PRESENT
-ASXFLAGS += -DTHUMB_PRESENT
+ifneq ($(strip $(TSRC)),)
+  CFLAGS   += -DTHUMB_PRESENT
+  CPPFLAGS += -DTHUMB_PRESENT
+  ASFLAGS  += -DTHUMB_PRESENT
+  ASXFLAGS += -DTHUMB_PRESENT
+  ifneq ($(strip $(ASRC)),)
+    # Mixed ARM and THUMB mode.
+    CFLAGS   += -mthumb-interwork
+    CPPFLAGS += -mthumb-interwork
+    ASFLAGS  += -mthumb-interwork
+    ASXFLAGS += -mthumb-interwork
+    LDFLAGS  += -mthumb-interwork
+  else
+    # Pure THUMB mode, THUMB C code cannot be called by ARM asm code directly.
+    CFLAGS   += -mno-thumb-interwork -DTHUMB_NO_INTERWORKING
+    CPPFLAGS += -mno-thumb-interwork -DTHUMB_NO_INTERWORKING
+    ASFLAGS  += -mno-thumb-interwork -DTHUMB_NO_INTERWORKING -mthumb
+    ASXFLAGS += -mno-thumb-interwork -DTHUMB_NO_INTERWORKING -mthumb
+    LDFLAGS  += -mno-thumb-interwork -mthumb
+  endif
+else
+  # Pure ARM mode
+  CFLAGS   += -mno-thumb-interwork
+  CPPFLAGS += -mno-thumb-interwork
+  ASFLAGS  += -mno-thumb-interwork
+  ASXFLAGS += -mno-thumb-interwork
+  LDFLAGS  += -mno-thumb-interwork
+endif
 
 # Generate dependency information
 ASFLAGS  += -MD -MP -MF .dep/$(@F).d
 ASXFLAGS += -MD -MP -MF .dep/$(@F).d
 CFLAGS   += -MD -MP -MF .dep/$(@F).d
 CPPFLAGS += -MD -MP -MF .dep/$(@F).d
-PASSCPPFLAGS += $(TOPT)
 
 # Paths where to search for sources
 VPATH     = $(SRCPATHS)
@@ -212,6 +246,62 @@ else
 	@$(CC) -c $(ASXFLAGS) $(TOPT) -I. $(IINCDIR) $< -o $@
 endif
 
+$(BUILDDIR)/$(PROJECT).elf: $(OBJS) $(LDSCRIPT)
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	@echo
+	$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
+else
+	@echo Linking $@
+	@$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
+endif
+
+%.hex: %.elf
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(HEX) $< $@
+else
+	@echo Creating $@
+	@$(HEX) $< $@
+endif
+
+%.bin: %.elf
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(BIN) $< $@
+else
+	@echo Creating $@
+	@$(BIN) $< $@
+endif
+
+%.srec: %.elf
+ifdef SREC
+  ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(SREC) $< $@
+  else
+	@echo Creating $@
+	@$(SREC) $< $@
+  endif
+endif
+
+%.dmp: %.elf
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(OD) $(ODFLAGS) $< > $@
+	$(SZ) $<
+else
+	@echo Creating $@
+	@$(OD) $(ODFLAGS) $< > $@
+	@echo
+	@$(SZ) $<
+endif
+
+%.list: %.elf
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(OD) -S $< > $@
+else
+	@echo Creating $@
+	@$(OD) -S $< > $@
+	@echo
+	@echo Done
+endif
+
 lib: $(OBJS) $(BUILDDIR)/lib$(PROJECT).a pass
 
 $(BUILDDIR)/lib$(PROJECT).a: $(OBJS)
@@ -231,8 +321,9 @@ clean: CLEAN_RULE_HOOK
 
 CLEAN_RULE_HOOK:
 
-
 #
 # Include the dependency files, should be the last of the makefile
 #
 -include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
+
+# *** EOF ***
