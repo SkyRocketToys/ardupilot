@@ -3,8 +3,9 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
+#if CONFIG_HAL_BOARD != HAL_BOARD_CHIBIOS //we don't have ioctls in ChibiOS
 #include <sys/ioctl.h>
-
+#endif
 extern "C" typedef int (*main_fn_t)(int argc, char **);
 
 class AP_BoardConfig {
