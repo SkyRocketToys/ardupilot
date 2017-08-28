@@ -32,6 +32,7 @@ is_equal(const Arithmetic1 v_1, const Arithmetic2 v_2)
 }
 
 template bool is_equal<int>(const int v_1, const int v_2);
+template bool is_equal<long>(const long v_1, const long v_2);
 template bool is_equal<short>(const short v_1, const short v_2);
 template bool is_equal<float>(const float v_1, const float v_2);
 template bool is_equal<double>(const double v_1, const double v_2);
@@ -53,6 +54,7 @@ float safe_asin(const T v)
 }
 
 template float safe_asin<int>(const int v);
+template float safe_asin<long>(const long v);
 template float safe_asin<short>(const short v);
 template float safe_asin<float>(const float v);
 template float safe_asin<double>(const double v);
@@ -68,6 +70,7 @@ float safe_sqrt(const T v)
 }
 
 template float safe_sqrt<int>(const int v);
+template float safe_sqrt<long>(const long v);
 template float safe_sqrt<short>(const short v);
 template float safe_sqrt<float>(const float v);
 template float safe_sqrt<double>(const double v);
@@ -98,8 +101,8 @@ float wrap_180(const T angle, float unit_mod)
     }
     return res;
 }
-
 template float wrap_180<int>(const int angle, float unit_mod);
+template float wrap_180<long>(const long angle, float unit_mod);
 template float wrap_180<short>(const short angle, float unit_mod);
 template float wrap_180<float>(const float angle, float unit_mod);
 template float wrap_180<double>(const double angle, float unit_mod);
@@ -110,8 +113,9 @@ auto wrap_180_cd(const T angle) -> decltype(wrap_180(angle, 100.f))
     return wrap_180(angle, 100.f);
 }
 
-template auto wrap_180_cd<float>(const float angle) -> decltype(wrap_180(angle, 100.f));
 template auto wrap_180_cd<int>(const int angle) -> decltype(wrap_180(angle, 100.f));
+template auto wrap_180_cd<long>(const long angle) -> decltype(wrap_180(angle, 100.f));
+template auto wrap_180_cd<float>(const float angle) -> decltype(wrap_180(angle, 100.f));
 template auto wrap_180_cd<short>(const short angle) -> decltype(wrap_180(angle, 100.f));
 template auto wrap_180_cd<double>(const double angle) -> decltype(wrap_360(angle, 100.f));
 
@@ -127,6 +131,7 @@ float wrap_360(const T angle, float unit_mod)
 }
 
 template float wrap_360<int>(const int angle, float unit_mod);
+template float wrap_360<long>(const long angle, float unit_mod);
 template float wrap_360<short>(const short angle, float unit_mod);
 template float wrap_360<float>(const float angle, float unit_mod);
 template float wrap_360<double>(const double angle, float unit_mod);
@@ -139,6 +144,7 @@ auto wrap_360_cd(const T angle) -> decltype(wrap_360(angle, 100.f))
 
 template auto wrap_360_cd<float>(const float angle) -> decltype(wrap_360(angle, 100.f));
 template auto wrap_360_cd<int>(const int angle) -> decltype(wrap_360(angle, 100.f));
+template auto wrap_360_cd<long>(const long angle) -> decltype(wrap_360(angle, 100.f));
 template auto wrap_360_cd<short>(const short angle) -> decltype(wrap_360(angle, 100.f));
 template auto wrap_360_cd<double>(const double angle) -> decltype(wrap_360(angle, 100.f));
 
@@ -153,6 +159,7 @@ float wrap_PI(const T radian)
 }
 
 template float wrap_PI<int>(const int radian);
+template float wrap_PI<long>(const long radian);
 template float wrap_PI<short>(const short radian);
 template float wrap_PI<float>(const float radian);
 template float wrap_PI<double>(const double radian);
@@ -168,6 +175,7 @@ float wrap_2PI(const T radian)
 }
 
 template float wrap_2PI<int>(const int radian);
+template float wrap_2PI<long>(const long radian);
 template float wrap_2PI<short>(const short radian);
 template float wrap_2PI<float>(const float radian);
 template float wrap_2PI<double>(const double radian);
@@ -193,6 +201,7 @@ T constrain_value(const T amt, const T low, const T high)
     return amt;
 }
 
+template long constrain_value<long>(const long amt, const long low, const long high);
 template int constrain_value<int>(const int amt, const int low, const int high);
 template short constrain_value<short>(const short amt, const short low, const short high);
 template float constrain_value<float>(const float amt, const float low, const float high);
