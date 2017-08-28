@@ -8,6 +8,7 @@ import waflib
 from waflib.Configure import conf
 
 _board_classes = {}
+_board = None
 
 class BoardMeta(type):
     def __init__(cls, name, bases, dct):
@@ -105,7 +106,7 @@ class Board:
             ]
 
         env.CXXFLAGS += [
-            '-std=gnu++11',
+            '-std=gnu++0x',
 
             '-fdata-sections',
             '-ffunction-sections',
@@ -194,7 +195,6 @@ Board = BoardMeta('Board', Board.__bases__, dict(Board.__dict__))
 def get_boards_names():
     return sorted(list(_board_classes.keys()))
 
-_board = None
 @conf
 def get_board(ctx):
     global _board
@@ -254,10 +254,102 @@ class chibios(Board):
         env.AP_LIBRARIES += [
             'AP_HAL_ChibiOS',
         ]
+        
+        env.CXXFLAGS += [
+            '-Wlogical-op',
+            '-Wframe-larger-than=1300',
+            '-fsingle-precision-constant',
+            '-Wno-attributes',
+            '-Wno-error=double-promotion',
+            '-Wno-error=missing-declarations',
+            '-Wno-error=float-equal',
+            '-Wno-error=undef',
+            '-Wno-error=cpp',
+            '-fno-exceptions',
+            '-fno-rtti',
+            '-std=gnu++0x',
+            '-fno-threadsafe-statics',
+            '-Wall',
+            '-Werror',
+            '-Wextra',
+            '-Wno-sign-compare',
+            '-Wfloat-equal',
+            '-Wpointer-arith',
+            '-Wmissing-declarations',
+            '-Wno-unused-parameter',
+            '-Werror=format-security',
+            '-Werror=array-bounds',
+            '-Wfatal-errors',
+            '-Werror=unused-variable',
+            '-Werror=reorder',
+            '-Werror=uninitialized',
+            '-Werror=init-self',
+            '-Wframe-larger-than=1024',
+            '-Werror=unused-but-set-variable',
+            '-Wformat=1',
+            '-Wdouble-promotion',
+            '-Werror=double-promotion',
+            '-Wno-missing-field-initializers',
+            '-Os',
+            '-fno-strict-aliasing',
+            '-fomit-frame-pointer',
+            '-funsafe-math-optimizations',
+            '-ffunction-sections',
+            '-fdata-sections',
+            '-fno-strength-reduce',
+            '-fno-builtin-printf',
+            '-fno-builtin-fprintf',
+            '-fno-builtin-vprintf',
+            '-fno-builtin-vfprintf',
+            '-fno-builtin-puts',
+            '-mcpu=cortex-m4',
+            '-mthumb',
+            '-mfpu=fpv4-sp-d16',
+            '-mfloat-abi=hard',
+            '-nodefaultlibs'
+        ]
+
+        env.LINKFLAGS = [
+            '-mcpu=cortex-m4',
+            '-falign-functions=16',
+            '-U__STRICT_ANSI__',
+            '-fno-exceptions',
+            '-fno-unwind-tables',
+            '-fno-stack-protector',
+            '-fno-builtin-printf',
+            '-fno-builtin-fprintf',
+            '-fno-builtin-vprintf',
+            '-fno-builtin-vfprintf',
+            '-fno-builtin-puts',
+            '-fconserve-stack',
+            '-u_port_lock',
+            '-u_port_unlock',
+            '-u_exit',
+            '-u_kill',
+            '-u_getpid',
+            '-u_errno',
+            '-uchThdExit',
+            '-u_printf_float',
+            '-nodefaultlibs',
+            '-Os',
+            '-ffunction-sections',
+            '-fdata-sections',
+            '-fno-common',
+            '-mfloat-abi=hard',
+            '-mfpu=fpv4-sp-d16',
+            '-fsingle-precision-constant',
+            '-nostartfiles',
+            '-Wl,--gc-sections,--no-warn-mismatch,--library-path=,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+            % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/ldscript.ld').abspath(),
+            '-mno-thumb-interwork',
+            '-mthumb'
+        ]
+        env.LIB = ['c','gcc','nosys','rdimon', 'm']
         env.GIT_SUBMODULES += [
             'ChibiOS',
         ]
         cfg.load('chibios')
+
     def build(self, bld):
         super(chibios, self).build(bld)
         bld.load('chibios')
