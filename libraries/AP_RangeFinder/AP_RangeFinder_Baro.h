@@ -28,4 +28,5 @@ private:
     bool init(void);
 
     AP_AHRS *ahrs;
+    float base_alt;
 };
