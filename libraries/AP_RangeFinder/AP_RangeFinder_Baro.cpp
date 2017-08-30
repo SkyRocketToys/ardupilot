@@ -74,5 +74,7 @@ void AP_RangeFinder_Baro::update(void)
     } else {
         state.distance_cm = baro_alt * 100 / scale;
         update_status();
+        // don't do "lift up sensor" pre-arm check
+        state.pre_arm_check = true;
     }
 }
