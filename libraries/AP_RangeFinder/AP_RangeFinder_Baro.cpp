@@ -62,9 +62,10 @@ bool AP_RangeFinder_Baro::init(void)
  */
 void AP_RangeFinder_Baro::update(void)
 {
+    // adjust zero when disarmed, assuming flat surface
     float baro_alt = ahrs->get_baro().get_altitude();
     if (!hal.util->get_soft_armed()) {
-        base_alt = 0.99 * base_alt + 0.01 * baro_alt;
+        base_alt = 0.97 * base_alt + 0.03 * baro_alt;
     }
     baro_alt -= base_alt;
     float scale = ahrs->get_rotation_body_to_ned().c.z;
