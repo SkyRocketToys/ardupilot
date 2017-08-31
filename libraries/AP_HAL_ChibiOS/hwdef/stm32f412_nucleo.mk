@@ -7,7 +7,7 @@ TARGET = ChibiOS
 # building variables
 ######################################
 # debug build?
-RELEASE = 0
+RELEASE = 1
 
 #######################################
 # pathes
