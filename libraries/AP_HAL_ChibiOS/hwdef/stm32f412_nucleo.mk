@@ -22,8 +22,8 @@ include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.m
 # HAL-OSAL files
 include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
 include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
-include $(CHIBIOS)/os/hal/boards/ST_NUCLEO144_F412ZG/board.mk
 
+CSRC += $(HWDEF)/board.c
 
 USE_FPU = hard
 MCU = cortex-m4
@@ -66,7 +66,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 INCDIR += $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
-         $(CHIBIOS)/os/various $(HWDEF) 
+         $(CHIBIOS)/os/various $(HWDEF)
 
 #
 # OS optional components
