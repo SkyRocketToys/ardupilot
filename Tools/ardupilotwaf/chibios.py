@@ -59,8 +59,8 @@ def build(bld):
         group='dynamic_sources',
         target='modules/ChibiOS/libch.a'
     )
-    bld.env.STLIB += ['ch']
-    bld.env.STLIBPATH += ['modules/ChibiOS/']
+    bld.env.LIB += ['ch']
+    bld.env.LIBPATH += ['modules/ChibiOS/']
 # class make_chibios(Task.Task):
 #     run_str = 'make all -f ${AP_HAL}/hwdef/stm32f412_nucleo.mk'
 #     color = 'CYAN'
