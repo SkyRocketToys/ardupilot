@@ -144,6 +144,16 @@ static THD_FUNCTION(main_loop,arg)
 
 void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
 {
+    /*
+     * System initializations.
+     * - ChibiOS HAL initialization, this also initializes the configured device drivers
+     *   and performs the board-specific initializations.
+     * - Kernel initialization, the main() function becomes a thread and the
+     *   RTOS is active.
+     */
+    halInit();
+    chSysInit();
+
     assert(callbacks);
     g_callbacks = callbacks;
 
@@ -152,6 +162,7 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
                      APM_MAIN_PRIORITY,     /* Initial priority.    */
                      main_loop,             /* Thread function.     */
                      nullptr);              /* Thread parameter.    */
+    chThdExit(0);
 }
 
 const AP_HAL::HAL& AP_HAL::get_HAL() {
