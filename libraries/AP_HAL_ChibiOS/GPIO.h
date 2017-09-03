@@ -2,13 +2,12 @@
 
 #include "AP_HAL_ChibiOS.h"
 
-
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
- # define HAL_GPIO_A_LED_PIN        LINE_LED1
- # define HAL_GPIO_B_LED_PIN        LINE_LED2
- # define HAL_GPIO_C_LED_PIN        LINE_LED3
- # define HAL_GPIO_LED_ON           PAL_HIGH
- # define HAL_GPIO_LED_OFF          PAL_LOW
+ # define HAL_GPIO_A_LED_PIN        0
+ # define HAL_GPIO_B_LED_PIN        1
+ # define HAL_GPIO_C_LED_PIN        2
+ # define HAL_GPIO_LED_ON           LOW
+ # define HAL_GPIO_LED_OFF          HIGH
 #endif
 
 class ChibiOS::ChibiGPIO : public AP_HAL::GPIO {
