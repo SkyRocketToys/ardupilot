@@ -172,7 +172,7 @@ class Board:
             env.CXXFLAGS += [
                 '-Wno-error=cast-align',
             ]
-            
+
             env.DEFINES.update(
                 UAVCAN_CPP_VERSION = 'UAVCAN_CPP03',
                 UAVCAN_NO_ASSERTIONS = 1,
@@ -241,7 +241,7 @@ class sitl(Board):
 
 class chibios(Board):
     toolchain = 'arm-none-eabi'
-    
+
     def configure_env(self, cfg, env):
         super(chibios, self).configure_env(cfg, env)
 
@@ -254,7 +254,7 @@ class chibios(Board):
         env.AP_LIBRARIES += [
             'AP_HAL_ChibiOS',
         ]
-        
+
         env.CXXFLAGS += [
             '-Wlogical-op',
             '-Wframe-larger-than=1300',
@@ -329,7 +329,8 @@ class chibios(Board):
             '-nostartfiles',
             '-mfloat-abi=hard',
             '-mfpu=fpv4-sp-d16',
-            '-L/home/sidbh/ardupilot-chibios/modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/',
+            '-L%s'\
+            % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
             '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x8000,--defsym=__main_stack_size__=0x8000'\
             % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F412xG.ld').abspath(),
             '-mno-thumb-interwork',

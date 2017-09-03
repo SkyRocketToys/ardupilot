@@ -35,8 +35,75 @@ def ch_dynamic_env(self):
     self.use += ' ch'
     self.env.append_value('INCLUDES', _dynamic_env_data['include_dirs'])
 
+
+class upload_stlink(Task.Task):
+    color='BLUE'
+    run_str='${STFLASH} --reset --format ihex write ${SRC}'
+    always_run = True
+
+    def exec_command(self, cmd, **kw):
+        kw['stdout'] = sys.stdout
+        return super(upload_stlink, self).exec_command(cmd, **kw)
+
+    def keyword(self):
+        return "Uploading"
+
+class generate_hex(Task.Task):
+    color='CYAN'
+    run_str='${OBJCOPY} -O ihex ${SRC} ${TGT}'
+    always_run = True
+    def keyword(self):
+        return "Generating"
+    def __str__(self):
+        return self.outputs[0].path_from(self.generator.bld.bldnode)
+
+class make_chibios_task(Task.Task):
+    color = 'CYAN'
+    always_run = True
+    def run(self):
+        build_dir = self.env.get_flat('BUILDDIR')
+        ch_root = self.env.get_flat('CHIBIOS')
+        make = self.env.get_flat('MAKE')
+        ap_hal = self.env.get_flat('AP_HAL')
+        return self.exec_command("BUILDDIR='{}' CHIBIOS='{}' AP_HAL={}\
+                   '{}' lib -f '{}'/hwdef/stm32f412_nucleo.mk".format(
+                   build_dir, ch_root, ap_hal, make, ap_hal
+                   ))
+    def exec_command(self, cmd, **kw):
+        kw['stdout'] = sys.stdout
+        return super(make_chibios_task, self).exec_command(cmd, **kw)
+    def keyword(self):
+        return "Generating"
+    def __str__(self):
+        return self.outputs[0].path_from(self.generator.bld.bldnode)
+
+@feature('ch_ap_program')
+@after_method('process_source')
+def chibios_firmware(self):
+    self.link_task.always_run = True
+    make_tsk = self.create_task('make_chibios_task',
+                                group='dynamic_sources',
+                                tgt=self.bld.bldnode.find_or_declare('modules/ChibiOS/libch.a'))
+    make_tsk.env.BUILDDIR = self.bld.env.BUILDDIR
+    make_tsk.env.CHIBIOS = self.bld.env.CH_ROOT
+    make_tsk.env.AP_HAL = self.bld.env.AP_HAL_ROOT
+
+    link_output = self.link_task.outputs[0]
+    self.objcopy_target = self.bld.bldnode.find_or_declare('bin/' + link_output.change_ext('.hex').name)
+    generate_hex_task = self.create_task('generate_hex',
+                            src=link_output,
+                            tgt=self.objcopy_target)
+    generate_hex_task.set_run_after(self.link_task)
+    if self.bld.options.upload:
+        _upload_task = self.create_task('upload_stlink',
+                                src=self.objcopy_target)
+        _upload_task.set_run_after(generate_hex_task)
+
 def configure(cfg):
     cfg.find_program('make', var='MAKE')
+    #cfg.objcopy = cfg.find_program('%s-%s'%(cfg.env.TOOLCHAIN,'objcopy'), var='OBJCOPY', mandatory=True)
+    cfg.find_program('arm-none-eabi-objcopy', var='OBJCOPY')
+    cfg.find_program('st-flash', var='STFLASH')
     env = cfg.env
     bldnode = cfg.bldnode.make_node(cfg.variant)
     def srcpath(path):
@@ -50,26 +117,17 @@ def configure(cfg):
     kw['features'] = Utils.to_list(kw.get('features', [])) + ['ch_ap_library']
 
     env.CH_ROOT = srcpath('modules/ChibiOS')
-    env.HAL_CH_ROOT = srcpath('libraries/AP_HAL_ChibiOS')
-    env.BUILDDIR = bldpath('.')
+    env.AP_HAL_ROOT = srcpath('libraries/AP_HAL_ChibiOS')
+    env.BUILDDIR = bldpath('modules/ChibiOS')
 
 def build(bld):
     bld(
-        rule='touch Makefile && BUILDDIR=${BUILDDIR}/modules/ChibiOS CHIBIOS=${CH_ROOT} AP_HAL=${HAL_CH_ROOT} ${MAKE} lib -f ${HAL_CH_ROOT}/hwdef/stm32f412_nucleo.mk',
+        rule='touch Makefile && BUILDDIR=${BUILDDIR} CHIBIOS=${CH_ROOT} AP_HAL=${AP_HAL_ROOT} ${MAKE} pass -f ${AP_HAL_ROOT}/hwdef/stm32f412_nucleo.mk',
         group='dynamic_sources',
-        target='modules/ChibiOS/libch.a'
+        target='modules/ChibiOS/include_dirs'
     )
     bld.env.LIB += ['ch']
     bld.env.LIBPATH += ['modules/ChibiOS/']
-# class make_chibios(Task.Task):
-#     run_str = 'make all -f ${AP_HAL}/hwdef/stm32f412_nucleo.mk'
-#     color = 'CYAN'
-
-#     def keyword(self):
-#         return "ChibiOS: Running make to link APM to ChibiOS"
-#     def __str__(self):
-#         return self.outputs[0].path_from(self.generator.bld.bldnode)
-
 # @feature('ch_ap_program')
 # @after_method('process_source')
 # def chibios_firmware(self):
