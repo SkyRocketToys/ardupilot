@@ -1,10 +1,4 @@
-#
-# Include the dependency files, should be the last of the makefile
-#
--include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
-
 # ARM Cortex-Mx common makefile scripts and rules.
-
 ##############################################################################
 # Processing options coming from the upper Makefile.
 #
@@ -165,10 +159,6 @@ CPPFLAGS += -MD -MP -MF .dep/$(@F).d
 
 # Paths where to search for sources
 VPATH     = $(SRCPATHS)
-
-#
-# Makefile rules
-#
 
 all: PRE_MAKE_ALL_RULE_HOOK $(OBJS) $(OUTFILES) POST_MAKE_ALL_RULE_HOOK
 
