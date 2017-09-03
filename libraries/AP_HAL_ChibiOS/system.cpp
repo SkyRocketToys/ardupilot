@@ -115,8 +115,7 @@ void MemManage_Handler(void) {
     (void)isExceptionUnstackingFault;
     (void)isExceptionStackingFault;
     (void)isFaultAddressValid;
-    bkpt();
-    NVIC_SystemReset();
+    while(1) {}
 }
 }
 namespace AP_HAL {
