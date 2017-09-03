@@ -163,15 +163,16 @@ void AP_Baro::calibrate(bool save)
     // the MS5611 reads quite a long way off for the first second,
     // leading to about 1m of error if we don't wait
     for (uint8_t i = 0; i < 10; i++) {
-        uint32_t tstart = AP_HAL::millis();
-        do {
+        //uint32_t tstart = AP_HAL::millis();
+        //do {
             update();
-            if (AP_HAL::millis() - tstart > 500) {
-                AP_HAL::panic("PANIC: AP_Baro::read unsuccessful "
-                        "for more than 500ms in AP_Baro::calibrate [2]\r\n");
-            }
-            hal.scheduler->delay(10);
-        } while (!healthy());
+        //    if (AP_HAL::millis() - tstart > 500) {
+                //TODO: Remove comments later
+        //        AP_HAL::panic("PANIC: AP_Baro::read unsuccessful "
+        //                "for more than 500ms in AP_Baro::calibrate [2]\r\n");
+        //    }
+        //    hal.scheduler->delay(10);
+        //} while (!healthy());
         hal.scheduler->delay(100);
     }
 
@@ -183,14 +184,14 @@ void AP_Baro::calibrate(bool save)
     const uint8_t num_samples = 5;
 
     for (uint8_t c = 0; c < num_samples; c++) {
-        uint32_t tstart = AP_HAL::millis();
-        do {
+        //uint32_t tstart = AP_HAL::millis();
+        //do {
             update();
-            if (AP_HAL::millis() - tstart > 500) {
-                AP_HAL::panic("PANIC: AP_Baro::read unsuccessful "
-                        "for more than 500ms in AP_Baro::calibrate [3]\r\n");
-            }
-        } while (!healthy());
+        //    if (AP_HAL::millis() - tstart > 500) {
+        //        AP_HAL::panic("PANIC: AP_Baro::read unsuccessful "
+        //                "for more than 500ms in AP_Baro::calibrate [3]\r\n");
+        //    }
+        //} while (!healthy());
         for (uint8_t i=0; i<_num_sensors; i++) {
             if (healthy(i)) {
                 sum_pressure[i] += sensors[i].pressure;
@@ -213,11 +214,11 @@ void AP_Baro::calibrate(bool save)
     _guessed_ground_temperature = get_external_temperature();
 
     // panic if all sensors are not calibrated
-    for (uint8_t i=0; i<_num_sensors; i++) {
-        if (sensors[i].calibrated) {
+    //for (uint8_t i=0; i<_num_sensors; i++) {
+    //    if (sensors[i].calibrated) {
             return;
-        }
-    }
+    //    }
+    //}
     AP_HAL::panic("AP_Baro: all sensors uncalibrated");
 }
 
