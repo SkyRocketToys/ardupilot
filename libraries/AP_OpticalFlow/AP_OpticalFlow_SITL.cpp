@@ -67,7 +67,6 @@ void AP_OpticalFlow_SITL::update(void)
 
 
     state.device_id = 1;
-    state.surface_quality = 51;
 
     // sensor position offset in body frame
     Vector3f posRelSensorBF = _sitl->optflow_pos_offset;
@@ -81,6 +80,9 @@ void AP_OpticalFlow_SITL::update(void)
         range = 1e38f;
     }
 
+    // reduce quality at higher ranges
+    state.surface_quality = constrain_float(100 - range*2, 0, 255);
+    
     // Calculate relative velocity in sensor frame assuming no misalignment between sensor and vehicle body axes
     Vector3f relVelSensor = rotmat.mul_transpose(velocity);
 
