@@ -1023,6 +1023,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Group: SRTL_
     // @Path: ../libraries/AP_SmartRTL/AP_SmartRTL.cpp
     AP_SUBGROUPINFO(smart_rtl, "SRTL_", 21, ParametersG2, AP_SmartRTL),
+
+    // @Group: FHLD
+    // @Path: control_flowhold.cpp
+    AP_SUBGROUPINFO(flowhold, "FHLD", 22, ParametersG2, FlowHold),
     
     AP_GROUPEND
 };

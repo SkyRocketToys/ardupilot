@@ -122,6 +122,10 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
             success = smart_rtl_init(ignore_checks);
             break;
 
+        case FLOWHOLD:
+            success = g2.flowhold.init(ignore_checks);
+            break;
+            
         default:
             success = false;
             break;
@@ -263,11 +267,14 @@ void Copter::update_flight_mode()
             guided_nogps_run();
             break;
 
-
         case SMART_RTL:
             smart_rtl_run();
             break;
 
+        case FLOWHOLD:
+            g2.flowhold.run();
+            break;
+            
         default:
             break;
     }
@@ -363,7 +370,7 @@ bool Copter::mode_has_manual_throttle(control_mode_t mode)
 //  arming_from_gcs should be set to true if the arming request comes from the ground station
 bool Copter::mode_allows_arming(control_mode_t mode, bool arming_from_gcs)
 {
-    if (mode_has_manual_throttle(mode) || mode == LOITER || mode == ALT_HOLD || mode == POSHOLD || mode == DRIFT || mode == SPORT || mode == THROW || (arming_from_gcs && (mode == GUIDED || mode == GUIDED_NOGPS))) {
+    if (mode_has_manual_throttle(mode) || mode == LOITER || mode == ALT_HOLD || mode == FLOWHOLD || mode == POSHOLD || mode == DRIFT || mode == SPORT || mode == THROW || (arming_from_gcs && (mode == GUIDED || mode == GUIDED_NOGPS))) {
         return true;
     }
     return false;
@@ -409,6 +416,8 @@ const char *Copter::flight_mode_string(control_mode_t mode)
         return "AVOID_ADSB";
     case GUIDED_NOGPS:
         return "GUIDED_NOGPS";
+    case FLOWHOLD:
+        return "FLOWHOLD";
     default:
         break;
     }
@@ -493,6 +502,9 @@ void Copter::notify_flight_mode(control_mode_t mode)
             break;
         case GUIDED_NOGPS:
             notify.set_flight_mode_str("GNGP");
+            break;
+        case FLOWHOLD:
+            notify.set_flight_mode_str("FLOW");
             break;
         default:
             notify.set_flight_mode_str("----");
