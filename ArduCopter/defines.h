@@ -104,6 +104,7 @@ enum control_mode_t {
     AVOID_ADSB =   19,  // automatic avoidance of obstacles in the macro scale - e.g. full-sized aircraft
     GUIDED_NOGPS = 20,  // guided mode but only accepts attitude and altitude
     SMART_RTL =    21,  // SMART_RTL returns to home by retracing its steps
+    FLOWHOLD     = 22,  // optical flow hold mode, based on ALT_HOLD
 };
 
 enum mode_reason_t {
@@ -238,6 +239,14 @@ enum AltHoldModeState {
     AltHold_Takeoff,
     AltHold_Flying,
     AltHold_Landed
+};
+
+// FlowHold states
+enum FlowHoldModeState {
+    FlowHold_MotorStopped,
+    FlowHold_Takeoff,
+    FlowHold_Flying,
+    FlowHold_Landed
 };
 
 // Loiter states
