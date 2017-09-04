@@ -140,7 +140,7 @@ void Copter::poshold_run()
     float brake_to_loiter_mix;          // mix of brake and loiter controls.  0 = fully brake controls, 1 = fully loiter controls
     float controller_to_pilot_roll_mix; // mix of controller and pilot controls.  0 = fully last controller controls, 1 = fully pilot controls
     float controller_to_pilot_pitch_mix;    // mix of controller and pilot controls.  0 = fully last controller controls, 1 = fully pilot controls
-    float vel_fw, vel_right;            // vehicle's current velocity in body-frame forward and right directions
+    Vector2f vel_bf;                    // vehicle's current velocity in body-frame forward and right directions
     const Vector3f& vel = inertial_nav.get_velocity();
 
     // initialize vertical speeds and acceleration
@@ -215,8 +215,7 @@ void Copter::poshold_run()
 
         // convert inertial nav earth-frame velocities to body-frame
         // To-Do: move this to AP_Math (or perhaps we already have a function to do this)
-        vel_fw = vel.x*ahrs.cos_yaw() + vel.y*ahrs.sin_yaw();
-        vel_right = -vel.x*ahrs.sin_yaw() + vel.y*ahrs.cos_yaw();
+        vel_bf = ahrs.rotate_earth_to_body2D(Vector2f(vel.x, vel.y));
         
         // If not in LOITER, retrieve latest wind compensation lean angles related to current yaw
         if (poshold.roll_mode != POSHOLD_LOITER || poshold.pitch_mode != POSHOLD_LOITER)
@@ -251,7 +250,7 @@ void Copter::poshold_run()
             case POSHOLD_BRAKE:
             case POSHOLD_BRAKE_READY_TO_LOITER:
                 // calculate brake_roll angle to counter-act velocity
-                poshold_update_brake_angle_from_velocity(poshold.brake_roll, vel_right);
+                poshold_update_brake_angle_from_velocity(poshold.brake_roll, vel_bf.y);
 
                 // update braking time estimate
                 if (!poshold.braking_time_updated_roll) {
@@ -266,7 +265,7 @@ void Copter::poshold_run()
                 }
 
                 // if velocity is very low reduce braking time to 0.5seconds
-                if ((fabsf(vel_right) <= POSHOLD_SPEED_0) && (poshold.brake_timeout_roll > 50*LOOP_RATE_FACTOR)) {
+                if ((fabsf(vel_bf.y) <= POSHOLD_SPEED_0) && (poshold.brake_timeout_roll > 50*LOOP_RATE_FACTOR)) {
                     poshold.brake_timeout_roll = 50*LOOP_RATE_FACTOR;
                 }
 
@@ -345,7 +344,7 @@ void Copter::poshold_run()
             case POSHOLD_BRAKE:
             case POSHOLD_BRAKE_READY_TO_LOITER:
                 // calculate brake_pitch angle to counter-act velocity
-                poshold_update_brake_angle_from_velocity(poshold.brake_pitch, -vel_fw);
+                poshold_update_brake_angle_from_velocity(poshold.brake_pitch, -vel_bf.x);
 
                 // update braking time estimate
                 if (!poshold.braking_time_updated_pitch) {
@@ -360,7 +359,7 @@ void Copter::poshold_run()
                 }
 
                 // if velocity is very low reduce braking time to 0.5seconds
-                if ((fabsf(vel_fw) <= POSHOLD_SPEED_0) && (poshold.brake_timeout_pitch > 50*LOOP_RATE_FACTOR)) {
+                if ((fabsf(vel_bf.x) <= POSHOLD_SPEED_0) && (poshold.brake_timeout_pitch > 50*LOOP_RATE_FACTOR)) {
                     poshold.brake_timeout_pitch = 50*LOOP_RATE_FACTOR;
                 }
 
@@ -452,8 +451,8 @@ void Copter::poshold_run()
                     brake_to_loiter_mix = (float)poshold.brake_to_loiter_timer / (float)POSHOLD_BRAKE_TO_LOITER_TIMER;
 
                     // calculate brake_roll and pitch angles to counter-act velocity
-                    poshold_update_brake_angle_from_velocity(poshold.brake_roll, vel_right);
-                    poshold_update_brake_angle_from_velocity(poshold.brake_pitch, -vel_fw);
+                    poshold_update_brake_angle_from_velocity(poshold.brake_roll, vel_bf.y);
+                    poshold_update_brake_angle_from_velocity(poshold.brake_pitch, -vel_bf.x);
 
                     // run loiter controller
                     wp_nav->update_loiter(ekfGndSpdLimit, ekfNavVelGainScaler);
