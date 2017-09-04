@@ -252,9 +252,7 @@ void AC_WPNav::calc_loiter_desired_velocity(float nav_dt, float ekfGndSpdLimit)
     _pos_control.set_jerk_xy(_loiter_jerk_max_cmsss);
 
     // rotate pilot input to lat/lon frame
-    Vector2f desired_accel;
-    desired_accel.x = (_pilot_accel_fwd_cms*_ahrs.cos_yaw() - _pilot_accel_rgt_cms*_ahrs.sin_yaw());
-    desired_accel.y = (_pilot_accel_fwd_cms*_ahrs.sin_yaw() + _pilot_accel_rgt_cms*_ahrs.cos_yaw());
+    Vector2f desired_accel = _ahrs.rotate_body_to_earth2D(Vector2f(_pilot_accel_fwd_cms, _pilot_accel_rgt_cms));
 
     // calculate the difference
     Vector2f des_accel_diff = (desired_accel - _loiter_desired_accel);
