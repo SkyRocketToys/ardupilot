@@ -369,6 +369,7 @@ void Copter::update_sensor_status_flags(void)
         control_sensors_enabled |= MAV_SYS_STATUS_SENSOR_XY_POSITION_CONTROL;
         break;
     case ALT_HOLD:
+    case FLOWHOLD:
     case GUIDED_NOGPS:
     case SPORT:
     case AUTOTUNE:

@@ -576,6 +576,9 @@ public:
     AP_TempCalibration temp_calibration;
 
     ToyMode toy_mode;
+
+    // FLOWHOLD mode controller
+    FlowHold flowhold;
 };
 
 extern const AP_Param::Info        var_info[];

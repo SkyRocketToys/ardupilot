@@ -1022,6 +1022,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: toy_mode.cpp
     AP_SUBGROUPINFO(toy_mode, "TMODE", 20, ParametersG2, ToyMode),
 #endif
+
+    // @Group: FHLD
+    // @Path: control_flowhold.cpp
+    AP_SUBGROUPINFO(flowhold, "FHLD", 21, ParametersG2, FlowHold),
     
     AP_GROUPEND
 };
