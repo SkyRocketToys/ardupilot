@@ -61,7 +61,7 @@ bool ChibiGPIO::attach_interrupt(uint8_t interrupt_num, AP_HAL::Proc p,
 
 bool ChibiGPIO::usb_connected(void)
 {
-    return false;
+    return _usb_connected;
 }
 
 ChibiDigitalSource::ChibiDigitalSource(uint8_t v) :

@@ -8,7 +8,7 @@
 #include <AP_HAL_Empty/AP_HAL_Empty_Private.h>
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS_Private.h>
 
-static Empty::UARTDriver uartADriver;
+static ChibiOS::ChibiUARTDriver uartADriver(0);
 static Empty::UARTDriver uartBDriver;
 static Empty::UARTDriver uartCDriver;
 static Empty::I2CDeviceManager i2cDeviceManager;
@@ -19,7 +19,7 @@ static ChibiOS::ChibiGPIO gpioDriver;
 static Empty::RCInput rcinDriver;
 static Empty::RCOutput rcoutDriver;
 static ChibiOS::ChibiScheduler schedulerInstance;
-static ChibiOS::Util utilInstance;
+static ChibiOS::ChibiUtil utilInstance;
 static Empty::OpticalFlow opticalFlowDriver;
 
 HAL_ChibiOS::HAL_ChibiOS() :

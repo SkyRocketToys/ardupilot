@@ -28,7 +28,11 @@ public:
             uint8_t mode);
 
     /* return true if USB cable is connected */
-    bool    usb_connected(void);
+    bool    usb_connected(void) override;
+
+    void set_usb_connected() { _usb_connected = true; }
+private:
+    bool _usb_connected = false;
 };
 
 class ChibiOS::ChibiDigitalSource : public AP_HAL::DigitalSource {

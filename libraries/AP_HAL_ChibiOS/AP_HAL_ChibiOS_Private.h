@@ -7,3 +7,4 @@
 #include "GPIO.h"
 #include "Scheduler.h"
 #include "Util.h"
+#include "UARTDriver.h"

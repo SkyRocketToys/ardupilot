@@ -4,7 +4,7 @@
 #include "AP_HAL_ChibiOS.h"
 #include "Scheduler.h"
 
-#include <AP_HAL_Empty/UARTDriver.h>
+#include <AP_HAL_ChibiOS/UARTDriver.h>
 #include <AP_HAL_Empty/AnalogIn.h>
 #include <AP_HAL_Empty/Storage.h>
 #include <AP_HAL_Empty/RCOutput.h>
@@ -269,12 +269,12 @@ void ChibiScheduler::_uart_thread(void* arg)
         sched->delay_microseconds(1000);
 
         // process any pending serial bytes
-        /*((UARTDriver *)hal.uartA)->_timer_tick();
-        ((UARTDriver *)hal.uartB)->_timer_tick();
-        ((UARTDriver *)hal.uartC)->_timer_tick();
-        ((UARTDriver *)hal.uartD)->_timer_tick();
-        ((UARTDriver *)hal.uartE)->_timer_tick();
-        ((UARTDriver *)hal.uartF)->_timer_tick();*/
+        ((ChibiUARTDriver *)hal.uartA)->_timer_tick();
+        /*((ChibiUARTDriver *)hal.uartB)->_timer_tick();
+        ((ChibiUARTDriver *)hal.uartC)->_timer_tick();
+        ((ChibiUARTDriver *)hal.uartD)->_timer_tick();
+        ((ChibiUARTDriver *)hal.uartE)->_timer_tick();
+        ((ChibiUARTDriver *)hal.uartF)->_timer_tick();*/
     }
 }
 
@@ -310,7 +310,7 @@ void ChibiScheduler::_storage_thread(void* arg)
 
 bool ChibiScheduler::in_main_thread()
 {
-    return get_main_thread()->name == chThdGetSelfX()->name;
+    return get_main_thread() == chThdGetSelfX();
 }
 
 void ChibiScheduler::system_initialized()

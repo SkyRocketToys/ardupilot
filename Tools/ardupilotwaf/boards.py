@@ -331,7 +331,7 @@ class chibios(Board):
             '-mfpu=fpv4-sp-d16',
             '-L%s'\
             % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
-            '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x8000,--defsym=__main_stack_size__=0x8000'\
+            '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
             % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F412xG.ld').abspath(),
             '-mno-thumb-interwork',
             '-mthumb'
