@@ -22,7 +22,22 @@ def _load_dynamic_env_data(bld):
     _dynamic_env_data['include_dirs'] = re.split('; ', tmp_str)
     print _dynamic_env_data['include_dirs']
 
+@feature('ch_ap_program')
+@after_method('process_source')
+@before_method('apply_link')
+def process_chibios(self):
+    if self.bld.cmd == 'list':
+        return
+    make_tsk = self.create_task('make_chibios_task',
+                                group='dynamic_sources',
+                                tgt=self.bld.bldnode.find_or_declare('modules/ChibiOS/libch.a'))
+    make_tsk.env.BUILDDIR = self.bld.env.BUILDDIR
+    make_tsk.env.CHIBIOS = self.bld.env.CH_ROOT
+    make_tsk.env.AP_HAL = self.bld.env.AP_HAL_ROOT
+
+
 @feature('ch_ap_library', 'ch_ap_program')
+@after_method('make_chibios_task')
 @before_method('process_source')
 def ch_dynamic_env(self):
     # The generated files from configuration possibly don't exist if it's just
@@ -81,13 +96,6 @@ class make_chibios_task(Task.Task):
 @after_method('process_source')
 def chibios_firmware(self):
     self.link_task.always_run = True
-    make_tsk = self.create_task('make_chibios_task',
-                                group='dynamic_sources',
-                                tgt=self.bld.bldnode.find_or_declare('modules/ChibiOS/libch.a'))
-    make_tsk.env.BUILDDIR = self.bld.env.BUILDDIR
-    make_tsk.env.CHIBIOS = self.bld.env.CH_ROOT
-    make_tsk.env.AP_HAL = self.bld.env.AP_HAL_ROOT
-
     link_output = self.link_task.outputs[0]
     self.objcopy_target = self.bld.bldnode.find_or_declare('bin/' + link_output.change_ext('.hex').name)
     generate_hex_task = self.create_task('generate_hex',

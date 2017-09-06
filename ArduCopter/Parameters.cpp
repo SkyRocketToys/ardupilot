@@ -793,11 +793,12 @@ const AP_Param::Info Copter::var_info[] = {
     // @Group: EK2_
     // @Path: ../libraries/AP_NavEKF2/AP_NavEKF2.cpp
     GOBJECTN(EKF2, NavEKF2, "EK2_", NavEKF2),
-    
+
+#ifdef HAL_USE_EKF3
     // @Group: EK3_
     // @Path: ../libraries/AP_NavEKF3/AP_NavEKF3.cpp
     GOBJECTN(EKF3, NavEKF3, "EK3_", NavEKF3),
-
+#endif
     // @Group: MIS_
     // @Path: ../libraries/AP_Mission/AP_Mission.cpp
     GOBJECT(mission, "MIS_",       AP_Mission),

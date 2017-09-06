@@ -321,7 +321,7 @@ void Copter::update_sensor_status_flags(void)
         control_sensors_present |= MAV_SYS_STATUS_SENSOR_VISION_POSITION;
     }
 #endif
-#if VISUAL_ODOMETRY_ENABLED == ENABLED
+#if VISUAL_ODOMETRY_ENABLED == ENABLED && defined(HAL_USE_EKF3)
     if (g2.visual_odom.enabled()) {
         control_sensors_present |= MAV_SYS_STATUS_SENSOR_VISION_POSITION;
     }

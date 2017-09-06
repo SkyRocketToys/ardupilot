@@ -30,7 +30,9 @@
 
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_150
 #include <AP_NavEKF2/AP_NavEKF2.h>
+#ifdef HAL_USE_EKF3
 #include <AP_NavEKF3/AP_NavEKF3.h>
+#endif
 #include <AP_NavEKF/AP_Nav_Common.h>              // definitions shared by inertial and ekf nav filters
 
 #define AP_AHRS_NAVEKF_AVAILABLE 1
@@ -46,7 +48,10 @@ public:
     static AP_AHRS_NavEKF create(AP_InertialSensor &ins,
                                  AP_Baro &baro,
                                  AP_GPS &gps,
-                                 NavEKF2 &_EKF2, NavEKF3 &_EKF3,
+                                 NavEKF2 &_EKF2,
+#ifdef HAL_USE_EKF3
+                                 NavEKF3 &_EKF3,
+#endif
                                  Flags flags = FLAG_NONE) {
         return AP_AHRS_NavEKF{ins, baro, gps, _EKF2, _EKF3, flags};
     }
@@ -101,13 +106,14 @@ public:
     const NavEKF2 &get_NavEKF2_const(void) const {
         return EKF2;
     }
-
+#ifdef HAL_USE_EKF3
     NavEKF3 &get_NavEKF3(void) {
         return EKF3;
     }
     const NavEKF3 &get_NavEKF3_const(void) const {
         return EKF3;
     }
+#endif
     
     // return secondary attitude solution if available, as eulers in radians
     bool get_secondary_attitude(Vector3f &eulers) override;
@@ -166,10 +172,10 @@ public:
 
     // write optical flow measurements to EKF
     void writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset);
-
+#ifdef HAL_USE_EKF3
     // write body odometry measurements to the EKF
     void writeBodyFrameOdom(float quality, const Vector3f &delPos, const Vector3f &delAng, float delTime, uint32_t timeStamp_ms, const Vector3f &posOffset);
-
+#endif
     // inhibit GPS usage
     uint8_t setInhibitGPS(void);
 
@@ -260,7 +266,9 @@ public:
 
 private:
     enum EKF_TYPE {EKF_TYPE_NONE=0,
+#ifdef HAL_USE_EKF3
                    EKF_TYPE3=3,
+#endif
                    EKF_TYPE2=2
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
                    ,EKF_TYPE_SITL=10
@@ -273,9 +281,13 @@ private:
     }
 
     NavEKF2 &EKF2;
+#ifdef HAL_USE_EKF3
     NavEKF3 &EKF3;
+#endif
     bool _ekf2_started;
+#ifdef HAL_USE_EKF3
     bool _ekf3_started;
+#endif
     bool _force_ekf;
     Matrix3f _dcm_matrix;
     Vector3f _dcm_attitude;
@@ -290,8 +302,9 @@ private:
     uint8_t ekf_type(void) const;
     void update_DCM(bool skip_ins_update);
     void update_EKF2(void);
+#ifdef HAL_USE_EKF3
     void update_EKF3(void);
-
+#endif
     // get the index of the current primary IMU
     uint8_t get_primary_IMU_index(void) const;
     

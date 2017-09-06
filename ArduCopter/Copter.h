@@ -46,7 +46,9 @@
 #include <AP_InertialSensor/AP_InertialSensor.h>  // ArduPilot Mega Inertial Sensor (accel & gyro) Library
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_NavEKF2/AP_NavEKF2.h>
+#ifdef HAL_USE_EKF3
 #include <AP_NavEKF3/AP_NavEKF3.h>
+#endif
 #include <AP_Mission/AP_Mission.h>     // Mission command library
 #include <AC_PID/AC_PID.h>             // PID library
 #include <AC_PID/AC_PI_2D.h>           // PID library (2-axis)
@@ -215,8 +217,14 @@ private:
 
     // Inertial Navigation EKF
     NavEKF2 EKF2 = NavEKF2::create(&ahrs, barometer, rangefinder);
+#ifdef HAL_USE_EKF3
     NavEKF3 EKF3 = NavEKF3::create(&ahrs, barometer, rangefinder);
-    AP_AHRS_NavEKF ahrs = AP_AHRS_NavEKF::create(ins, barometer, gps, EKF2, EKF3, AP_AHRS_NavEKF::FLAG_ALWAYS_USE_EKF);
+#endif
+    AP_AHRS_NavEKF ahrs = AP_AHRS_NavEKF::create(ins, barometer, gps, EKF2,
+#ifdef HAL_USE_EKF3
+                                                 EKF3,
+#endif
+                                                 AP_AHRS_NavEKF::FLAG_ALWAYS_USE_EKF);
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     SITL::SITL sitl;

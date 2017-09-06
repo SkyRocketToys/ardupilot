@@ -691,10 +691,12 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs)
     if (ahrs.get_NavEKF2().activeCores() > 0) {
         Log_Write_EKF2(ahrs);
     }
+#ifdef HAL_USE_EKF3
     // only log EKF3 if enabled
     if (ahrs.get_NavEKF3().activeCores() > 0) {
         Log_Write_EKF3(ahrs);
     }
+#endif
 }
 
 
@@ -1058,7 +1060,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     }
 }
 
-
+#ifdef HAL_USE_EKF3
 void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs)
 {
     uint64_t time_us = AP_HAL::micros64();
@@ -1455,7 +1457,8 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs)
         }
     }
 }
-#endif
+#endif //HAL_USE_EKF3
+#endif //AP_HAL_AHRS_AVAILABLE
 
 // Write a command processing packet
 bool DataFlash_Backend::Log_Write_MavCmd(uint16_t cmd_total, const mavlink_mission_item_t& mav_cmd)
