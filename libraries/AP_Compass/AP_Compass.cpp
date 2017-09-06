@@ -774,6 +774,9 @@ void Compass::_detect_backends(void)
                 AP_Compass_AK8963::name, false);
     ADD_BACKEND(DRIVER_LSM9DS1, AP_Compass_LSM9DS1::probe(*this, hal.spi->get_device("lsm9ds1_m")),
                 AP_Compass_LSM9DS1::name, false);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    ADD_BACKEND(DRIVER_LSM303D, AP_Compass_LSM303D::probe(*this, hal.spi->get_device(HAL_INS_LSM9DS0_A_NAME)),
+                AP_Compass_LSM303D::name, false);
 #else
     #error Unrecognised HAL_COMPASS_TYPE setting
 #endif

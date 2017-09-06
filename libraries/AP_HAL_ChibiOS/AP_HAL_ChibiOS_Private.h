@@ -8,3 +8,4 @@
 #include "Scheduler.h"
 #include "Util.h"
 #include "UARTDriver.h"
+#include "SPIDevice.h"

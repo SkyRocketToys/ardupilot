@@ -9,8 +9,8 @@ extern const AP_HAL::HAL& hal;
 using namespace ChibiOS;
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SDU1, true},  //Serial 0
     {(BaseSequentialStream*) &SD3, false},   //Serial 1
+    {(BaseSequentialStream*) &SDU1, true},  //Serial 0
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
@@ -93,6 +93,14 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
         usbConnectBus(serusbcfg.usbp);
     } else {
         if (_baudrate != 0) {
+            SerialConfig sercfg =
+            {
+              _baudrate,
+              0,
+              USART_CR2_STOP1_BITS,
+              0
+            };
+            sdStart((SerialDriver*)_serial, &sercfg);
         }
     }
 
@@ -116,7 +124,7 @@ void ChibiUARTDriver::end()
     if (_is_usb) {
         sduStop((SerialUSBDriver*)_serial);
     } else {
-
+        sdStop((SerialDriver*)_serial);
     }
     _readbuf.set_size(0);
     _writebuf.set_size(0);
@@ -127,7 +135,7 @@ void ChibiUARTDriver::flush()
     if (_is_usb) {
         sduSOFHookI((SerialUSBDriver*)_serial);
     } else {
-
+        //TODO: Handle this for other serial ports
     }
 }
 

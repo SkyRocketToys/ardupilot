@@ -291,6 +291,7 @@ class chibios(Board):
             '-Werror=double-promotion',
             '-Wno-missing-field-initializers',
             '-Os',
+            '-g',
             '-fno-strict-aliasing',
             '-fomit-frame-pointer',
             '-funsafe-math-optimizations',
@@ -312,6 +313,7 @@ class chibios(Board):
         env.LINKFLAGS = [
             '-mcpu=cortex-m4',
             '-Os',
+            '-g',
             '-fomit-frame-pointer',
             '-falign-functions=16',
             '-ffunction-sections',

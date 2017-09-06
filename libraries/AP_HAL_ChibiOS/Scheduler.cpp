@@ -57,6 +57,9 @@ void ChibiScheduler::init()
 
 void ChibiScheduler::delay_microseconds(uint16_t usec)
 {
+    if (usec == 0) { //chibios faults with 0us sleep
+        return;
+    }
     chThdSleepMicroseconds(usec); //Suspends Thread for desired microseconds
 }
 
@@ -84,9 +87,9 @@ static void set_normal_priority()
  */
 void ChibiScheduler::delay_microseconds_boost(uint16_t usec)
 {
-    chThdSleepMicroseconds(usec); //Suspends Thread for desired microseconds
+    delay_microseconds(usec); //Suspends Thread for desired microseconds
     set_high_priority();
-    chThdSleepMicroseconds(APM_MAIN_PRIORITY_BOOST_USEC);
+    delay_microseconds(APM_MAIN_PRIORITY_BOOST_USEC);
     set_normal_priority();
 }
 
@@ -270,9 +273,9 @@ void ChibiScheduler::_uart_thread(void* arg)
 
         // process any pending serial bytes
         ((ChibiUARTDriver *)hal.uartA)->_timer_tick();
-        /*((ChibiUARTDriver *)hal.uartB)->_timer_tick();
+        //((ChibiUARTDriver *)hal.uartB)->_timer_tick();
         ((ChibiUARTDriver *)hal.uartC)->_timer_tick();
-        ((ChibiUARTDriver *)hal.uartD)->_timer_tick();
+        /*((ChibiUARTDriver *)hal.uartD)->_timer_tick();
         ((ChibiUARTDriver *)hal.uartE)->_timer_tick();
         ((ChibiUARTDriver *)hal.uartF)->_timer_tick();*/
     }

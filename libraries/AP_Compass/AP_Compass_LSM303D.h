@@ -15,7 +15,7 @@ public:
                                      AP_HAL::OwnPtr<AP_HAL::Device> dev,
                                      enum Rotation = ROTATION_NONE);
 
-    static constexpr const char *name = "LSM303D";
+    static constexpr const char *name = "lsm303d";
 
     void read() override;
 

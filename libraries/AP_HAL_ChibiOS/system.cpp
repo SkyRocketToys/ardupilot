@@ -148,7 +148,7 @@ uint32_t millis()
 
 uint64_t micros64()
 {
-    return ST2US(chVTGetSystemTime());
+    return (uint64_t)ST2US(1)*(uint64_t)chVTGetSystemTime();
 ;
 }
 
