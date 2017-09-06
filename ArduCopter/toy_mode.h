@@ -120,6 +120,7 @@ private:
     uint32_t throttle_arm_ms;
     bool upgrade_to_loiter;
     uint32_t last_action_ms;
+    uint32_t reset_turtle_start_ms;
 
     // time when we were last told we are recording video
     uint32_t last_video_ms;
