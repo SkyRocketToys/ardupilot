@@ -13,6 +13,7 @@
 #define TOY_DESCENT_SLOW_HEIGHT 5
 #define TOY_DESCENT_SLOW_RAMP 3
 #define TOY_DESCENT_SLOW_MIN 300
+#define TOY_RESET_TURTLE_TIME 5000
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
@@ -235,7 +236,8 @@ void ToyMode::update()
     bool left_action_button = (ch7_bits&1) != 0;
     bool right_action_button = (ch7_bits&2) != 0;
     bool power_button = (ch7_bits&4) != 0;
-
+    uint32_t now = AP_HAL::millis();
+    
     // decode action buttons into an action
     uint8_t action_input = 0;    
     if (left_action_button) {
@@ -253,6 +255,30 @@ void ToyMode::update()
     } else if (left_button) {
         left_press_counter++;
     } else {
+        left_press_counter = 0;
+    }
+
+    bool reset_combination = left_action_button && right_action_button;
+    if (reset_combination && abs(copter.ahrs.roll_sensor) > 160) {
+        /*
+          if both shoulder buttons are pressed at the same time for 5
+          seconds while the vehicle is inverted then we send a
+          WIFIRESET message to the sonix to reset SSID and password
+        */
+        if (reset_turtle_start_ms == 0) {
+            reset_turtle_start_ms = now;
+        }
+        if (now - reset_turtle_start_ms > TOY_RESET_TURTLE_TIME) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: WiFi reset");
+            reset_turtle_start_ms = 0;
+            send_named_int("WIFIRESET", 1);
+        }
+    } else {
+        reset_turtle_start_ms = 0;
+    }
+    if (reset_combination) {
+        // don't act on buttons when combination pressed
+        action_input = 0;
         left_press_counter = 0;
     }
 
@@ -289,8 +315,6 @@ void ToyMode::update()
     } else {
         right_press_counter = 0;
     }
-
-    uint32_t now = AP_HAL::millis();
 
     /*
       some actions shouldn't repeat too fast
