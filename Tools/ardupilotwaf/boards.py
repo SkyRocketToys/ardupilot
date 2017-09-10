@@ -334,7 +334,7 @@ class chibios(Board):
             '-L%s'\
             % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
             '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
-            % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F412xG.ld').abspath(),
+            % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/nucleof412.ld').abspath(),
             '-mno-thumb-interwork',
             '-mthumb'
         ]

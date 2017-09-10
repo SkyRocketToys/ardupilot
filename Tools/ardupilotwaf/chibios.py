@@ -51,21 +51,28 @@ def ch_dynamic_env(self):
     self.env.append_value('INCLUDES', _dynamic_env_data['include_dirs'])
 
 
-class upload_stlink(Task.Task):
+class upload_fw(Task.Task):
     color='BLUE'
-    run_str='${STFLASH} --reset --format ihex write ${SRC}'
     always_run = True
+    def run(self):
+        upload_tools = self.env.get_flat('UPLOAD_TOOLS')
+        src = self.inputs[0]
+        return self.exec_command("python {}/px_uploader.py --port /dev/ttyACM0,/dev/ttyACM1 \
+                    --baud-bootloader 115200 {}".format(
+                   upload_tools, src))
 
     def exec_command(self, cmd, **kw):
         kw['stdout'] = sys.stdout
-        return super(upload_stlink, self).exec_command(cmd, **kw)
+        return super(upload_fw, self).exec_command(cmd, **kw)
 
     def keyword(self):
         return "Uploading"
 
-class generate_hex(Task.Task):
+class generate_fw(Task.Task):
     color='CYAN'
-    run_str='${OBJCOPY} -O ihex ${SRC} ${TGT}'
+    run_str='${OBJCOPY} -O binary ${SRC} ${SRC}.bin && \
+    python ${UPLOAD_TOOLS}/px_mkfw.py --image ${SRC}.bin \
+    --prototype ${PT_DIR}/nucleof412.prototype > ${TGT}'
     always_run = True
     def keyword(self):
         return "Generating"
@@ -79,7 +86,7 @@ class make_chibios_task(Task.Task):
         build_dir = self.env.get_flat('BUILDDIR')
         ch_root = self.env.get_flat('CHIBIOS')
         make = self.env.get_flat('MAKE')
-        ap_hal = self.env.get_flat('AP_HAL')
+        ap_hal = self.env.get_flat('AP_HAL') 
         return self.exec_command("BUILDDIR='{}' CHIBIOS='{}' AP_HAL={}\
                    '{}' lib -f '{}'/hwdef/stm32f412_nucleo.mk".format(
                    build_dir, ch_root, ap_hal, make, ap_hal
@@ -97,15 +104,15 @@ class make_chibios_task(Task.Task):
 def chibios_firmware(self):
     self.link_task.always_run = True
     link_output = self.link_task.outputs[0]
-    self.objcopy_target = self.bld.bldnode.find_or_declare('bin/' + link_output.change_ext('.hex').name)
-    generate_hex_task = self.create_task('generate_hex',
+    self.objcopy_target = self.bld.bldnode.find_or_declare('bin/' + link_output.change_ext('.apj').name)
+    generate_fw_task = self.create_task('generate_fw',
                             src=link_output,
                             tgt=self.objcopy_target)
-    generate_hex_task.set_run_after(self.link_task)
+    generate_fw_task.set_run_after(self.link_task)
     if self.bld.options.upload:
-        _upload_task = self.create_task('upload_stlink',
+        _upload_task = self.create_task('upload_fw',
                                 src=self.objcopy_target)
-        _upload_task.set_run_after(generate_hex_task)
+        _upload_task.set_run_after(generate_fw_task)
 
 def configure(cfg):
     cfg.find_program('make', var='MAKE')
@@ -127,6 +134,9 @@ def configure(cfg):
     env.CH_ROOT = srcpath('modules/ChibiOS')
     env.AP_HAL_ROOT = srcpath('libraries/AP_HAL_ChibiOS')
     env.BUILDDIR = bldpath('modules/ChibiOS')
+    env.PT_DIR = srcpath('Tools/ardupilotwaf/chibios/image')
+    env.UPLOAD_TOOLS = srcpath('Tools/ardupilotwaf')
+    env.SERIAL_PORT = srcpath('/dev/serial/by-id/*_STLink*')
 
 def build(bld):
     bld(
