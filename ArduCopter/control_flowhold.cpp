@@ -33,17 +33,17 @@ const AP_Param::GroupInfo FlowHold::var_info[] = {
 
     // @Param: _FLOW_MAX
     // @DisplayName: Flow Max
-    // @Description: Controls maximum movement rate in FlowMode
+    // @Description: Controls maximum apparent flow rate in flowhold
     // @Range: 0.1 2.5
     // @User: Standard
-    AP_GROUPINFO("_FLOW_MAX", 2, FlowHold, flow_max, 1),
+    AP_GROUPINFO("_FLOW_MAX", 2, FlowHold, flow_max, 0.3),
 
     // @Param: _FILT_HZ
     // @DisplayName: Flow Filter Frequency
     // @Description: Filter frequency for flow data
     // @Range: 1 100
     // @User: Standard
-    AP_GROUPINFO("_FILT_HZ", 3, FlowHold, flow_filter_hz, 10),
+    AP_GROUPINFO("_FILT_HZ", 3, FlowHold, flow_filter_hz, 5),
 
     // @Param: _MIN_QUAL
     // @DisplayName: Minimum flow quality
@@ -51,13 +51,20 @@ const AP_Param::GroupInfo FlowHold::var_info[] = {
     // @Range: 0 255
     // @User: Standard
     AP_GROUPINFO("_MIN_QUAL", 4, FlowHold, flow_min_quality, 10),
+
+    // @Param: _FLOW_SPEED
+    // @DisplayName: Flow Speed
+    // @Description: Controls maximum pilot speed in FlowMode
+    // @Range: 0.1 2.5
+    // @User: Standard
+    AP_GROUPINFO("_FLOW_SPEED", 5, FlowHold, flow_speed, 1.5),
     
     AP_GROUPEND
 };
 
 // constructor
 FlowHold::FlowHold(void) :
-    flow_pi_xy(0.2, 0.15, 3000, 10, 0.0025)
+    flow_pi_xy(0.35, 0.6, 3000, 5, 0.0025)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
@@ -108,8 +115,8 @@ void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles)
     // get pilot desired flow rates
     Vector2f target_flow;
 
-    target_flow.x = -copter.channel_roll->get_control_in() * flow_max / 4500;
-    target_flow.y = -copter.channel_pitch->get_control_in() * flow_max / 4500;
+    target_flow.x = -copter.channel_roll->get_control_in() * flow_speed / 4500;
+    target_flow.y = -copter.channel_pitch->get_control_in() * flow_speed / 4500;
 
     // get corrected raw flow rate
     Vector2f raw_flow = copter.optflow.flowRate() - copter.optflow.bodyRate();

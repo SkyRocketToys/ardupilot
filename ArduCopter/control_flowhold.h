@@ -31,6 +31,7 @@ private:
     void flowhold_flow_to_angle(Vector2f &angle);
 
     AP_Float flow_max;
+    AP_Float flow_speed;
     AC_PI_2D flow_pi_xy;
     AP_Float flow_filter_hz;
     AP_Int8  flow_min_quality;
