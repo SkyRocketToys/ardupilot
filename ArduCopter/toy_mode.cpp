@@ -501,7 +501,12 @@ void ToyMode::update()
         break;
 
     case ACTION_MODE_FLOW:
-        new_mode = FLOWHOLD;
+        // toggle flow hold
+        if (old_mode != FLOWHOLD) {
+            new_mode = FLOWHOLD;
+        } else {
+            new_mode = ALT_HOLD;
+        }
         break;
         
     case ACTION_DISARM:

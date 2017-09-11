@@ -166,11 +166,15 @@ void Copter::update_optical_flow(void)
     // write to log and send to EKF if new data has arrived
     if (optflow.last_update() != last_of_update) {
         last_of_update = optflow.last_update();
-        uint8_t flowQuality = optflow.quality();
-        Vector2f flowRate = optflow.flowRate();
-        Vector2f bodyRate = optflow.bodyRate();
-        const Vector3f &posOffset = optflow.get_pos_offset();
-        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, posOffset);
+        if (rangefinder.num_sensors() > 0) {
+            // disabled when no rangefinder so EKF doesn't use
+            // flow. Better to use FLOWHOLD mode instead
+            uint8_t flowQuality = optflow.quality();
+            Vector2f flowRate = optflow.flowRate();
+            Vector2f bodyRate = optflow.bodyRate();
+            const Vector3f &posOffset = optflow.get_pos_offset();
+            ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, posOffset);
+        }
         if (g.log_bitmask & MASK_LOG_OPTFLOW) {
             Log_Write_Optflow();
         }
