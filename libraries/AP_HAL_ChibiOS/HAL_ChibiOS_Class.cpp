@@ -16,7 +16,7 @@ static ChibiOS::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
 static Empty::Storage storageDriver;
 static ChibiOS::ChibiGPIO gpioDriver;
-static Empty::RCInput rcinDriver;
+static ChibiOS::ChibiRCInput rcinDriver;
 static Empty::RCOutput rcoutDriver;
 static ChibiOS::ChibiScheduler schedulerInstance;
 static ChibiOS::ChibiUtil utilInstance;
@@ -89,6 +89,8 @@ static THD_FUNCTION(main_loop,arg)
     hal.uartA->begin(115200);
     hal.uartB->begin(38400);
     hal.uartC->begin(57600);
+    hal.rcin->init();
+    hal.gpio->init();
     hal.scheduler->init();
 
     /*

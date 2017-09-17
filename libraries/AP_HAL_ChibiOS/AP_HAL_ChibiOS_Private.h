@@ -9,3 +9,4 @@
 #include "Util.h"
 #include "UARTDriver.h"
 #include "SPIDevice.h"
+#include "RCInput.h"

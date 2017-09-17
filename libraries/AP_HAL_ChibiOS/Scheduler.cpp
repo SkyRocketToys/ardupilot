@@ -8,7 +8,7 @@
 #include <AP_HAL_Empty/AnalogIn.h>
 #include <AP_HAL_Empty/Storage.h>
 #include <AP_HAL_Empty/RCOutput.h>
-#include <AP_HAL_Empty/RCInput.h>
+#include <AP_HAL_ChibiOS/RCInput.h>
 
 #include <AP_Scheduler/AP_Scheduler.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
@@ -230,7 +230,7 @@ void ChibiScheduler::_timer_thread(void *arg)
         //hal.rcout->timer_tick();
 
         // process any pending RC input requests
-        //((RCInput *)hal.rcin)->_timer_tick();
+        ((ChibiRCInput *)hal.rcin)->_timer_tick();
 
         if (chibios_ran_overtime && AP_HAL::millis() - last_ran_overtime > 2000) {
             last_ran_overtime = AP_HAL::millis();

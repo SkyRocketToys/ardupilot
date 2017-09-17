@@ -109,8 +109,9 @@ CSRC = $(STARTUPSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
+	   $(HWDEF)/board.c \
 	   $(HWDEF)/usbcfg.c \
-	   board.c
+	   $(HWDEF)/ppm.c
 #	   $(TESTSRC) \
 #	   test.c
 

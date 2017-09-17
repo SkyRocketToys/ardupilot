@@ -53,6 +53,13 @@
 #define STM32F412Zx
 
 /*
+ * APM HW Defines
+ */
+#define PPM_ICU_TIMER  ICUD1
+#define PPM_ICU_CHANNEL  ICU_CHANNEL_1
+
+
+/*
  * IO pins assignments.
  */
 #define GPIOA_ZIO_D32               0U
@@ -1022,7 +1029,7 @@
                                      PIN_MODE_INPUT(GPIOE_ZIO_D59) |        \
                                      PIN_MODE_INPUT(GPIOE_ZIO_D41) |        \
                                      PIN_MODE_INPUT(GPIOE_ZIO_D42) |        \
-                                     PIN_MODE_INPUT(GPIOE_ARD_D6) |         \
+                                     PIN_MODE_ALTERNATE(GPIOE_ARD_D6) |     \
                                      PIN_MODE_INPUT(GPIOE_ZIO_D40) |        \
                                      PIN_MODE_INPUT(GPIOE_ARD_D5) |         \
                                      PIN_MODE_INPUT(GPIOE_ZIO_D39) |        \
@@ -1070,7 +1077,7 @@
                                      PIN_PUPDR_PULLUP(GPIOE_ZIO_D59) |      \
                                      PIN_PUPDR_PULLUP(GPIOE_ZIO_D41) |      \
                                      PIN_PUPDR_PULLUP(GPIOE_ZIO_D42) |      \
-                                     PIN_PUPDR_PULLUP(GPIOE_ARD_D6) |       \
+                                     PIN_PUPDR_FLOATING(GPIOE_ARD_D6) |       \
                                      PIN_PUPDR_PULLUP(GPIOE_ZIO_D40) |      \
                                      PIN_PUPDR_PULLUP(GPIOE_ARD_D5) |       \
                                      PIN_PUPDR_PULLUP(GPIOE_ZIO_D39) |      \
@@ -1102,7 +1109,7 @@
                                      PIN_AFIO_AF(GPIOE_ZIO_D59, 0) |        \
                                      PIN_AFIO_AF(GPIOE_ZIO_D41, 0))
 #define VAL_GPIOE_AFRH              (PIN_AFIO_AF(GPIOE_ZIO_D42, 0) |        \
-                                     PIN_AFIO_AF(GPIOE_ARD_D6, 0) |         \
+                                     PIN_AFIO_AF(GPIOE_ARD_D6, 1) |         \
                                      PIN_AFIO_AF(GPIOE_ZIO_D40, 0) |        \
                                      PIN_AFIO_AF(GPIOE_ARD_D5, 0) |         \
                                      PIN_AFIO_AF(GPIOE_ZIO_D39, 0) |        \
