@@ -6,7 +6,7 @@
 
 #include <AP_HAL_ChibiOS/UARTDriver.h>
 #include <AP_HAL_Empty/AnalogIn.h>
-#include <AP_HAL_Empty/Storage.h>
+#include <AP_HAL_ChibiOS/Storage.h>
 #include <AP_HAL_Empty/RCOutput.h>
 #include <AP_HAL_ChibiOS/RCInput.h>
 
@@ -307,7 +307,7 @@ void ChibiScheduler::_storage_thread(void* arg)
         sched->delay_microseconds(10000);
 
         // process any pending storage writes
-        //((Storage *)hal.storage)->_timer_tick();
+        ((ChibiStorage *)hal.storage)->_timer_tick();
     }
 }
 

@@ -1,7 +1,8 @@
-
 #include "RCInput.h"
 #include "hal.h"
 #include "hwdef/ppm.h"
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+
 
 using namespace ChibiOS;
 extern const AP_HAL::HAL& hal;
@@ -134,3 +135,4 @@ void ChibiRCInput::_timer_tick(void)
     // note, we rely on the vehicle code checking new_input()
     // and a timeout for the last valid input to handle failsafe
 }
+#endif //#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS

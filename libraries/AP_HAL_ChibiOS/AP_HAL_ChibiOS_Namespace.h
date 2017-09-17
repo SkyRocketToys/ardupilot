@@ -16,7 +16,7 @@ namespace ChibiOS {
     class SPIDevice;
     class SPIDeviceDriver;
     class SPIDeviceManager;
-    class Storage;
+    class ChibiStorage;
     class ChibiUARTDriver;
     class ChibiUtil;
 }

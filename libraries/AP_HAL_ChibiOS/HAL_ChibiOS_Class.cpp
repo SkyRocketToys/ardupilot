@@ -14,7 +14,7 @@ static ChibiOS::ChibiUARTDriver uartCDriver(1);
 static Empty::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
-static Empty::Storage storageDriver;
+static ChibiOS::ChibiStorage storageDriver;
 static ChibiOS::ChibiGPIO gpioDriver;
 static ChibiOS::ChibiRCInput rcinDriver;
 static Empty::RCOutput rcoutDriver;

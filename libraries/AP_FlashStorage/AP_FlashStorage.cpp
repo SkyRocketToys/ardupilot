@@ -18,11 +18,12 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_FlashStorage/AP_FlashStorage.h>
 #include <stdio.h>
+extern const AP_HAL::HAL& hal;
 
-#define FLASHSTORAGE_DEBUG 0
+#define FLASHSTORAGE_DEBUG 1
 
 #if FLASHSTORAGE_DEBUG
-#define debug(fmt, args...)  do { printf(fmt, ##args); } while(0)
+#define debug(fmt, args...)  do { hal.console->printf(fmt, ##args); } while(0)
 #else
 #define debug(fmt, args...)  do { } while(0)
 #endif
@@ -300,7 +301,7 @@ bool AP_FlashStorage::erase_all(void)
 bool AP_FlashStorage::write_all(void)
 {
     debug("write_all to sector %u at %u with reserved_space=%u\n",
-           current_sector, write_offset, reserved_space);
+           (unsigned int)current_sector, (unsigned int)write_offset, (unsigned int)reserved_space);
     for (uint16_t ofs=0; ofs<storage_size; ofs += max_write) {
         if (!all_zero(ofs, max_write)) {
             if (!write(ofs, max_write)) {
