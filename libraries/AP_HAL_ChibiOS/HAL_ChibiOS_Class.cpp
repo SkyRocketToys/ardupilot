@@ -87,6 +87,7 @@ THD_WORKING_AREA(_main_thread_wa, APM_MAIN_THREAD_STACK_SIZE);
 static THD_FUNCTION(main_loop,arg)
 {
     daemon_task = chThdGetSelfX();
+
     hal.uartA->begin(115200);
     //hal.uartB->begin(38400);
     hal.uartC->begin(57600);
@@ -157,11 +158,11 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
     assert(callbacks);
     g_callbacks = callbacks;
 
-    daemon_task =  chThdCreateStatic(_main_thread_wa,
-                     sizeof(_main_thread_wa),
-                     APM_MAIN_PRIORITY,     /* Initial priority.    */
-                     main_loop,             /* Thread function.     */
-                     nullptr);              /* Thread parameter.    */
+    chThdCreateStatic(_main_thread_wa,
+                      sizeof(_main_thread_wa),
+                      APM_MAIN_PRIORITY,     /* Initial priority.    */
+                      main_loop,             /* Thread function.     */
+                      nullptr);              /* Thread parameter.    */
     chThdExit(0);
 }
 
