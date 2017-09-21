@@ -72,7 +72,7 @@ class generate_fw(Task.Task):
     color='CYAN'
     run_str='${OBJCOPY} -O binary ${SRC} ${SRC}.bin && \
     python ${UPLOAD_TOOLS}/px_mkfw.py --image ${SRC}.bin \
-    --prototype ${PT_DIR}/nucleof412.prototype > ${TGT}'
+    --prototype ${PT_DIR}/${BOARD}.prototype > ${TGT}'
     always_run = True
     def keyword(self):
         return "Generating"
@@ -86,10 +86,11 @@ class make_chibios_task(Task.Task):
         build_dir = self.env.get_flat('BUILDDIR')
         ch_root = self.env.get_flat('CHIBIOS')
         make = self.env.get_flat('MAKE')
-        ap_hal = self.env.get_flat('AP_HAL') 
+        ap_hal = self.env.get_flat('AP_HAL')
+        brd_type = self.env.get_flat('BOARD') 
         return self.exec_command("BUILDDIR='{}' CHIBIOS='{}' AP_HAL={}\
-                   '{}' lib -f '{}'/hwdef/stm32f412_nucleo.mk".format(
-                   build_dir, ch_root, ap_hal, make, ap_hal
+                   '{}' lib -f {}/hwdef/{}/chibios_board.mk".format(
+                   build_dir, ch_root, ap_hal, make, ap_hal, brd_type
                    ))
     def exec_command(self, cmd, **kw):
         kw['stdout'] = sys.stdout
@@ -140,7 +141,7 @@ def configure(cfg):
 
 def build(bld):
     bld(
-        rule='touch Makefile && BUILDDIR=${BUILDDIR} CHIBIOS=${CH_ROOT} AP_HAL=${AP_HAL_ROOT} ${MAKE} pass -f ${AP_HAL_ROOT}/hwdef/stm32f412_nucleo.mk',
+        rule='touch Makefile && BUILDDIR=${BUILDDIR} CHIBIOS=${CH_ROOT} AP_HAL=${AP_HAL_ROOT} ${MAKE} pass -f ${AP_HAL_ROOT}/hwdef/${BOARD}/chibios_board.mk',
         group='dynamic_sources',
         target='modules/ChibiOS/include_dirs'
     )

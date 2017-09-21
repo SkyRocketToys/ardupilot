@@ -331,10 +331,6 @@ class chibios(Board):
             '-nostartfiles',
             '-mfloat-abi=hard',
             '-mfpu=fpv4-sp-d16',
-            '-L%s'\
-            % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
-            '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
-            % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/nucleof412.ld').abspath(),
             '-mno-thumb-interwork',
             '-mthumb'
         ]
@@ -347,6 +343,36 @@ class chibios(Board):
     def build(self, bld):
         super(chibios, self).build(bld)
         bld.load('chibios')
+
+class nucleo_f412(chibios):
+    name = 'nucleo-f412'
+    def configure_env(self, cfg, env):
+        super(nucleo_f412, self).configure_env(cfg, env)
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412',
+        )
+        env.BOARD = 'nucleo-f412'
+        env.LINKFLAGS += [
+                    '-L%s'\
+                    % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
+                    '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
+        ]
+
+class pixhawk_cube(chibios):
+    name = 'pixhawk-cube'
+    def configure_env(self, cfg, env):
+        super(pixhawk_cube, self).configure_env(cfg, env)
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE',
+        )
+        env.BOARD = 'pixhawk-cube'
+        env.LINKFLAGS += [
+                    '-L%s'\
+                    % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
+                    '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
+        ]
 
 class linux(Board):
     def configure_env(self, cfg, env):
