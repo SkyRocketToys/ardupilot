@@ -118,7 +118,19 @@ void ChibiStorage::_flash_write(uint16_t line)
 bool ChibiStorage::_flash_write_data(uint8_t sector, uint32_t offset, const uint8_t *data, uint16_t length)
 {
     size_t base_address = stm32_flash_getpageaddr(_flash_page+sector);
-    return stm32_flash_write(base_address+offset, data, length) == length;
+    bool ret = stm32_flash_write(base_address+offset, data, length) == length;
+    if (!ret && _flash_erase_ok()) {
+        // we are getting flash write errors while disarmed. Try
+        // re-writing all of flash
+        uint32_t now = AP_HAL::millis();
+        if (now - _last_re_init_ms > 5000) {
+            _last_re_init_ms = now;
+            bool ok = _flash.re_initialise();
+            hal.console->printf("Storage: failed at %u:%u for %u - re-init %u\n",
+                                (unsigned)sector, (unsigned)offset, (unsigned)length, (unsigned)ok);
+        }
+    }
+    return ret;
 }
 
 /*

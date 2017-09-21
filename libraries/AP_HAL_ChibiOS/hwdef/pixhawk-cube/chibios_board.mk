@@ -201,7 +201,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DBOARD_FLASH_SIZE=2048
 
 # Define ASM defines here
 UADEFS =

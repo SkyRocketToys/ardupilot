@@ -4,13 +4,33 @@
 
 //NOTE: this driver is modified to work with stm32f412
 
+#ifndef BOARD_FLASH_SIZE
+#error "You must define BOARD_FLASH_SIZE in kbyte"
+#endif
+
 #define KB(x)   ((x*1024))
 // Refer Flash memory map in the User Manual to fill the following fields per microcontroller
 #define STM32_FLASH_BASE    0x08000000
-#define STM32_FLASH_NPAGES  13
-#define STM32_FLASH_SIZE    KB(1024)
-const uint32_t flash_memmap[] = { KB(16), KB(16), KB(16), KB(16), KB(64),
-                                  KB(128), KB(128), KB(128), KB(128), KB(128), KB(128), KB(128)};
+#define STM32_FLASH_SIZE    KB(BOARD_FLASH_SIZE)
+
+#if BOARD_FLASH_SIZE == 512
+#define STM32_FLASH_NPAGES  7
+static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16), KB(16), KB(64),
+                                                           KB(128), KB(128), KB(128) };
+
+#elif BOARD_FLASH_SIZE == 1024
+#define STM32_FLASH_NPAGES  12
+static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16), KB(16), KB(64),
+                                                           KB(128), KB(128), KB(128), KB(128), KB(128), KB(128), KB(128) };
+
+#elif BOARD_FLASH_SIZE == 2048
+#define STM32_FLASH_NPAGES  24
+static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16), KB(16), KB(64),
+                                                           KB(128), KB(128), KB(128), KB(128), KB(128), KB(128), KB(128),
+                                                           KB(16), KB(16), KB(16), KB(16), KB(64),
+                                                           KB(128), KB(128), KB(128), KB(128), KB(128), KB(128), KB(128)};
+#endif
+
 
 #define FLASH_KEY1      0x45670123
 #define FLASH_KEY2      0xCDEF89AB
@@ -75,7 +95,7 @@ void stm32_flash_lock(void)
 }
 
 
-int16_t stm32_flash_getpage(uint32_t addr)
+int32_t stm32_flash_getpage(uint32_t addr)
 {
     size_t page_end = 0;
     size_t i;
@@ -98,7 +118,7 @@ int16_t stm32_flash_getpage(uint32_t addr)
     return -1;
 }
 
-int16_t stm32_flash_erasepage(uint32_t page)
+int32_t stm32_flash_erasepage(uint32_t page)
 {
 
     if (page >= STM32_FLASH_NPAGES) {
@@ -134,7 +154,7 @@ int16_t stm32_flash_erasepage(uint32_t page)
     }
 }
 
-int16_t stm32_flash_ispageerased(uint32_t page)
+int32_t stm32_flash_ispageerased(uint32_t page)
 {
     uint32_t addr;
     uint32_t count;
@@ -156,7 +176,7 @@ int16_t stm32_flash_ispageerased(uint32_t page)
     return bwritten;
 }
 
-int16_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count)
+int32_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count)
 {
     uint16_t *hword = (uint16_t *)buf;
     uint32_t written = count;

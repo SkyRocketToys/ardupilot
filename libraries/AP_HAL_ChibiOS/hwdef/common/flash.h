@@ -25,10 +25,10 @@ uint32_t stm32_flash_getpagesize(uint32_t page);
 uint32_t stm32_flash_getnumpages(void);
 void stm32_flash_unlock(void);
 void stm32_flash_lock(void);
-int16_t stm32_flash_getpage(uint32_t addr);
-int16_t stm32_flash_ispageerased(uint32_t page);
-int16_t stm32_flash_erasepage(uint32_t page);
-int16_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count);
+int32_t stm32_flash_getpage(uint32_t addr);
+int32_t stm32_flash_ispageerased(uint32_t page);
+int32_t stm32_flash_erasepage(uint32_t page);
+int32_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count);
 #ifdef __cplusplus
 }
 #endif

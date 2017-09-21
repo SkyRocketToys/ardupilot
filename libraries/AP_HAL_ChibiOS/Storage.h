@@ -4,6 +4,7 @@
 #include "AP_HAL_ChibiOS_Namespace.h"
 #include <AP_Common/Bitmask.h>
 #include <AP_FlashStorage/AP_FlashStorage.h>
+#include "hwdef/common/flash.h"
 
 #define CH_STORAGE_SIZE HAL_STORAGE_SIZE
 
@@ -36,9 +37,10 @@ private:
     bool _flash_erase_ok(void);
     uint8_t _flash_page;
     bool _flash_failed;
+    uint32_t _last_re_init_ms;
     
     AP_FlashStorage _flash{_buffer,
-            16*1024U, 
+            stm32_flash_getpagesize(STORAGE_FLASH_PAGE),
             FUNCTOR_BIND_MEMBER(&ChibiStorage::_flash_write_data, bool, uint8_t, uint32_t, const uint8_t *, uint16_t),
             FUNCTOR_BIND_MEMBER(&ChibiStorage::_flash_read_data, bool, uint8_t, uint32_t, uint8_t *, uint16_t),
             FUNCTOR_BIND_MEMBER(&ChibiStorage::_flash_erase_sector, bool, uint8_t),
