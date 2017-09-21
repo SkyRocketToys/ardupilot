@@ -332,9 +332,10 @@ class chibios(Board):
             '-mfloat-abi=hard',
             '-mfpu=fpv4-sp-d16',
             '-mno-thumb-interwork',
-            '-mthumb'
+            '-mthumb',
         ]
-        env.LIB = ['c','gcc','nosys','rdimon', 'm']
+
+        env.LIB += ['c','gcc', 'g', 'm']
         env.GIT_SUBMODULES += [
             'ChibiOS',
         ]
@@ -355,7 +356,7 @@ class nucleo_f412(chibios):
         env.LINKFLAGS += [
                     '-L%s'\
                     % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
-                    '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+                    '-Wl,--gc-sections,--wrap=free,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
                     % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
         ]
 
