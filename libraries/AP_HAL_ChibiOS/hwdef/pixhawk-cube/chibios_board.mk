@@ -115,7 +115,8 @@ CSRC = $(STARTUPSRC) \
 	   $(HWDEF)/pixhawk-cube/board.c \
 	   $(HWDEF)/common/usbcfg.c \
 	   $(HWDEF)/common/ppm.c \
-	   $(HWDEF)/common/flash.c
+	   $(HWDEF)/common/flash.c \
+	   $(HWDEF)/common/malloc.c
 #	   $(TESTSRC) \
 #	   test.c
 
