@@ -148,6 +148,10 @@ def build(bld):
     bld.env.LIB += ['ch']
     bld.env.LIBPATH += ['modules/ChibiOS/']
     bld.env.LINKFLAGS += ['--specs=nano.specs']
+    wraplist = ['malloc', 'calloc', 'free', 'memalign', 'realloc']
+    for w in wraplist:
+        bld.env.LINKFLAGS += ['-Wl,--wrap,%s' % w]
+    
 # @feature('ch_ap_program')
 # @after_method('process_source')
 # def chibios_firmware(self):
