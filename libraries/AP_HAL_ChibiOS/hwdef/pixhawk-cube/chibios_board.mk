@@ -99,6 +99,9 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 #include $(CHIBIOS)/test/rt/test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
+VARIOUSSRC = $(STREAMSSRC)
+
+VARIOUSINC = $(STREAMSINC)
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(STARTUPSRC) \
@@ -107,6 +110,8 @@ CSRC = $(STARTUPSRC) \
        $(OSALSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
+       $(VARIOUSSRC) \
+	   $(HWDEF)/common/stubs.c \
 	   $(HWDEF)/pixhawk-cube/board.c \
 	   $(HWDEF)/common/usbcfg.c \
 	   $(HWDEF)/common/ppm.c \
@@ -144,7 +149,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
 INCDIR = $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
-         $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
+         $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) $(VARIOUSINC) \
 		 $(HWDEF)/common $(HWDEF)/pixhawk-cube
 
 #

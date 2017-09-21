@@ -6,7 +6,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include <stdlib.h>
-
+#include <ch.h>
 /*
   globally override new and delete to ensure that we always start with
   zero memory. This ensures consistent behaviour.
@@ -21,7 +21,7 @@ void * operator new(size_t size)
 
 void operator delete(void *p)
 {
-    if (p) free(p);
+    if (p) chHeapFree(p);
 }
 
 void * operator new[](size_t size)
@@ -34,5 +34,5 @@ void * operator new[](size_t size)
 
 void operator delete[](void * ptr)
 {
-    if (ptr) free(ptr);
+    if (ptr) chHeapFree(ptr);
 }
