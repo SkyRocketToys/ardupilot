@@ -14,7 +14,7 @@ static ChibiOS::ChibiUARTDriver uartCDriver(1);
 static Empty::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
-static ChibiOS::ChibiStorage storageDriver;
+static Empty::Storage storageDriver;
 static ChibiOS::ChibiGPIO gpioDriver;
 static ChibiOS::ChibiRCInput rcinDriver;
 static Empty::RCOutput rcoutDriver;
@@ -88,9 +88,9 @@ static THD_FUNCTION(main_loop,arg)
 {
     daemon_task = chThdGetSelfX();
     hal.uartA->begin(115200);
-    hal.uartB->begin(38400);
+    //hal.uartB->begin(38400);
     hal.uartC->begin(57600);
-    hal.rcin->init();
+    //hal.rcin->init();
     hal.gpio->init();
     hal.scheduler->init();
 
