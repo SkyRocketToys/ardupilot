@@ -22,17 +22,54 @@
 
 namespace ChibiOS {
 
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
+
+#define SPI_BUS_SENSORS 0
+
+#define SPIDEV_CS_BMP280 GPIOD, 14U
+#define SPIDEV_CS_LSM303D GPIOD, 15U
+#define SPIDEV_CS_L3GD20H GPIOF, 12U
+
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE
+#define SPI_BUS_SENSORS 0
+#define SPI_BUS_EXT 2
+
+#define SPIDEV_CS_MS5611           GPIOC, 7
+#define SPIDEV_CS_EXT_MS5611       GPIOC, 14
+#define SPIDEV_CS_MPU              GPIOC, 2
+#define SPIDEV_CS_EXT_MPU          GPIOE, 4
+#define SPIDEV_CS_EXT_LSM9DS0_G    GPIOC, 13
+#define SPIDEV_CS_EXT_LSM9DS0_AM   GPIOC, 15
+#endif
+#define SPI1_CLOCK  STM32_PCLK2
+#define SPI2_CLOCK  STM32_PCLK1
+#define SPI3_CLOCK  STM32_PCLK1
+#define SPI4_CLOCK  STM32_PCLK2
+
+
 static SPIDriver* spi_devices[] = {
     &SPID1,
-    &SPID2
+    &SPID2,
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE
+    &SPID4,
+#endif
 };
 
 #define MHZ (1000U*1000U)
 #define KHZ (1000U)
 SPIDesc SPIDeviceManager::device_table[] = {
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
     SPIDesc("bmp280", SPI_BUS_SENSORS, SPIDEV_BMP280, SPIDEV_CS_BMP280, SPIDEV_MODE3, 1*MHZ, 10*KHZ ),
     SPIDesc("lsm303d", SPI_BUS_SENSORS, SPIDEV_LSM303D, SPIDEV_CS_LSM303D, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
-    SPIDesc("l3gd20h", SPI_BUS_SENSORS, SPIDEV_L3GD20H , SPIDEV_CS_L3GD20H, SPIDEV_MODE3, 11*MHZ, 11*KHZ )
+    SPIDesc("l3gd20h", SPI_BUS_SENSORS, SPIDEV_L3GD20H , SPIDEV_CS_L3GD20H, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE
+    SPIDesc("ms5611", SPI_BUS_SENSORS, SPIDEV_MS5611, SPIDEV_CS_MS5611, SPIDEV_MODE3, 20*MHZ, 20*KHZ ),
+    SPIDesc("ms5611_ext",   SPI_BUS_EXT, SPIDEV_EXT_MS5611, SPIDEV_CS_EXT_MS5611, SPIDEV_MODE3, 20*MHZ, 20*MHZ),
+    SPIDesc("mpu9250", SPI_BUS_SENSORS, SPIDEV_MPU, SPIDEV_CS_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),
+    //SPIDesc("mpu9250_ext", SPI_BUS_EXT, SPIDEV_EXT_MPU , SPIDEV_CS_EXT_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),  
+    //SPIDesc("lsm9ds0_ext_g", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_G , SPIDEV_CS_EXT_LSM9DS0_G, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
+    //SPIDesc("lsm9ds0_ext_am", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_AM , SPIDEV_CS_EXT_LSM9DS0_AM, SPIDEV_MODE3, 11*MHZ, 11*KHZ )
+#endif
 };
 
 SPIDevice::SPIDevice(SPIBus &_bus, SPIDesc &_device_desc)
@@ -88,15 +125,19 @@ void SPIDevice::do_transfer(const uint8_t *send, uint8_t *recv, uint32_t len)
         (uint16_t)(freq_flag | device_desc.mode),
         0
     };
-    spiStart(spi_devices[device_desc.bus], &spicfg);       /* Setup transfer parameters.       */
-    spiSelect(spi_devices[device_desc.bus]);                  /* Slave Select assertion.          */
-    spiExchange(spi_devices[device_desc.bus], len,
-                send, recv);          /* Atomic transfer operations.      */
+    spiStart(spi_devices[device_desc.bus], &spicfg);        /* Setup transfer parameters.       */
+    osalSysLock();
+    spiSelectI(spi_devices[device_desc.bus]);                /* Slave Select assertion.          */
+    spiStartExchangeI(spi_devices[device_desc.bus], len,
+                send, recv); 
+    (void) osalThreadSuspendS(&spi_devices[device_desc.bus]->thread);
+                               /* Atomic transfer operations.      */
     if (!cs_forced) {
-        spiUnselect(spi_devices[device_desc.bus]);                /* Slave Select de-assertion.       */
+        spiUnselectI(spi_devices[device_desc.bus]);          /* Slave Select de-assertion.       */
     }
+    osalSysUnlock();
+    
     spiReleaseBus(spi_devices[device_desc.bus]);              /* Ownership release.               */
-
 }
 
 void SPIDevice::derive_freq_flag(uint32_t _frequency)

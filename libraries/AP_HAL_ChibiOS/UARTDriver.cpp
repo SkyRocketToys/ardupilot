@@ -9,8 +9,8 @@ extern const AP_HAL::HAL& hal;
 using namespace ChibiOS;
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
+    {(BaseSequentialStream*) &SD2, false},   //Serial 0
     {(BaseSequentialStream*) &SD3, false},   //Serial 1
-    {(BaseSequentialStream*) &SDU1, true},  //Serial 0
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
@@ -248,8 +248,10 @@ void ChibiUARTDriver::_timer_tick(void)
     if (!_initialised) return;
 
     // don't try IO on a disconnected USB port
-    if (_is_usb && ((SerialUSBDriver*)_serial)->config->usbp->state != USB_ACTIVE) {
-        return;
+    if (_is_usb) {
+        if (((SerialUSBDriver*)_serial)->config->usbp->state != USB_ACTIVE) {
+            return;
+        }
     }
     if(_is_usb) {
         ((ChibiGPIO *)hal.gpio)->set_usb_connected();

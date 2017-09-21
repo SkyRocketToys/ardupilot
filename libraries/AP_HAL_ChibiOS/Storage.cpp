@@ -4,7 +4,7 @@
 #include <AP_BoardConfig/AP_BoardConfig.h>
 
 #include "Storage.h"
-#include "hwdef/flash.h"
+#include "hwdef/common/flash.h"
 
 using namespace ChibiOS;
 

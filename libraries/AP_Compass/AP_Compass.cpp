@@ -774,9 +774,16 @@ void Compass::_detect_backends(void)
                 AP_Compass_AK8963::name, false);
     ADD_BACKEND(DRIVER_LSM9DS1, AP_Compass_LSM9DS1::probe(*this, hal.spi->get_device("lsm9ds1_m")),
                 AP_Compass_LSM9DS1::name, false);
-#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
     ADD_BACKEND(DRIVER_LSM303D, AP_Compass_LSM303D::probe(*this, hal.spi->get_device(HAL_INS_LSM9DS0_A_NAME)),
                 AP_Compass_LSM303D::name, false);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE
+        ADD_BACKEND(DRIVER_LSM303D, AP_Compass_LSM303D::probe(*this, hal.spi->get_device(HAL_INS_LSM9DS0_EXT_A_NAME), ROTATION_YAW_270),
+                    AP_Compass_LSM303D::name, false);
+        // we run the AK8963 only on the 2nd MPU9250, which leaves the
+        // first MPU9250 to run without disturbance at high rate
+        //ADD_BACKEND(DRIVER_AK8963, AP_Compass_AK8963::probe_mpu9250(*this, 1, ROTATION_YAW_270),
+        //            AP_Compass_AK8963::name, false);
 #else
     #error Unrecognised HAL_COMPASS_TYPE setting
 #endif

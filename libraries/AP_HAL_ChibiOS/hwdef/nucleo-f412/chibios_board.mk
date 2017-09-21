@@ -108,11 +108,10 @@ CSRC = $(STARTUPSRC) \
        $(OSALSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
-       $(BOARDSRC) \
-	   $(HWDEF)/board.c \
-	   $(HWDEF)/usbcfg.c \
-	   $(HWDEF)/ppm.c \
-	   $(HWDEF)/flash.c
+	   $(HWDEF)/nucleo-f412/board.c \
+	   $(HWDEF)/common/usbcfg.c \
+	   $(HWDEF)/common/ppm.c \
+	   $(HWDEF)/common/flash.c
 #	   $(TESTSRC) \
 #	   test.c
 
@@ -147,7 +146,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 INCDIR = $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
-		 $(HWDEF)
+		 $(HWDEF)/common $(HWDEF)/nucleo-f412
 
 #
 # Project, sources and paths
@@ -214,4 +213,4 @@ ULIBS =
 #
 # End of user defines
 ##############################################################################
-include $(HWDEF)/chibios_common.mk
+include $(HWDEF)/common/chibios_common.mk

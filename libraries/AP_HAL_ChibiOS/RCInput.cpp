@@ -1,6 +1,6 @@
 #include "RCInput.h"
 #include "hal.h"
-#include "hwdef/ppm.h"
+#include "hwdef/common/ppm.h"
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 
 

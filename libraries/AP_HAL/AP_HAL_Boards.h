@@ -55,9 +55,10 @@
 #define HAL_BOARD_SUBTYPE_VRCORE_V10       4005
 #define HAL_BOARD_SUBTYPE_VRBRAIN_V54      4006
 
+
 /* HAL CHIBIOS sub-types, starting at 5000 */
 #define HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412	5000
-
+#define HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE 	5001
 /* InertialSensor driver types */
 #define HAL_INS_MPU60XX_SPI  2
 #define HAL_INS_MPU60XX_I2C  3
@@ -75,6 +76,7 @@
 #define HAL_INS_BBBMINI     17
 #define HAL_INS_AERO        18
 #define HAL_INS_MPU6500     19
+#define HAL_INS_PIXHAWK_CUBE     20
 
 /* Barometer driver types */
 #define HAL_BARO_BMP085      1

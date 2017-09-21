@@ -613,8 +613,8 @@
                                      PIN_PUPDR_FLOATING(GPIOA_USB_ID) |     \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DM) |     \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DP) |     \
-                                     PIN_PUPDR_FLOATING(GPIOA_SWDIO) |      \
-                                     PIN_PUPDR_FLOATING(GPIOA_SWCLK) |      \
+                                     PIN_PUPDR_PULLUP(GPIOA_SWDIO) |      \
+                                     PIN_PUPDR_PULLDOWN(GPIOA_SWCLK) |      \
                                      PIN_PUPDR_FLOATING(GPIOA_ZIO_D20))
 #define VAL_GPIOA_ODR               (PIN_ODR_HIGH(GPIOA_ZIO_D32) |          \
                                      PIN_ODR_HIGH(GPIOA_PIN1) |             \

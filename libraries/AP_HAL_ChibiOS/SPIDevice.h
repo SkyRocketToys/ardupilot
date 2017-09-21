@@ -21,25 +21,20 @@
 #include "Scheduler.h"
 #include "Device.h"
 
+#define SPIDEV_BMP280           0
+#define SPIDEV_LSM303D          1
+#define SPIDEV_L3GD20H          2
+#define SPIDEV_MS5611           3
+#define SPIDEV_EXT_MS5611       4
+#define SPIDEV_MPU              5
+#define SPIDEV_EXT_MPU          6
+#define SPIDEV_EXT_LSM9DS0_G    7
+#define SPIDEV_EXT_LSM9DS0_AM   8
+
 #define SPIDEV_MODE0    0
 #define SPIDEV_MODE1    SPI_CR1_CPHA
 #define SPIDEV_MODE2    SPI_CR1_CPOL
 #define SPIDEV_MODE3    SPI_CR1_CPOL | SPI_CR1_CPHA
-
-#define SPIDEV_BMP280   0
-#define SPIDEV_LSM303D  1
-#define SPIDEV_L3GD20H  2
-
-#define SPI_BUS_SENSORS 0
-
-#define SPIDEV_CS_BMP280 GPIOD, 14U
-#define SPIDEV_CS_LSM303D GPIOD, 15U
-#define SPIDEV_CS_L3GD20H GPIOF, 12U
-
-#define SPI1_CLOCK  STM32_PCLK2
-#define SPI2_CLOCK  STM32_PCLK1
-#define SPI3_CLOCK  STM32_PCLK1
-#define SPI4_CLOCK  STM32_PCLK2
 
 
 namespace ChibiOS {

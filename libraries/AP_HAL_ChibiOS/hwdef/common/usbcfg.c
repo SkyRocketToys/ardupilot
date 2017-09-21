@@ -135,10 +135,10 @@ static const uint8_t vcom_string0[] = {
  * Vendor string.
  */
 static const uint8_t vcom_string1[] = {
-  USB_DESC_BYTE(30),                    /* bLength.                         */
+  USB_DESC_BYTE(20),                    /* bLength.                         */
   USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
   'A', 0, 'r', 0, 'd', 0, 'u', 0, 'P', 0, 'i', 0, 'l', 0, 'o', 0,
-  't', 0, ' ', 0, 'M', 0, 'e', 0, 'g', 0, 'a', 0
+  't', 0
 };
 
 /*
