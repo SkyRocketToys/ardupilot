@@ -34,7 +34,7 @@ namespace ChibiOS {
 #define SPI_BUS_SENSORS 0
 #define SPI_BUS_EXT 2
 
-#define SPIDEV_CS_MS5611           GPIOC, 7
+#define SPIDEV_CS_MS5611           GPIOD, 7
 #define SPIDEV_CS_EXT_MS5611       GPIOC, 14
 #define SPIDEV_CS_MPU              GPIOC, 2
 #define SPIDEV_CS_EXT_MPU          GPIOE, 4
@@ -66,9 +66,9 @@ SPIDesc SPIDeviceManager::device_table[] = {
     SPIDesc("ms5611", SPI_BUS_SENSORS, SPIDEV_MS5611, SPIDEV_CS_MS5611, SPIDEV_MODE3, 20*MHZ, 20*KHZ ),
     SPIDesc("ms5611_ext",   SPI_BUS_EXT, SPIDEV_EXT_MS5611, SPIDEV_CS_EXT_MS5611, SPIDEV_MODE3, 20*MHZ, 20*MHZ),
     SPIDesc("mpu9250", SPI_BUS_SENSORS, SPIDEV_MPU, SPIDEV_CS_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),
-    //SPIDesc("mpu9250_ext", SPI_BUS_EXT, SPIDEV_EXT_MPU , SPIDEV_CS_EXT_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),  
-    //SPIDesc("lsm9ds0_ext_g", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_G , SPIDEV_CS_EXT_LSM9DS0_G, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
-    //SPIDesc("lsm9ds0_ext_am", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_AM , SPIDEV_CS_EXT_LSM9DS0_AM, SPIDEV_MODE3, 11*MHZ, 11*KHZ )
+    SPIDesc("mpu9250_ext", SPI_BUS_EXT, SPIDEV_EXT_MPU , SPIDEV_CS_EXT_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),  
+    SPIDesc("lsm9ds0_ext_g", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_G , SPIDEV_CS_EXT_LSM9DS0_G, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
+    SPIDesc("lsm9ds0_ext_am", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_AM , SPIDEV_CS_EXT_LSM9DS0_AM, SPIDEV_MODE3, 11*MHZ, 11*KHZ )
 #endif
 };
 
@@ -248,9 +248,7 @@ bool SPIDevice::adjust_periodic_callback(AP_HAL::Device::PeriodicHandle h, uint3
  */
 bool SPIDevice::set_chip_select(bool set)
 {
-    cs_forced = set;
-    spiSelect(spi_devices[device_desc.bus]); /* Slave Select assertion.*/
-    return true;
+    return false;
 }
 
 
