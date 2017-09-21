@@ -328,7 +328,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_SYSTEM_STATE_CHECK           TRUE
+#define CH_DBG_SYSTEM_STATE_CHECK           FALSE
 
 /**
  * @brief   Debug option, parameters checks.
@@ -337,7 +337,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_ENABLE_CHECKS                TRUE
+#define CH_DBG_ENABLE_CHECKS                FALSE
 
 /**
  * @brief   Debug option, consistency checks.
@@ -347,7 +347,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_ENABLE_ASSERTS               TRUE
+#define CH_DBG_ENABLE_ASSERTS               FALSE
 
 /**
  * @brief   Debug option, trace buffer.
@@ -355,7 +355,7 @@
  *
  * @note    The default is @p CH_DBG_TRACE_MASK_DISABLED.
  */
-#define CH_DBG_TRACE_MASK                   CH_DBG_TRACE_MASK_ALL
+#define CH_DBG_TRACE_MASK                   CH_DBG_TRACE_MASK_NONE
 
 /**
  * @brief   Trace buffer entries.
