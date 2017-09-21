@@ -86,6 +86,7 @@ static AP_HAL::HAL::Callbacks* g_callbacks;
 THD_WORKING_AREA(_main_thread_wa, APM_MAIN_THREAD_STACK_SIZE);
 static THD_FUNCTION(main_loop,arg)
 {
+    daemon_task = chThdGetSelfX();
     hal.uartA->begin(115200);
     hal.uartB->begin(38400);
     hal.uartC->begin(57600);
