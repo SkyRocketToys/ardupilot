@@ -642,6 +642,10 @@ bool AP_Arming::rc_checks_copter_sub(const bool display_failure, const RC_Channe
                 ret = false;
             }
         }
+        if (!display_failure && ret == false) {
+            // no need to check any more
+            break;
+        }
     }
     return ret;
 }
