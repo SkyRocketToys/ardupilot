@@ -40,6 +40,7 @@ private:
     // of ::read() and ::write() in the main loop
     ByteBuffer _readbuf{0};
     ByteBuffer _writebuf{0};
+    mutex_t _write_mutex;
     bool _in_timer;
     bool _nonblocking_writes;
     bool _initialised;

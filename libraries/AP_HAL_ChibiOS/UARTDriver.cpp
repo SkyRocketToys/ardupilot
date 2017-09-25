@@ -4,6 +4,7 @@
 #include "UARTDriver.h"
 #include "GPIO.h"
 #include <usbcfg.h>
+
 extern const AP_HAL::HAL& hal;
 
 using namespace ChibiOS;
@@ -22,6 +23,7 @@ _initialised(false)
     _serial = _serial_tab[serial_num].serial;
     _is_usb = _serial_tab[serial_num].is_usb;
     _serial_num = serial_num;
+    chMtxObjectInit(&_write_mutex);
 }
 
 void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
@@ -192,37 +194,42 @@ int16_t ChibiUARTDriver::read()
 /* Empty implementations of Print virtual methods */
 size_t ChibiUARTDriver::write(uint8_t c)
 {
-    if (_uart_owner_thd != chThdGetSelfX()){
+    if (!chMtxTryLock(&_write_mutex)) {
         return -1;
     }
-
+    
     if (!_initialised) {
+        chMtxUnlock(&_write_mutex);
         return 0;
     }
 
     while (_writebuf.space() == 0) {
         if (_nonblocking_writes) {
+            chMtxUnlock(&_write_mutex);
             return 0;
         }
         hal.scheduler->delay(1);
     }
-    return _writebuf.write(&c, 1);
+    size_t ret = _writebuf.write(&c, 1);
+    chMtxUnlock(&_write_mutex);
+    return ret;
 }
 
 size_t ChibiUARTDriver::write(const uint8_t *buffer, size_t size)
 {
-    if (_uart_owner_thd != chThdGetSelfX()){
-        return -1;
-    }
-
     if (!_initialised) {
 		return 0;
 	}
+
+    if (!chMtxTryLock(&_write_mutex)) {
+        return -1;
+    }
 
     if (!_nonblocking_writes) {
         /*
           use the per-byte delay loop in write() above for blocking writes
          */
+        chMtxUnlock(&_write_mutex);
         size_t ret = 0;
         while (size--) {
             if (write(*buffer++) != 1) break;
@@ -231,7 +238,9 @@ size_t ChibiUARTDriver::write(const uint8_t *buffer, size_t size)
         return ret;
     }
 
-    return _writebuf.write(buffer, size);
+    size_t ret = _writebuf.write(buffer, size);
+    chMtxUnlock(&_write_mutex);
+    return ret;
 }
 
 
