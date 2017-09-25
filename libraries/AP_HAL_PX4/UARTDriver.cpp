@@ -128,7 +128,6 @@ void PX4UARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
         }
         _initialised = true;
     }
-    _uart_owner_pid = getpid();
 }
 
 void PX4UARTDriver::set_flow_control(enum flow_control fcontrol)
@@ -239,19 +238,22 @@ uint32_t PX4UARTDriver::txspace()
  */
 int16_t PX4UARTDriver::read()
 {
-    if (_uart_owner_pid != getpid()){
+    if (!_semaphore.take_nonblocking()) {
         return -1;
     }
     if (!_initialised) {
         try_initialise();
+        _semaphore.give();
         return -1;
     }
 
     uint8_t byte;
     if (!_readbuf.read_byte(&byte)) {
+        _semaphore.give();
         return -1;
     }
 
+    _semaphore.give();
     return byte;
 }
 
@@ -260,21 +262,29 @@ int16_t PX4UARTDriver::read()
  */
 size_t PX4UARTDriver::write(uint8_t c)
 {
-    if (_uart_owner_pid != getpid()){
-        return 0;
+    if (!_semaphore.take_nonblocking()) {
+        return -1;
     }
     if (!_initialised) {
         try_initialise();
+        _semaphore.give();
         return 0;
     }
 
     while (_writebuf.space() == 0) {
         if (_nonblocking_writes) {
+            _semaphore.give();
             return 0;
         }
+        _semaphore.give();
         hal.scheduler->delay(1);
+        if (!_semaphore.take_nonblocking()) {
+            return -1;
+        }
     }
-    return _writebuf.write(&c, 1);
+    size_t ret = _writebuf.write(&c, 1);
+    _semaphore.give();
+    return ret;
 }
 
 /*
@@ -282,15 +292,17 @@ size_t PX4UARTDriver::write(uint8_t c)
  */
 size_t PX4UARTDriver::write(const uint8_t *buffer, size_t size)
 {
-    if (_uart_owner_pid != getpid()){
-        return 0;
+    if (!_semaphore.take_nonblocking()) {
+        return -1;
     }
 	if (!_initialised) {
         try_initialise();
+        _semaphore.give();
 		return 0;
 	}
 
     if (!_nonblocking_writes) {
+        _semaphore.give();
         /*
           use the per-byte delay loop in write() above for blocking writes
          */
@@ -302,7 +314,9 @@ size_t PX4UARTDriver::write(const uint8_t *buffer, size_t size)
         return ret;
     }
 
-    return _writebuf.write(buffer, size);
+    size_t ret = _writebuf.write(buffer, size);
+    _semaphore.give();
+    return ret;
 }
 
 /*
