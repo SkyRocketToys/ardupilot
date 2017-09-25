@@ -11,3 +11,4 @@
 #include "SPIDevice.h"
 #include "Storage.h"
 #include "RCInput.h"
+#include "RCOutput.h"

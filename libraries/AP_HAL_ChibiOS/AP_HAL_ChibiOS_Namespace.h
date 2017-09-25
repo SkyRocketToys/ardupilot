@@ -10,7 +10,7 @@ namespace ChibiOS {
     class OpticalFlow;
     class PrivateMember;
     class ChibiRCInput;
-    class RCOutput;
+    class ChibiRCOutput;
     class ChibiScheduler;
     class Semaphore;
     class SPIDevice;
