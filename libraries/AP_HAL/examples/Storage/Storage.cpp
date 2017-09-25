@@ -4,44 +4,39 @@
 
 #include <AP_HAL/AP_HAL.h>
 
-void setup();
-void loop();
-
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
-void setup(void) 
+class Storage : public AP_HAL::HAL::Callbacks {
+public:
+    void setup() override;
+    void loop() override;
+private:
+    uint32_t offset=0;
+    uint32_t count=0;
+};
+    
+void Storage::setup(void) 
 {
-    /*
-      init Storage API
-     */
     AP_HAL::Storage *st = hal.storage;
-
-    hal.console->printf("Starting AP_HAL::Storage test\r\n");
+    hal.console->begin(115200);
+    hal.console->printf("Starting AP_HAL::Storage test\n");
     st->init();
-
-    /*
-      Calculate XOR of the full conent of memory
-      Do it by block of 8 bytes
-    */
-    unsigned char buff[8], XOR_res = 0;
-
-    for (uint32_t i = 0; i < HAL_STORAGE_SIZE; i += 8) {
-        st->read_block((void *) buff, i, 8);
-        for(uint32_t j = 0; j < 8; j++) {
-            XOR_res ^= buff[j];
-        }
-    }
-
-    /*
-      print XORed result
-     */
-    hal.console->printf("XORed ememory: %u\r\n", (unsigned) XOR_res);
 }
 
 // In main loop do nothing
-void loop(void) 
-{	
-    hal.scheduler->delay(1000);
+void Storage::loop(void) 
+{
+    if (count % 4096 == 0) {
+        hal.console->printf("write %u at %u\n", (unsigned)count, (unsigned)offset);
+    }
+    for (uint32_t i=0; i<256; i++) {
+        hal.storage->write_block(offset, &count, sizeof(count));
+        offset = (offset + 4) % HAL_STORAGE_SIZE;
+        count++;
+    }
+    hal.scheduler->delay(10);
 }
 
-AP_HAL_MAIN();
+Storage storage;
+
+AP_HAL_MAIN_CALLBACKS(&storage);
