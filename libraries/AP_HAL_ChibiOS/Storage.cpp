@@ -149,7 +149,7 @@ bool ChibiStorage::_flash_read_data(uint8_t sector, uint32_t offset, uint8_t *da
  */
 bool ChibiStorage::_flash_erase_sector(uint8_t sector)
 {
-    return stm32_flash_erasepage(_flash_page+sector) > 0;
+    return stm32_flash_erasepage(_flash_page+sector);
 }
 
 /*
