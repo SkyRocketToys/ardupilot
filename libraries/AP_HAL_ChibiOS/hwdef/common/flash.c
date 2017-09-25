@@ -2,7 +2,11 @@
 #include "flash.h"
 #include "hal.h"
 
-//NOTE: this driver is modified to work with stm32f412
+// #pragma GCC optimize("O0")
+
+/*
+  this driver has been tested with STM32F427 and STM32F412
+ */
 
 #ifndef BOARD_FLASH_SIZE
 #error "You must define BOARD_FLASH_SIZE in kbyte"
@@ -12,6 +16,13 @@
 // Refer Flash memory map in the User Manual to fill the following fields per microcontroller
 #define STM32_FLASH_BASE    0x08000000
 #define STM32_FLASH_SIZE    KB(BOARD_FLASH_SIZE)
+
+// optionally disable interrupts during flash writes
+#define STM32_FLASH_DISABLE_ISR 0
+
+// the 2nd bank of flash needs to be handled differently
+#define STM32_FLASH_BANK2_START (STM32_FLASH_BASE+0x00080000)
+
 
 #if BOARD_FLASH_SIZE == 512
 #define STM32_FLASH_NPAGES  7
@@ -31,6 +42,10 @@ static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16
                                                            KB(128), KB(128), KB(128), KB(128), KB(128), KB(128), KB(128)};
 #endif
 
+// keep a cache of the page addresses
+static uint32_t flash_pageaddr[STM32_FLASH_NPAGES];
+static bool flash_pageaddr_initialised;
+
 
 #define FLASH_KEY1      0x45670123
 #define FLASH_KEY2      0xCDEF89AB
@@ -40,141 +55,155 @@ static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16
 /* # define getreg16(a)       (*(volatile uint16_t *)(a)) */
 static inline uint16_t getreg16(unsigned int addr)
 {
-  uint16_t retval;
- __asm__ __volatile__("\tldrh %0, [%1]\n\t" : "=r"(retval) : "r"(addr));
-  return retval;
+    uint16_t retval;
+    __asm__ __volatile__("\tldrh %0, [%1]\n\t" : "=r"(retval) : "r"(addr));
+    return retval;
 }
 
 /* define putreg16(v,a)       (*(volatile uint16_t *)(a) = (v)) */
 static inline void putreg16(uint16_t val, unsigned int addr)
 {
- __asm__ __volatile__("\tstrh %0, [%1]\n\t": : "r"(val), "r"(addr));
+    __asm__ __volatile__("\tstrh %0, [%1]\n\t": : "r"(val), "r"(addr));
 }
 
-uint32_t stm32_flash_getpageaddr(uint32_t page)
+static void stm32_flash_wait_idle(void)
 {
-    uint32_t base_address = STM32_FLASH_BASE;
-    uint32_t i;
-
-    if (page >= STM32_FLASH_NPAGES) {
-        return 0;
+	while (FLASH->SR & FLASH_SR_BSY) {
+        // nop
     }
-
-    for (i = 0; i < page; ++i) {
-        base_address += stm32_flash_getpagesize(i);
-    }
-
-    return base_address;
 }
 
-uint32_t stm32_flash_getpagesize(uint32_t page)
+static void stm32_flash_unlock(void)
 {
-    return flash_memmap[page];
-}
-
-uint32_t stm32_flash_getnumpages()
-{
-    return STM32_FLASH_NPAGES;
-}
-
-void stm32_flash_unlock(void)
-{
-    while (FLASH->SR & FLASH_SR_BSY) {
-    }
+    stm32_flash_wait_idle();
 
     if (FLASH->CR & FLASH_CR_LOCK) {
         /* Unlock sequence */
         FLASH->KEYR = FLASH_KEY1;
         FLASH->KEYR = FLASH_KEY2;
     }
+
+    // disable the data cache - see stm32 errata 2.1.11
+    FLASH->ACR &= ~FLASH_ACR_DCEN;
 }
 
 void stm32_flash_lock(void)
 {
+    stm32_flash_wait_idle();
     FLASH->CR |= FLASH_CR_LOCK;
+
+    // reset and re-enable the data cache - see stm32 errata 2.1.11
+    FLASH->ACR |= FLASH_ACR_DCRST;
+    FLASH->ACR &= ~FLASH_ACR_DCRST;
+    FLASH->ACR |= FLASH_ACR_DCEN;
 }
 
 
-int32_t stm32_flash_getpage(uint32_t addr)
+
+/*
+  get the memory address of a page
+ */
+uint32_t stm32_flash_getpageaddr(uint32_t page)
 {
-    size_t page_end = 0;
-    size_t i;
-
-    if (addr >= STM32_FLASH_BASE) {
-          addr -= STM32_FLASH_BASE;
-    }
-
-    if (addr >= STM32_FLASH_SIZE) {
-      return -1;
-    }
-
-    for (i = 0; i < STM32_FLASH_NPAGES; ++i) {
-        page_end += stm32_flash_getpagesize(i);
-        if (page_end > addr) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-int32_t stm32_flash_erasepage(uint32_t page)
-{
-
     if (page >= STM32_FLASH_NPAGES) {
-        return -1;
+        return 0;
     }
 
-    /* Get flash ready and begin erasing single page */
+    if (!flash_pageaddr_initialised) {
+        uint32_t address = STM32_FLASH_BASE;
+        uint8_t i;
 
-    if (!(RCC->CR & RCC_CR_HSION)) {
-        return -1;
+        for (i = 0; i < STM32_FLASH_NPAGES; i++) {
+            flash_pageaddr[i] = address;
+            address += stm32_flash_getpagesize(i);
+        }
+        flash_pageaddr_initialised = true;
     }
 
-    stm32_flash_unlock();
-
-    FLASH->CR &= ~FLASH_CR_PSIZE;
-    FLASH->CR |= FLASH_CR_PSIZE_0;
-
-    FLASH->CR &= ~(FLASH_CR_SNB);
-    FLASH->CR |= ((page) << 3);
-    FLASH->CR |= FLASH_CR_SER;
-    FLASH->CR |= FLASH_CR_STRT;
-    //Note: Do something nice here!!
-    while (FLASH->SR & FLASH_SR_BSY){
-    }
-
-    FLASH->CR &= ~(FLASH_CR_SER);
-
-    /* Verify */
-    if (stm32_flash_ispageerased(page) == 0) {
-        return stm32_flash_getpagesize(page); /* success */
-    } else {
-        return -1; /* failure */
-    }
+    return flash_pageaddr[page];
 }
 
-int32_t stm32_flash_ispageerased(uint32_t page)
+/*
+  get size in bytes of a page
+ */
+uint32_t stm32_flash_getpagesize(uint32_t page)
+{
+    return flash_memmap[page];
+}
+
+/*
+  return total number of pages
+ */
+uint32_t stm32_flash_getnumpages()
+{
+    return STM32_FLASH_NPAGES;
+}
+
+static bool stm32_flash_ispageerased(uint32_t page)
 {
     uint32_t addr;
     uint32_t count;
-    uint32_t bwritten = 0;
 
     if (page >= STM32_FLASH_NPAGES) {
-        return -1;
+        return false;
     }
-
-    /* Verify */
 
     for (addr = stm32_flash_getpageaddr(page), count = stm32_flash_getpagesize(page);
         count; count--, addr++) {
         if ((*(volatile uint8_t *)(addr)) != 0xff) {
-            bwritten++;
+            return false;
         }
     }
 
-    return bwritten;
+    return true;
 }
+
+/*
+  erase a page
+ */
+bool stm32_flash_erasepage(uint32_t page)
+{
+    if (page >= STM32_FLASH_NPAGES) {
+        return false;
+    }
+
+#if STM32_FLASH_DISABLE_ISR
+    syssts_t sts = chSysGetStatusAndLockX();
+#endif
+    stm32_flash_wait_idle();
+    stm32_flash_unlock();
+    
+    // clear any previous errors
+    FLASH->SR = 0xF3;
+
+    stm32_flash_wait_idle();
+
+    // the snb mask is not contiguous, calculate the mask for the page
+    uint8_t snb = (((page % 12) << 3) | ((page / 12) << 7));
+    
+	FLASH->CR = FLASH_CR_PSIZE_1 | snb | FLASH_CR_SER;
+	FLASH->CR |= FLASH_CR_STRT;
+
+    stm32_flash_wait_idle();
+
+    if (FLASH->SR) {
+        // an error occurred
+        FLASH->SR = 0xF3;
+        stm32_flash_lock();
+#if STM32_FLASH_DISABLE_ISR
+        chSysRestoreStatusX(sts);
+#endif
+        return false;
+    }
+    
+    stm32_flash_lock();
+#if STM32_FLASH_DISABLE_ISR
+    chSysRestoreStatusX(sts);
+#endif
+
+    return stm32_flash_ispageerased(page);
+}
+
 
 int32_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count)
 {
@@ -186,13 +215,7 @@ int32_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count)
         return -1;
     }
 
-    /* Check for valid address range */
-
-    if (addr >= STM32_FLASH_BASE) {
-        addr -= STM32_FLASH_BASE;
-    }
-
-    if ((addr+count) >= STM32_FLASH_SIZE) {
+    if ((addr+count) >= STM32_FLASH_BASE+STM32_FLASH_SIZE) {
         return -1;
     }
 
@@ -202,36 +225,51 @@ int32_t stm32_flash_write(uint32_t addr, const void *buf, uint32_t count)
         return -1;
     }
 
+#if STM32_FLASH_DISABLE_ISR
+    syssts_t sts = chSysGetStatusAndLockX();
+#endif
+    
     stm32_flash_unlock();
 
+    // clear previous errors
+    FLASH->SR = 0xF3;
 
     /* TODO: implement up_progmem_write() to support other sizes than 16-bits */
     FLASH->CR &= ~(FLASH_CR_PSIZE);
     FLASH->CR |= FLASH_CR_PSIZE_0 | FLASH_CR_PG;
 
-  for (addr += STM32_FLASH_BASE; count; count -= 2, hword++, addr += 2)
-    {
-      /* Write half-word and wait to complete */
+    for (;count; count -= 2, hword++, addr += 2) {
+        /* Write half-word and wait to complete */
 
         putreg16(*hword, addr);
 
-        //Note: Do something nice here!!
-        while (FLASH->SR & FLASH_SR_BSY) {
-        }
+        stm32_flash_wait_idle();
 
-        /* Verify */
-
-        if (FLASH->SR & FLASH_SR_WRPERR) {
+        if (FLASH->SR) {
+            // we got an error
+            FLASH->SR = 0xF3;
             FLASH->CR &= ~(FLASH_CR_PG);
-            return -1;
+            goto failed;
         }
 
         if (getreg16(addr) != *hword) {
             FLASH->CR &= ~(FLASH_CR_PG);
-            return -1;
+            goto failed;
         }
     }
 
     FLASH->CR &= ~(FLASH_CR_PG);
+
+    stm32_flash_lock();
+#if STM32_FLASH_DISABLE_ISR
+    chSysRestoreStatusX(sts);
+#endif
     return written;
+
+failed:
+    stm32_flash_lock();
+#if STM32_FLASH_DISABLE_ISR
+    chSysRestoreStatusX(sts);
+#endif
+    return -1;
 }
