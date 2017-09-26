@@ -116,7 +116,9 @@ CSRC = $(STARTUPSRC) \
 	   $(HWDEF)/common/usbcfg.c \
 	   $(HWDEF)/common/ppm.c \
 	   $(HWDEF)/common/flash.c \
-	   $(HWDEF)/common/malloc.c
+	   $(HWDEF)/common/malloc.c \
+	   $(HWDEF)/common/hrt.c
+
 #	   $(TESTSRC) \
 #	   test.c
 

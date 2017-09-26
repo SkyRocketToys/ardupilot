@@ -5,6 +5,7 @@
 
 #include <ch.h>
 #include "hal.h"
+#include <hrt.h>
 
 extern const AP_HAL::HAL& hal;
 extern "C"
@@ -148,8 +149,7 @@ uint32_t millis()
 
 uint64_t micros64()
 {
-    return (uint64_t)ST2US(1)*(uint64_t)chVTGetSystemTime();
-;
+    return hrt_micros();
 }
 
 uint64_t millis64()

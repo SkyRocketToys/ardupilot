@@ -7,6 +7,7 @@
 #include <halconf.h>
 #include "ch.h"
 #include "hal.h"
+#include "hrt.h"
 
 class HAL_ChibiOS : public AP_HAL::HAL {
 public:

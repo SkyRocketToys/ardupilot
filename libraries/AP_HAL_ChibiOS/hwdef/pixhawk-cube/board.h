@@ -56,6 +56,7 @@
 #define PPM_ICU_TIMER  ICUD4
 #define PPM_ICU_CHANNEL  ICU_CHANNEL_2
 
+#define HRT_TIMER GPTD5
 #define LINE_LED1 PAL_LINE(GPIOE,12)
 /*
  * I/O ports initial setup, this configuration is established soon after reset

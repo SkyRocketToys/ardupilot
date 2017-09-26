@@ -155,7 +155,7 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
      */
     halInit();
     chSysInit();
-
+    hrt_init();
     assert(callbacks);
     g_callbacks = callbacks;
 
