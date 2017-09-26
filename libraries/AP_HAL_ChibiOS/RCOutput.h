@@ -23,6 +23,7 @@ private:
         PWMConfig pwm_cfg;
         PWMDriver* pwm_drv;
     };
+    uint32_t en_mask;
     static const pwm_group pwm_group_list[];
     uint8_t _num_groups;
     uint16_t period[16] = {900};

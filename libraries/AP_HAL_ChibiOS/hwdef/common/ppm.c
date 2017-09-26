@@ -92,7 +92,10 @@ static void ppm_measurement_cb(ICUDriver *icup)
         num_channels = buf_ptr + 1;
         buf_ptr = 0;
     } else {
-        updated[buf_ptr] = true;
-        ppm_buffer[buf_ptr++] = period;
+        if(period > 900) {
+            updated[buf_ptr] = true;
+            ppm_buffer[buf_ptr] = period;
+        }
+        buf_ptr++;
     }
 }

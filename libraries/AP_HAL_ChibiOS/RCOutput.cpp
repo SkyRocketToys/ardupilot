@@ -81,8 +81,9 @@ void ChibiRCOutput::enable_ch(uint8_t chan)
 {
     for (uint8_t i = 0; i < _num_groups; i++ ) {
         for (uint8_t j = 0; j < 4; j++) {
-            if (pwm_group_list[i].ch_mask[j] & 1<<chan) {
+            if ((pwm_group_list[i].ch_mask[j] & 1<<chan) && !(en_mask & 1<<chan)) {
                 pwmEnableChannel(pwm_group_list[i].pwm_drv, j, 900);
+                en_mask |= 1<<chan;
                 period[chan] = 900;
             }
         }
@@ -95,6 +96,7 @@ void ChibiRCOutput::disable_ch(uint8_t chan)
         for (uint8_t j = 0; j < 4; j++) {
             if (pwm_group_list[i].ch_mask[j] & 1<<chan) {
                 pwmDisableChannel(pwm_group_list[i].pwm_drv, j);
+                en_mask &= ~(1<<chan);
             }
         }
     }
