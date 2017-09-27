@@ -38,7 +38,7 @@ extern const AP_HAL::HAL& hal;
 #endif
 #endif
 
-#define debug(fmt, args ...)  do {printf("MPU: " fmt "\n", ## args); } while(0)
+#define debug(fmt, args ...)  do {hal.console->printf("MPU: " fmt "\n", ## args); } while(0)
 
 /*
   EXT_SYNC allows for frame synchronisation with an external device
