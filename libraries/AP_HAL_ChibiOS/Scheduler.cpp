@@ -311,7 +311,7 @@ void ChibiScheduler::_storage_thread(void* arg)
     }
 }
 
-bool ChibiScheduler::in_main_thread()
+bool ChibiScheduler::in_main_thread() const
 {
     return get_main_thread() == chThdGetSelfX();
 }
