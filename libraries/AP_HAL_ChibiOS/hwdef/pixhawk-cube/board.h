@@ -58,6 +58,9 @@
 
 #define HRT_TIMER GPTD5
 #define LINE_LED1 PAL_LINE(GPIOE,12)
+
+#define HAL_STDOUT_SERIAL SD3
+#define HAL_STDOUT_BAUDRATE 115200
 /*
  * I/O ports initial setup, this configuration is established soon after reset
  * in the initialization code.

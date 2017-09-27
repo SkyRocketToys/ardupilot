@@ -11,7 +11,6 @@ using namespace ChibiOS;
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
     {(BaseSequentialStream*) &SD2, false},   //Serial 0
-    {(BaseSequentialStream*) &SD3, false},   //Serial 1
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :

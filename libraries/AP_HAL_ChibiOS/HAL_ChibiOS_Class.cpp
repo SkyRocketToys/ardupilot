@@ -10,7 +10,7 @@
 
 static ChibiOS::ChibiUARTDriver uartADriver(0);
 static Empty::UARTDriver uartBDriver;
-static ChibiOS::ChibiUARTDriver uartCDriver(1);
+static Empty::UARTDriver uartCDriver;
 static Empty::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
@@ -90,7 +90,7 @@ static THD_FUNCTION(main_loop,arg)
 
     hal.uartA->begin(115200);
     //hal.uartB->begin(38400);
-    hal.uartC->begin(57600);
+    //hal.uartC->begin(57600);
     hal.rcin->init();
     hal.rcout->init();
     hal.gpio->init();
@@ -156,6 +156,16 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
     halInit();
     chSysInit();
     hrt_init();
+    //STDOUT Initialistion
+    SerialConfig stdoutcfg =
+    {
+      HAL_STDOUT_BAUDRATE,
+      0,
+      USART_CR2_STOP1_BITS,
+      0
+    };
+    sdStart((SerialDriver*)&HAL_STDOUT_SERIAL, &stdoutcfg);
+
     assert(callbacks);
     g_callbacks = callbacks;
 
