@@ -31,8 +31,8 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     if (_serial == nullptr) {
         return;
     }
-    uint16_t min_tx_buffer = 1024;
-    uint16_t min_rx_buffer = 512;
+    uint16_t min_tx_buffer = 4096;
+    uint16_t min_rx_buffer = 1024;
     if (_is_usb) {
         min_tx_buffer = 4096;
         min_rx_buffer = 1024;

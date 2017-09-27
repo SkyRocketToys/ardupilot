@@ -18,7 +18,7 @@ using namespace ChibiOS;
 extern const AP_HAL::HAL& hal;
 THD_WORKING_AREA(_timer_thread_wa, 2048);
 THD_WORKING_AREA(_io_thread_wa, 2048);
-THD_WORKING_AREA(_storage_thread_wa, 1024);
+THD_WORKING_AREA(_storage_thread_wa, 2048);
 THD_WORKING_AREA(_uart_thread_wa, 2048);
 
 ChibiScheduler::ChibiScheduler()
