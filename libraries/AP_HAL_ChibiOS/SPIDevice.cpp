@@ -59,16 +59,16 @@ static SPIDriver* spi_devices[] = {
 #define KHZ (1000U)
 SPIDesc SPIDeviceManager::device_table[] = {
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
-    SPIDesc("bmp280", SPI_BUS_SENSORS, SPIDEV_BMP280, SPIDEV_CS_BMP280, SPIDEV_MODE3, 1*MHZ, 10*KHZ ),
-    SPIDesc("lsm303d", SPI_BUS_SENSORS, SPIDEV_LSM303D, SPIDEV_CS_LSM303D, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
-    SPIDesc("l3gd20h", SPI_BUS_SENSORS, SPIDEV_L3GD20H , SPIDEV_CS_L3GD20H, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
+    SPIDesc("bmp280", SPI_BUS_SENSORS, SPIDEV_BMP280, SPIDEV_CS_BMP280, SPIDEV_MODE3, 1*MHZ, 10*MHZ ),
+    SPIDesc("lsm303d", SPI_BUS_SENSORS, SPIDEV_LSM303D, SPIDEV_CS_LSM303D, SPIDEV_MODE3, 11*MHZ, 11*MHZ ),
+    SPIDesc("l3gd20h", SPI_BUS_SENSORS, SPIDEV_L3GD20H , SPIDEV_CS_L3GD20H, SPIDEV_MODE3, 11*MHZ, 11*MHZ ),
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE
-    SPIDesc("ms5611", SPI_BUS_SENSORS, SPIDEV_MS5611, SPIDEV_CS_MS5611, SPIDEV_MODE3, 20*MHZ, 20*KHZ ),
+    SPIDesc("ms5611", SPI_BUS_SENSORS, SPIDEV_MS5611, SPIDEV_CS_MS5611, SPIDEV_MODE3, 20*MHZ, 20*MHZ ),
     SPIDesc("ms5611_ext",   SPI_BUS_EXT, SPIDEV_EXT_MS5611, SPIDEV_CS_EXT_MS5611, SPIDEV_MODE3, 20*MHZ, 20*MHZ),
-    SPIDesc("mpu9250", SPI_BUS_SENSORS, SPIDEV_MPU, SPIDEV_CS_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),
-    SPIDesc("mpu9250_ext", SPI_BUS_EXT, SPIDEV_EXT_MPU , SPIDEV_CS_EXT_MPU, SPIDEV_MODE3, 1*MHZ, 8*KHZ ),  
-    SPIDesc("lsm9ds0_ext_g", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_G , SPIDEV_CS_EXT_LSM9DS0_G, SPIDEV_MODE3, 11*MHZ, 11*KHZ ),
-    SPIDesc("lsm9ds0_ext_am", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_AM , SPIDEV_CS_EXT_LSM9DS0_AM, SPIDEV_MODE3, 11*MHZ, 11*KHZ )
+    SPIDesc("mpu9250", SPI_BUS_SENSORS, SPIDEV_MPU, SPIDEV_CS_MPU, SPIDEV_MODE3, 1*MHZ, 8*MHZ ),
+    SPIDesc("mpu9250_ext", SPI_BUS_EXT, SPIDEV_EXT_MPU , SPIDEV_CS_EXT_MPU, SPIDEV_MODE3, 1*MHZ, 8*MHZ ),  
+    SPIDesc("lsm9ds0_ext_g", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_G , SPIDEV_CS_EXT_LSM9DS0_G, SPIDEV_MODE3, 11*MHZ, 11*MHZ ),
+    SPIDesc("lsm9ds0_ext_am", SPI_BUS_EXT, SPIDEV_EXT_LSM9DS0_AM , SPIDEV_CS_EXT_LSM9DS0_AM, SPIDEV_MODE3, 11*MHZ, 11*MHZ )
 #endif
 };
 
@@ -78,6 +78,9 @@ SPIDevice::SPIDevice(SPIBus &_bus, SPIDesc &_device_desc)
 {
     set_device_bus(_bus.bus);
     set_device_address(_device_desc.device);
+    freq_flag_low = derive_freq_flag(device_desc.lowspeed);
+    freq_flag_high = derive_freq_flag(device_desc.highspeed);
+
     set_speed(AP_HAL::Device::SPEED_LOW);
 
     asprintf(&pname, "SPI:%s:%u:%u",
@@ -100,13 +103,12 @@ bool SPIDevice::set_speed(AP_HAL::Device::Speed speed)
 {
     switch (speed) {
     case AP_HAL::Device::SPEED_HIGH:
-        frequency = device_desc.highspeed;
+        freq_flag = freq_flag_high;
         break;
     case AP_HAL::Device::SPEED_LOW:
-        frequency = device_desc.lowspeed;
+        freq_flag = freq_flag_low;
         break;
     }
-    derive_freq_flag(frequency);
     return true;
 }
 
@@ -140,7 +142,7 @@ void SPIDevice::do_transfer(const uint8_t *send, uint8_t *recv, uint32_t len)
     spiReleaseBus(spi_devices[device_desc.bus]);              /* Ownership release.               */
 }
 
-void SPIDevice::derive_freq_flag(uint32_t _frequency)
+uint16_t SPIDevice::derive_freq_flag(uint32_t _frequency)
 {
     uint8_t i;
     uint32_t spi_clock_freq;
@@ -152,7 +154,7 @@ void SPIDevice::derive_freq_flag(uint32_t _frequency)
             spi_clock_freq = SPI2_CLOCK;
             break;
         case 2:
-            spi_clock_freq = SPI3_CLOCK;
+            spi_clock_freq = SPI4_CLOCK;
             break;
         case 3:
             spi_clock_freq = SPI4_CLOCK;
@@ -170,29 +172,22 @@ void SPIDevice::derive_freq_flag(uint32_t _frequency)
     }
     switch(i) {
         case 0: //PCLK DIV 2
-            freq_flag = 0;
-            break;
+            return 0;
         case 1: //PCLK DIV 4
-            freq_flag = SPI_CR1_BR_0;
-            break;
+            return SPI_CR1_BR_0;
         case 2: //PCLK DIV 8
-            freq_flag = SPI_CR1_BR_1;
-            break;
+            return SPI_CR1_BR_1;
         case 3: //PCLK DIV 16
-            freq_flag = SPI_CR1_BR_1 | SPI_CR1_BR_0;
-            break;
+            return SPI_CR1_BR_1 | SPI_CR1_BR_0;
         case 4: //PCLK DIV 32
-            freq_flag = SPI_CR1_BR_2;
-            break;
+            return SPI_CR1_BR_2;
         case 5: //PCLK DIV 64
-            freq_flag = SPI_CR1_BR_2 | SPI_CR1_BR_0;
-            break;
+            return SPI_CR1_BR_2 | SPI_CR1_BR_0;
         case 6: //PCLK DIV 128
-            freq_flag = SPI_CR1_BR_2 | SPI_CR1_BR_1;
-            break;
+            return SPI_CR1_BR_2 | SPI_CR1_BR_1;
         case 7: //PCLK DIV 256
-            freq_flag = SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0;
-            break;
+        default:
+            return SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0;
     }
 }
 
@@ -204,14 +199,15 @@ bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
         do_transfer(send, recv, recv_len);
         return true;
     }
-    uint8_t buf[send_len+recv_len];
+    uint32_t buf_aligned[1+((send_len+recv_len)/4)];
+    uint8_t *buf = (uint8_t *)&buf_aligned[0];
     if (send_len > 0) {
         memcpy(buf, send, send_len);
     }
     if (recv_len > 0) {
         memset(&buf[send_len], 0, recv_len);
     }
-    do_transfer(buf, buf, send_len+recv_len);
+    do_transfer((uint8_t *)buf, (uint8_t *)buf, send_len+recv_len);
     if (recv_len > 0) {
         memcpy(recv, &buf[send_len], recv_len);
     }

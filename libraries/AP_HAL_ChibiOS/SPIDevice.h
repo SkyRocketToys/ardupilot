@@ -107,10 +107,12 @@ private:
     SPIDesc &device_desc;
     uint32_t frequency;
     uint16_t freq_flag;
+    uint16_t freq_flag_low;
+    uint16_t freq_flag_high;
     char *pname;
     bool cs_forced;
     static void *spi_thread(void *arg);
-    void derive_freq_flag(uint32_t _frequency);
+    uint16_t derive_freq_flag(uint32_t _frequency);
 };
 
 class SPIDeviceManager : public AP_HAL::SPIDeviceManager {
