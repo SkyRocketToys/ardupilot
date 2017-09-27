@@ -5,6 +5,8 @@
 #include <AP_HAL_Empty/AP_HAL_Empty_Namespace.h>
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS_Namespace.h>
 #include <halconf.h>
+#include <ff.h>
+#include <stdio.h>
 #include "ch.h"
 #include "hal.h"
 #include "hrt.h"

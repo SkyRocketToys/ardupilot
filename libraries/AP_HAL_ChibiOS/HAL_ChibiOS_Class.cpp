@@ -8,6 +8,7 @@
 #include <AP_HAL_Empty/AP_HAL_Empty_Private.h>
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS_Private.h>
 
+
 static ChibiOS::ChibiUARTDriver uartADriver(0);
 static Empty::UARTDriver uartBDriver;
 static ChibiOS::ChibiUARTDriver uartCDriver(1);
@@ -21,6 +22,7 @@ static ChibiOS::ChibiRCOutput rcoutDriver;
 static ChibiOS::ChibiScheduler schedulerInstance;
 static ChibiOS::ChibiUtil utilInstance;
 static Empty::OpticalFlow opticalFlowDriver;
+static FATFS SDC_FS; // FATFS object
 
 HAL_ChibiOS::HAL_ChibiOS() :
     AP_HAL::HAL(
@@ -153,8 +155,6 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
      * - Kernel initialization, the main() function becomes a thread and the
      *   RTOS is active.
      */
-    halInit();
-    chSysInit();
     hrt_init();
     //STDOUT Initialistion
     SerialConfig stdoutcfg =
@@ -166,6 +166,25 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
     };
     sdStart((SerialDriver*)&HAL_STDOUT_SERIAL, &stdoutcfg);
 
+    //Setup SD Card and Initialise FATFS bindings
+    /*
+     * Start SD Driver
+     */
+
+    FRESULT err;
+    sdcStart(&SDCD1, NULL);
+
+    if(sdcConnect(&SDCD1) == HAL_FAILED) {
+        printf("Err: Failed to initialize SDIO!\n");
+    } else {
+        err = f_mount(&SDC_FS, "/", 1);
+        if (err != FR_OK) {
+            printf("Err: Failed to mount SD Card!\n");
+            sdcDisconnect(&SDCD1);
+        } else {
+            printf("Successfully mounted SDCard..\n");
+        }
+    } 
     assert(callbacks);
     g_callbacks = callbacks;
 

@@ -315,6 +315,11 @@
 
  GPIO_USART6_RX_1      (GPIO_ALT|GPIO_AF8|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL|GPIO_PORTC|GPIO_PIN7)
  GPIO_USART6_TX_1      (GPIO_ALT|GPIO_AF8|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL|GPIO_PORTC|GPIO_PIN6)
+ PC8  - SD_D0                     (alternate 12).
+ PC9  - SD_D1                     (alternate 12).
+ PC10 - SD_D2                     (alternate 12)
+ PC11 - SD_D3                     (alternate 12)
+ PC12 - SD_CLK                    (alternate 12)
 */
 #define VAL_GPIOC_MODER             (PIN_MODE_INPUT(0U) |        \
                                      PIN_MODE_INPUT(1U) |           \
@@ -324,11 +329,11 @@
                                      PIN_MODE_INPUT(5U) |    \
                                      PIN_MODE_ALTERNATE(6U) |    \
                                      PIN_MODE_ALTERNATE(7U) |    \
-                                     PIN_MODE_INPUT(8U) |    \
-                                     PIN_MODE_INPUT(9U) |      \
-                                     PIN_MODE_INPUT(10U) |     \
-                                     PIN_MODE_INPUT(11U) |     \
-                                     PIN_MODE_INPUT(12U) |     \
+                                     PIN_MODE_ALTERNATE(8U) |    \
+                                     PIN_MODE_ALTERNATE(9U) |      \
+                                     PIN_MODE_ALTERNATE(10U) |     \
+                                     PIN_MODE_ALTERNATE(11U) |     \
+                                     PIN_MODE_ALTERNATE(12U) |     \
                                      PIN_MODE_INPUT(13U) |      \
                                      PIN_MODE_INPUT(14U) |      \
                                      PIN_MODE_INPUT(15U))
@@ -404,11 +409,11 @@
                                      PIN_AFIO_AF(5U, 0U) |        \
                                      PIN_AFIO_AF(6U, 8U) |        \
                                      PIN_AFIO_AF(7U, 8U))
-#define VAL_GPIOC_AFRH              (PIN_AFIO_AF(8U, 0U) |       \
-                                     PIN_AFIO_AF(9U, 0U) |       \
-                                     PIN_AFIO_AF(10U, 0U) |        \
-                                     PIN_AFIO_AF(11U, 0U) |        \
-                                     PIN_AFIO_AF(12U, 0U) |        \
+#define VAL_GPIOC_AFRH              (PIN_AFIO_AF(8U, 12U) |       \
+                                     PIN_AFIO_AF(9U, 12U) |       \
+                                     PIN_AFIO_AF(10U, 12U) |        \
+                                     PIN_AFIO_AF(11U, 12U) |        \
+                                     PIN_AFIO_AF(12U, 12U) |        \
                                      PIN_AFIO_AF(13U, 0U) |          \
                                      PIN_AFIO_AF(14U, 0U) |          \
                                      PIN_AFIO_AF(15U, 0U))
@@ -421,12 +426,13 @@
  GPIO_USART3_RX_3      (GPIO_ALT|GPIO_AF7|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL|GPIO_PORTD|GPIO_PIN9)
  GPIO_USART3_TX_3      (GPIO_ALT|GPIO_AF7|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL|GPIO_PORTD|GPIO_PIN8)
 
+ PD2  Alternate 12 SD_CMD
  GPIO_TIM4_CH2IN_2     (GPIO_ALT|GPIO_AF2|GPIO_SPEED_50MHz|GPIO_FLOAT|GPIO_PORTD|GPIO_PIN13)
 
 */
 #define VAL_GPIOD_MODER             (PIN_MODE_INPUT(0U) |        \
                                      PIN_MODE_INPUT(1U) |           \
-                                     PIN_MODE_INPUT(2U) |         \
+                                     PIN_MODE_ALTERNATE(2U) |         \
                                      PIN_MODE_INPUT(3U) |         \
                                      PIN_MODE_INPUT(4U) |        \
                                      PIN_MODE_ALTERNATE(5U) |    \
@@ -506,7 +512,7 @@
                                      PIN_ODR_HIGH(15U))
 #define VAL_GPIOD_AFRL              (PIN_AFIO_AF(0U, 0U) |        \
                                      PIN_AFIO_AF(1U, 0U) |           \
-                                     PIN_AFIO_AF(2U, 0U) |         \
+                                     PIN_AFIO_AF(2U, 12U) |         \
                                      PIN_AFIO_AF(3U, 0U) |         \
                                      PIN_AFIO_AF(4U, 0U) |        \
                                      PIN_AFIO_AF(5U, 7U) |        \

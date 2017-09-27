@@ -98,6 +98,7 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 # Other files (optional).
 #include $(CHIBIOS)/test/rt/test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
 
 VARIOUSSRC = $(STREAMSSRC)
 
@@ -111,6 +112,7 @@ CSRC = $(STARTUPSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(VARIOUSSRC) \
+       $(FATFSSRC) \
 	   $(HWDEF)/common/stubs.c \
 	   $(HWDEF)/pixhawk-cube/board.c \
 	   $(HWDEF)/common/usbcfg.c \
@@ -153,7 +155,7 @@ ASMSRC =
 ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
 INCDIR = $(CHIBIOS)/os/license \
-         $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
+         $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) $(FATFSINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) $(VARIOUSINC) \
 		 $(HWDEF)/common $(HWDEF)/pixhawk-cube
 

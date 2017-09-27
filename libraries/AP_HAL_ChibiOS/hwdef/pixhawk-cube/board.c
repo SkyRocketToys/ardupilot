@@ -46,18 +46,20 @@ void __early_init(void) {
 }
 
 void __late_init(void) {
-  _core_init();
-  _heap_init();
+  halInit();
+  chSysInit();
 }
+
 #if HAL_USE_SDC || defined(__DOXYGEN__)
 /**
  * @brief   SDC card detection.
  */
 bool sdc_lld_is_card_inserted(SDCDriver *sdcp) {
+  static bool last_status = false;
 
-  (void)sdcp;
-  /* TODO: Fill the implementation.*/
-  return true;
+  if (blkIsTransferring(sdcp))
+    return last_status;
+  return last_status = (bool)palReadPad(GPIOC, 11);
 }
 
 /**
@@ -66,7 +68,6 @@ bool sdc_lld_is_card_inserted(SDCDriver *sdcp) {
 bool sdc_lld_is_write_protected(SDCDriver *sdcp) {
 
   (void)sdcp;
-  /* TODO: Fill the implementation.*/
   return false;
 }
 #endif /* HAL_USE_SDC */
