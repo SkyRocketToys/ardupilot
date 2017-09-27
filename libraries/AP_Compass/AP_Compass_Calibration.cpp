@@ -397,7 +397,7 @@ uint8_t Compass::fixed_mag_cal_field(const Vector3f &mag_bf)
         save_offsets(i);
     }
 
-    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Finished fixed calibration");
+    gcs().send_text(MAV_SEVERITY_INFO, "Finished fixed calibration");
 
     return MAV_RESULT_ACCEPTED;
 }
