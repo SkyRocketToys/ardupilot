@@ -31,6 +31,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     if (_serial == nullptr) {
         return;
     }
+    bool was_initialised = _initialised;
     uint16_t min_tx_buffer = 4096;
     uint16_t min_rx_buffer = 1024;
     if (_is_usb) {
@@ -82,17 +83,19 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
         /*
          * Initializes a serial-over-USB CDC driver.
          */
-        sduObjectInit((SerialUSBDriver*)_serial);
-        sduStart((SerialUSBDriver*)_serial, &serusbcfg);
-        /*
-         * Activates the USB driver and then the USB bus pull-up on D+.
-         * Note, a delay is inserted in order to not have to disconnect the cable
-         * after a reset.
-         */
-        usbDisconnectBus(serusbcfg.usbp);
-        hal.scheduler->delay_microseconds(1500);
-        usbStart(serusbcfg.usbp, &usbcfg);
-        usbConnectBus(serusbcfg.usbp);
+        if (!was_initialised) {
+            sduObjectInit((SerialUSBDriver*)_serial);
+            sduStart((SerialUSBDriver*)_serial, &serusbcfg);
+            /*
+             * Activates the USB driver and then the USB bus pull-up on D+.
+             * Note, a delay is inserted in order to not have to disconnect the cable
+             * after a reset.
+             */
+            usbDisconnectBus(serusbcfg.usbp);
+            hal.scheduler->delay_microseconds(1500);
+            usbStart(serusbcfg.usbp, &usbcfg);
+            usbConnectBus(serusbcfg.usbp);
+        }
     } else {
         if (_baudrate != 0) {
             SerialConfig sercfg =
