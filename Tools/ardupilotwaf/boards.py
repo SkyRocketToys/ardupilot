@@ -306,8 +306,7 @@ class chibios(Board):
             '-mcpu=cortex-m4',
             '-mthumb',
             '-mfpu=fpv4-sp-d16',
-            '-mfloat-abi=hard',
-            '-nodefaultlibs'
+            '-mfloat-abi=hard'
         ]
 
         env.LINKFLAGS = [
@@ -318,7 +317,6 @@ class chibios(Board):
             '-falign-functions=16',
             '-ffunction-sections',
             '-fdata-sections',
-            '-nodefaultlibs',
             '-u_port_lock',
             '-u_port_unlock',
             '-u_exit',
