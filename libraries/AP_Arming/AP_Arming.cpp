@@ -312,7 +312,7 @@ bool AP_Arming::compass_checks(bool report)
             Vector3f offsets = _compass.get_offsets();
             if (offsets.length() > _compass.get_offsets_max()) {
                 if (report) {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Compass offsets too high");
+                    gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: Compass offsets too high");
                 }
                 return false;
             }
@@ -321,7 +321,7 @@ bool AP_Arming::compass_checks(bool report)
             float mag_field = _compass.get_field().length();
             if (mag_field > AP_ARMING_COMPASS_MAGFIELD_MAX || mag_field < AP_ARMING_COMPASS_MAGFIELD_MIN) {
                 if (report) {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Check mag field");
+                    gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: Check mag field");
                 }
                 return false;
             }
