@@ -130,6 +130,7 @@ void ChibiRCInput::_timer_tick(void)
     if (ppm_available()) {
         chMtxLock(&rcin_mutex);
         _num_channels = ppm_read_bulk(_rc_values, RC_INPUT_MAX_CHANNELS);
+        _rcin_timestamp_last_signal = AP_HAL::micros();
         chMtxUnlock(&rcin_mutex);
     }
     // note, we rely on the vehicle code checking new_input()
