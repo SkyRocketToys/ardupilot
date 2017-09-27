@@ -26,7 +26,6 @@ const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 Copter::Copter(void)
     : DataFlash(DataFlash_Class::create(fwver.fw_string, g.log_bitmask)),
     flight_modes(&g.flight_mode1),
-    control_mode(STABILIZE),
     control_mode(INITIAL_MODE),
     scaleLongDown(1),
     wp_bearing(0),

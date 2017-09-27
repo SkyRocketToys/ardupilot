@@ -269,7 +269,7 @@ void ToyMode::update()
             reset_turtle_start_ms = now;
         }
         if (now - reset_turtle_start_ms > TOY_RESET_TURTLE_TIME) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: WiFi reset");
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: WiFi reset");
             reset_turtle_start_ms = 0;
             send_named_int("WIFIRESET", 1);
         }
@@ -349,7 +349,7 @@ void ToyMode::update()
     }
     
     if (action != ACTION_NONE) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
+        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: action %u", action);
         last_action_ms = now;
     }
 
@@ -368,7 +368,7 @@ void ToyMode::update()
         throttle_low_counter++;
         const uint8_t disarm_limit = copter.mode_has_manual_throttle(copter.control_mode)?TOY_LAND_MANUAL_DISARM_COUNT:TOY_LAND_DISARM_COUNT;
         if (throttle_low_counter >= disarm_limit) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: throttle disarm");
             copter.init_disarm_motors();
         }
     } else {
@@ -381,18 +381,18 @@ void ToyMode::update()
     if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed()) {
         throttle_high_counter++;
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle arm");
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: throttle arm");
             arm_check_compass();
             if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
                 /*
                   support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
                  */
                 if (set_and_remember_mode(ALT_HOLD, MODE_REASON_TMODE)) {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
+                    gcs().send_text(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
                     copter.fence.enable(false);
                     if (!copter.init_arm_motors(true)) {
                         // go back to LOITER
-                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
+                        gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
                         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
                     } else {
                         upgrade_to_loiter = true;
@@ -413,12 +413,12 @@ void ToyMode::update()
             AP_Notify::flags.hybrid_loiter = false;
         } else if (copter.position_ok() && set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
         }
     }
 
     if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
+        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
     
@@ -511,7 +511,7 @@ void ToyMode::update()
         
     case ACTION_DISARM:
         if (copter.motors->armed()) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
             copter.init_disarm_motors();
         }
         break;
@@ -559,7 +559,7 @@ void ToyMode::update()
         }
         if (load_test.running) {
             load_test.running = false;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off");
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: load_test off");
             copter.init_disarm_motors();
             copter.set_mode(ALT_HOLD, MODE_REASON_TMODE);
         } else {
@@ -567,9 +567,9 @@ void ToyMode::update()
             copter.fence.enable(false);
             if (copter.init_arm_motors(true)) {
                 load_test.running = true;
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test on");
+                gcs().send_text(MAV_SEVERITY_INFO, "Tmode: load_test on");
             } else {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test failed");
+                gcs().send_text(MAV_SEVERITY_INFO, "Tmode: load_test failed");
             }
         }
         break;
@@ -589,12 +589,12 @@ void ToyMode::update()
             copter.fence.enable(false);
         }
         if (set_and_remember_mode(new_mode, MODE_REASON_TX_COMMAND)) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: mode %s", copter.flight_mode_string(new_mode));
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: mode %s", copter.flight_mode_string(new_mode));
         } else {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: mode %s FAILED", copter.flight_mode_string(new_mode));
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: mode %s FAILED", copter.flight_mode_string(new_mode));
             if (new_mode == RTL) {
                 // if we can't RTL then land
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LANDING");
+                gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: LANDING");
                 set_and_remember_mode(LAND, MODE_REASON_TMODE);
             }
         }
@@ -640,7 +640,7 @@ void ToyMode::trim_update(void)
         int16_t new_value = 1000UL * (throttle_trim - ch_min) / (ch_max - ch_min);
         if (new_value != throttle_mid) {
             throttle_mid = new_value;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: thr mid %d\n",
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: thr mid %d\n",
                                              throttle_mid);
         }
     }
@@ -704,7 +704,7 @@ void ToyMode::trim_update(void)
         }
     }
 
-    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: trim %u %u %u %u\n",
+    gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: trim %u %u %u %u\n",
                                      chan[0], chan[1], chan[2], chan[3]);
 }
 
@@ -723,35 +723,35 @@ void ToyMode::action_arm(void)
         copter.channel_yaw->get_control_in() == 0;
 
     if (!sticks_centered) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: sticks not centered\n");
+        gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: sticks not centered\n");
         return;
     }
 
     arm_check_compass();
     
-    if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
+    if (needs_gps && copter.arming.gps_checks(false)) {
         // we want GPS and checks are passing, arm and enable fence
         copter.fence.enable(true);
         copter.init_arm_motors(false);
         if (!copter.motors->armed()) {
             AP_Notify::events.arming_failed = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
         } else {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: GPS armed motors");
         }
     } else if (needs_gps) {
         // notify of arming fail
         AP_Notify::events.arming_failed = true;
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
+        gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: GPS arming failed");
     } else {
         // non-GPS mode
         copter.fence.enable(false);
         copter.init_arm_motors(false);
         if (!copter.motors->armed()) {
             AP_Notify::events.arming_failed = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: non-GPS arming failed");
         } else {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
+            gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: non-GPS armed motors");
         }
     }
 }
@@ -982,7 +982,7 @@ void ToyMode::load_test_run(void)
     }
 
     if (copter.failsafe.battery) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off (battery)");
+        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: load_test off (battery)");
         copter.init_disarm_motors();
         load_test.running = false;
     }    
@@ -1002,7 +1002,7 @@ void ToyMode::arm_check_compass(void)
         field < 200 || field > 800 ||
         !copter.compass.configured()) {
         if (copter.compass.get_learn_type() != Compass::LEARN_INFLIGHT) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: enable compass learning");
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: enable compass learning");
             copter.compass.set_learn_type(Compass::LEARN_INFLIGHT, false);
         }
     }

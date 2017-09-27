@@ -250,7 +250,7 @@ void Copter::init_disarm_motors()
         if (position_ok() && AP_HAL::millis() - crash.last_trigger_ms > 60000) {
             // save some compass offsets
             if (ahrs.save_learnt_compass_offsets(0.35)) {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "saved compass offsets");        
+                gcs().send_text(MAV_SEVERITY_INFO, "saved compass offsets");        
             }
         }
     }
