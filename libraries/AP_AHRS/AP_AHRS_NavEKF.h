@@ -53,7 +53,11 @@ public:
                                  NavEKF3 &_EKF3,
 #endif
                                  Flags flags = FLAG_NONE) {
-        return AP_AHRS_NavEKF{ins, baro, gps, _EKF2, _EKF3, flags};
+        return AP_AHRS_NavEKF{ins, baro, gps, _EKF2,
+#ifdef HAL_USE_EKF3
+                _EKF3,
+#endif
+                flags};
     }
 
     constexpr AP_AHRS_NavEKF(AP_AHRS_NavEKF &&other) = default;
@@ -317,6 +321,10 @@ private:
 private:
     // Constructor
     AP_AHRS_NavEKF(AP_InertialSensor &ins, AP_Baro &baro, AP_GPS &gps,
-                   NavEKF2 &_EKF2, NavEKF3 &_EKF3, Flags flags = FLAG_NONE);
+                   NavEKF2 &_EKF2,
+#ifdef HAL_USE_EKF3
+                   NavEKF3 &_EKF3,
+#endif
+                   Flags flags = FLAG_NONE);
 };
 #endif
