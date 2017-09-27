@@ -1380,7 +1380,7 @@ void AP_GPS_UBLOX::_mga_check_report(void)
     // if we haven't seen an MGA-ACK for 2s then report count
     if (_mga.last_ack_ms != 0 && AP_HAL::millis() - _mga.last_ack_ms > 2000) {
         _mga.last_ack_ms = 0;
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, 
+        gcs().send_text(MAV_SEVERITY_INFO, 
                                          "MGA: ack:%u nack:%u",
                                          _mga.ack_count,
                                          _mga.nack_count);
