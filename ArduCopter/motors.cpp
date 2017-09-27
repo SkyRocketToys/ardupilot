@@ -178,10 +178,10 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
         set_home_to_current_location(false);
     }
     calc_distance_and_bearing();
-
+#if SMARTRTL_ENABLED == ENABLED
     // Reset SmartRTL return location. If activated, SmartRTL will ultimately try to land at this point
     g2.smart_rtl.reset_path(position_ok());
-
+#endif
     // enable gps velocity based centrefugal force compensation
     ahrs.set_correct_centrifugal(true);
     hal.util->set_soft_armed(true);

@@ -117,11 +117,11 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
         case GUIDED_NOGPS:
             success = guided_nogps_init(ignore_checks);
             break;
-
+#if SMARTRTL_ENABLED == ENABLED
         case SMART_RTL:
             success = smart_rtl_init(ignore_checks);
             break;
-
+#endif
         default:
             success = false;
             break;
@@ -262,12 +262,11 @@ void Copter::update_flight_mode()
         case GUIDED_NOGPS:
             guided_nogps_run();
             break;
-
-
+#if SMARTRTL_ENABLED == ENABLED
         case SMART_RTL:
             smart_rtl_run();
             break;
-
+#endif
         default:
             break;
     }
@@ -300,12 +299,12 @@ void Copter::exit_mode(control_mode_t old_control_mode, control_mode_t new_contr
 
     // cancel any takeoffs in progress
     takeoff_stop();
-
+#if SMARTRTL_ENABLED == ENABLED
     // call smart_rtl cleanup
     if (old_control_mode == SMART_RTL) {
         smart_rtl_exit();
     }
-
+#endif
 #if FRAME_CONFIG == HELI_FRAME
     // firmly reset the flybar passthrough to false when exiting acro mode.
     if (old_control_mode == ACRO) {
@@ -334,7 +333,9 @@ bool Copter::mode_requires_GPS(control_mode_t mode)
         case GUIDED:
         case LOITER:
         case RTL:
+#if SMARTRTL_ENABLED == ENABLED
         case SMART_RTL:
+#endif
         case CIRCLE:
         case DRIFT:
         case POSHOLD:
@@ -382,10 +383,12 @@ void Copter::notify_flight_mode(control_mode_t mode)
         case AVOID_ADSB:
         case GUIDED_NOGPS:
         case LAND:
+#if SMARTRTL_ENABLED == ENABLED
         case SMART_RTL:
             // autopilot modes
             AP_Notify::flags.autopilot_mode = true;
             break;
+#endif
         default:
             // all other are manual flight modes
             AP_Notify::flags.autopilot_mode = false;

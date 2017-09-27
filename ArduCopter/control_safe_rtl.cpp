@@ -1,5 +1,5 @@
 #include "Copter.h"
-
+#if SMARTRTL_ENABLED == ENABLED
 /*
  * Init and run calls for Smart_RTL flight mode
  *
@@ -137,3 +137,4 @@ void Copter::smart_rtl_save_position()
 
     g2.smart_rtl.update(position_ok(), save_position);
 }
+#endif //#if SMARTRTL_ENABLED == ENABLED

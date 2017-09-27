@@ -1006,11 +1006,11 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // ID 19 reserved for TCAL (PR pending)
     // ID 20 reserved for TX_TYPE (PR pending)
-
+#if SMARTRTL_ENABLED == ENABLED
     // @Group: SRTL_
     // @Path: ../libraries/AP_SmartRTL/AP_SmartRTL.cpp
     AP_SUBGROUPINFO(smart_rtl, "SRTL_", 21, ParametersG2, AP_SmartRTL),
-
+#endif
     AP_GROUPEND
 };
 
@@ -1026,7 +1026,9 @@ ParametersG2::ParametersG2(void)
 #if ADVANCED_FAILSAFE == ENABLED
     ,afs(copter.mission, copter.barometer, copter.gps, copter.rcmap)
 #endif
+#if SMARTRTL_ENABLED == ENABLED
     ,smart_rtl(copter.ahrs)
+#endif
 {
     AP_Param::setup_object_defaults(this, var_info);
 }

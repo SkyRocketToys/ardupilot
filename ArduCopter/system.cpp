@@ -226,10 +226,10 @@ void Copter::init_ardupilot()
 
     // initialise mission library
     mission.init();
-
+#if SMARTRTL_ENABLED == ENABLED
     // initialize SmartRTL
     g2.smart_rtl.init();
-
+#endif
     // initialise DataFlash library
     DataFlash.set_mission(&mission);
     DataFlash.setVehicle_Startup_Log_Writer(FUNCTOR_BIND(&copter, &Copter::Log_Write_Vehicle_Startup_Messages, void));
