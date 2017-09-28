@@ -24,19 +24,19 @@ extern const AP_HAL::HAL& hal;
 /*
    constructor 
 */
-AP_RangeFinder_Baro::AP_RangeFinder_Baro(RangeFinder &_ranger, uint8_t instance,
+AP_RangeFinder_Baro::AP_RangeFinder_Baro(RangeFinder &_ranger, uint8_t _instance,
                                          RangeFinder::RangeFinder_State &_state)
-    : AP_RangeFinder_Backend(_ranger, instance, _state, MAV_DISTANCE_SENSOR_UNKNOWN)
+    : AP_RangeFinder_Backend(_state)
 {
 }
 
 /*
    detect if a baro backend is available
 */
-AP_RangeFinder_Backend *AP_RangeFinder_Baro::detect(RangeFinder &_ranger, uint8_t instance,
+AP_RangeFinder_Backend *AP_RangeFinder_Baro::detect(RangeFinder &_ranger, uint8_t _instance,
                                                     RangeFinder::RangeFinder_State &_state)
 {
-    AP_RangeFinder_Baro *sensor = new AP_RangeFinder_Baro(_ranger, instance, _state);
+    AP_RangeFinder_Baro *sensor = new AP_RangeFinder_Baro(_ranger, _instance, _state);
     if (!sensor ||
         !sensor->init()) {
         delete sensor;
