@@ -323,7 +323,7 @@ void AP_AHRS_NavEKF::update_SITL(void)
         _accel_ef_ekf_blended = _accel_ef_ekf[0];
 
     }
-
+#ifdef HAL_USE_EKF3
     if (_sitl->odom_enable) {
         // use SITL states to write body frame odometry data at 20Hz
         uint32_t timeStamp_ms = AP_HAL::millis();
@@ -343,11 +343,11 @@ void AP_AHRS_NavEKF::update_SITL(void)
             Vector3f earth_vel = Vector3f(fdm.speedN,fdm.speedE,fdm.speedD);
             Vector3f delPos = Tbn.transposed() * (earth_vel * delTime);
             // write to EKF
-#ifdef HAL_USE_EKF3
             EKF3.writeBodyFrameOdom(quality, delPos, delAng, delTime, timeStamp_ms, posOffset);
-#endif
         }
     }
+#endif
+
 }
 #endif // CONFIG_HAL_BOARD
 
