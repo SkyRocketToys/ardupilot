@@ -410,6 +410,7 @@ bool NavEKF2_core::setOriginLLH(const Location &loc)
         return false;
     }
     EKF_origin = loc;
+    ekfGpsRefHgt = (double)0.01 * (double)EKF_origin.alt;
     // define Earth rotation vector in the NED navigation frame at the origin
     calcEarthRateNED(earthRateNED, _ahrs->get_home().lat);
     validOrigin = true;
@@ -504,3 +505,4 @@ void  NavEKF2_core::updateFilterStatus(void)
 }
 
 #endif // HAL_CPU_CLASS
+
