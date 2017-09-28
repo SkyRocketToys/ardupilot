@@ -10,9 +10,11 @@
 #include "AP_Gripper_EPM.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
+#if HAL_OS_POSIX_IO
 #include <fcntl.h>
 #include <unistd.h>
-#include <cstdio>
+#endif
+#include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 

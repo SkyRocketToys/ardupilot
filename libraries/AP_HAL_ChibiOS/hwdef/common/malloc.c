@@ -9,7 +9,7 @@
   needed.
  */
 
-#include <stdio.h>
+#include <posix.h>
 #include <string.h>
 #include <hal.h>
 #include <chheap.h>
@@ -17,12 +17,12 @@
 
 #define MIN_ALIGNMENT 8
 
-void *__wrap_malloc(size_t size)
+void *malloc(size_t size)
 {
     return chHeapAllocAligned(NULL, size, MIN_ALIGNMENT);
 }
 
-void *__wrap_calloc(size_t nmemb, size_t size)
+void *calloc(size_t nmemb, size_t size)
 {
     void *p = chHeapAllocAligned(NULL, nmemb*size, MIN_ALIGNMENT);
     if (p != NULL) {
@@ -31,7 +31,9 @@ void *__wrap_calloc(size_t nmemb, size_t size)
     return p;
 }
 
-void __wrap_free(void *ptr)
+void free(void *ptr)
 {
-    return chHeapFree(ptr);
+    if(ptr != NULL) {
+        chHeapFree(ptr);
+    }
 }

@@ -13,8 +13,9 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "AP_Baro_LPS25H.h"
-
+#if HAL_OS_POSIX_IO
 #include <unistd.h>
+#endif
 #include <utility>
 #include <stdio.h>
 extern const AP_HAL::HAL &hal;

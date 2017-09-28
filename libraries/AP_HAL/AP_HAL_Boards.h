@@ -190,3 +190,7 @@
 #ifndef HAL_MINIMIZE_FEATURES
 #define HAL_MINIMIZE_FEATURES       0
 #endif
+
+#ifndef HAL_OS_FATFS_IO
+#define HAL_OS_FATFS_IO 0
+#endif

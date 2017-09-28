@@ -120,6 +120,7 @@ CSRC = $(STARTUPSRC) \
 	   $(HWDEF)/common/flash.c \
 	   $(HWDEF)/common/malloc.c \
 	   $(HWDEF)/common/stdio.c \
+	   $(HWDEF)/common/posix.c \
 	   $(HWDEF)/common/hrt.c
 
 

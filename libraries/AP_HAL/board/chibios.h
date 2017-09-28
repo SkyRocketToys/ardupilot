@@ -3,6 +3,8 @@
 #define HAL_BOARD_NAME "ChibiOS"
 #define HAL_CPU_CLASS HAL_CPU_CLASS_150
 #define HAL_MINIMIZE_FEATURES       1
+#define HAL_OS_FATFS_IO 1
+#define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
 
 #define HAL_GPIO_A_LED_PIN        0
 #define HAL_GPIO_B_LED_PIN        1

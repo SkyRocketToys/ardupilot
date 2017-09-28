@@ -184,7 +184,9 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
         } else {
             printf("Successfully mounted SDCard..\n");
         }
-    } 
+        //Create APM Directory
+        mkdir("/APM", 0777);
+    }
     assert(callbacks);
     g_callbacks = callbacks;
 

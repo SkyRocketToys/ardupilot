@@ -147,8 +147,56 @@ def build(bld):
     )
     bld.env.LIB += ['ch']
     bld.env.LIBPATH += ['modules/ChibiOS/']
-    bld.env.LINKFLAGS += ['--specs=nano.specs']
-    wraplist = ['malloc', 'calloc', 'free', 'memalign', 'realloc', 'asprintf', 'vasprintf', 'vsnprintf', 'strdup', 'strndup', 'vprintf', 'printf']
+    wraplist = ['strerror_r']
+#    wraplist = ['malloc', 'calloc', 'free', 'memalign', 'realloc', 'asprintf', 'vasprintf', 'vsnprintf', 'strdup', 'strndup', 'vprintf', 'printf', 'strerror_r']
+    '''wraplist += ['isatty',
+                'fgetc',
+                'fputc',
+                'getchar',
+                'putc',
+                'putchar',
+                'ungetc',
+                'fgets',
+                'fputs',
+                'puts',
+                'feof',
+                'fgetpos',
+                'fseek',
+                'fsetpos',
+                'ftell',
+                'lseek',
+                'rewind',
+                'close',
+                'fileno',
+                'fopen',
+                'fread',
+                'ftruncate',
+                'fwrite',
+                'open',
+                'read',
+                'sync',
+                'syncfs',
+                'truncate',
+                'write',
+                'fclose',
+                'fstat',
+                'stat',
+                'basename',
+                'getcwd',
+                'mkdir',
+                'rename',
+                'rmdir',
+                'unlink',
+                'utime',
+                'closedir',
+                'opendir ',
+                'readdir',
+                'clrerror',
+                'ferror',
+                'perror',
+                'strerror',
+                'strerror_r']
+    '''
     for w in wraplist:
         bld.env.LINKFLAGS += ['-Wl,--wrap,%s' % w]
     

@@ -333,7 +333,7 @@ class chibios(Board):
             '-mthumb',
         ]
 
-        env.LIB += ['c','gcc', 'g', 'm']
+        env.LIB += ['gcc', 'm']
         env.GIT_SUBMODULES += [
             'ChibiOS',
         ]
