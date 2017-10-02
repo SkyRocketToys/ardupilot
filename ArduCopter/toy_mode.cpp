@@ -417,7 +417,8 @@ void ToyMode::update()
         }
     }
 
-    if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max) {
+    if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max &&
+        !copter.fence.check_fence(copter.current_loc.alt/100.0f)) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
