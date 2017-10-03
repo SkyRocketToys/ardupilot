@@ -564,6 +564,11 @@ void ToyMode::update()
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: LANDING");
                 set_and_remember_mode(LAND, MODE_REASON_TMODE);
             }
+            else if(new_mode == LOITER)
+            {
+				//if in GPS denied environment and we are trying switch to LOITER then disable fence.
+				copter.fence.enable(false);
+			}
         }
     }
 }
