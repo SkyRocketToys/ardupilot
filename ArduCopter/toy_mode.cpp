@@ -192,6 +192,12 @@ void ToyMode::update()
     if (!copter.motors->armed()) {
         load_test.running = false;
     }
+    
+    //prevent geofence being enabled when in ALT_HOLD mode
+    if (copter.control_mode == ALT_HOLD) 
+    { 
+		copter.fence.enable(false); 
+	}
 
     // keep filtered battery voltage for thrust limiting
     filtered_voltage = 0.99 * filtered_voltage + 0.01 * copter.battery.voltage();
