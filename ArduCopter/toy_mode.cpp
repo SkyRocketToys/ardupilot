@@ -193,11 +193,16 @@ void ToyMode::update()
         load_test.running = false;
     }
         
-    //prevent geofence being enabled when in ALT_HOLD mode
+    // prevent geofence being enabled when in ALT_HOLD mode
     if (copter.control_mode == ALT_HOLD) { 
-		copter.fence.enable(false); 
-	}
+        copter.fence.enable(false); 
+    }
 
+    // force geofence on when in LOITER mode
+    if (copter.control_mode == LOITER) { 
+        copter.fence.enable(true); 
+    }
+    
     // keep filtered battery voltage for thrust limiting
     filtered_voltage = 0.99 * filtered_voltage + 0.01 * copter.battery.voltage();
     
@@ -423,7 +428,7 @@ void ToyMode::update()
     }
 
     if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max &&
-        !copter.fence.check_fence(copter.current_loc.alt/100.0f)) {
+        copter.fence.check_destination_within_fence(copter.current_loc)) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
