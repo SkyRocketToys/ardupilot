@@ -100,10 +100,7 @@ public:
     // set and save trim if changed
     void       set_and_save_radio_trim(int16_t val) { radio_trim.set_and_save_ifchanged(val);}
     
-    bool min_max_configured() const
-    {
-        return radio_min.configured() && radio_max.configured();
-    }
+    bool min_max_configured() const;
     
 private:
 
