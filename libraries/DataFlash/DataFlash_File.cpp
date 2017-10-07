@@ -125,8 +125,10 @@ void DataFlash_File::Init()
         closedir(d);
     }
 #endif
+#if HAL_OS_FATFS_IO
     printf("File List\n");
     DIR *d = opendir("/APM");
+#endif
     if (d != nullptr) {
         for (struct dirent *de=readdir(d); de; de=readdir(d)) {
             if(*de->d_name == '\0') {
