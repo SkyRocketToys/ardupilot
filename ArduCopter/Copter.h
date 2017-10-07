@@ -138,7 +138,9 @@
 #endif
 
 // Local modules
+#if OPTFLOW == ENABLED
 #include "control_flowhold.h"
+#endif
 #include "Parameters.h"
 #include "avoidance_adsb.h"
 
@@ -160,8 +162,9 @@ public:
 #endif
     friend class AP_Arming_Copter;
     friend class ToyMode;
+#if OPTFLOW == ENABLED
     friend class FlowHold;
-
+#endif
     Copter(void);
 
     // HAL::Callbacks implementation.

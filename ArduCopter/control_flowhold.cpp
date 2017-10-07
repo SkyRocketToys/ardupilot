@@ -1,7 +1,7 @@
 #include "Copter.h"
 #include <utility>
 
-
+#if OPTFLOW == ENABLED
 /*
   implement FLOWHOLD mode, for position hold using opttical flow
   without rangefinder
@@ -78,7 +78,6 @@ bool FlowHold::init(bool ignore_checks)
         return false;
     }
 #endif
-
     if (!copter.optflow.enabled() || !copter.optflow.healthy()) {
         return false;
     }
@@ -318,3 +317,4 @@ void FlowHold::run()
         break;
     }
 }
+#endif //OPTFLOW == ENABLED

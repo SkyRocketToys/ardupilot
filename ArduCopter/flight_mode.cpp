@@ -122,11 +122,11 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
             success = smart_rtl_init(ignore_checks);
             break;
 #endif
-
+#if OPTFLOW == ENABLED
         case FLOWHOLD:
             success = g2.flowhold.init(ignore_checks);
             break;
-            
+#endif
         default:
             success = false;
             break;
@@ -272,10 +272,11 @@ void Copter::update_flight_mode()
             smart_rtl_run();
             break;
 #endif
+#if OPTFLOW == ENABLED
         case FLOWHOLD:
             g2.flowhold.run();
             break;
-            
+#endif
         default:
             break;
     }
