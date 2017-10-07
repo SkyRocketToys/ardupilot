@@ -232,3 +232,10 @@ GPS_HDOP_GOOD        160
 
 # throw mode
 THROW_NEXTMODE       5
+
+# flow sensor
+FLOW_ORIENT_YAW 9000
+FLOW_POS_X 0.03
+FLOW_POS_Z 0.01
+
+
