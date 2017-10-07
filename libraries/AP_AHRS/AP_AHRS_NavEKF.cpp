@@ -1700,7 +1700,7 @@ bool AP_AHRS_NavEKF::save_learnt_compass_offsets(float learn_proportion)
         }
         break;
     }
-
+#ifdef HAL_USE_EKF3
     case EKF_TYPE3: {
         if (!_compass) {
             return false;
@@ -1714,7 +1714,8 @@ bool AP_AHRS_NavEKF::save_learnt_compass_offsets(float learn_proportion)
         }
         break;
     }
-        
+#endif
+   
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKF_TYPE_SITL: {
         return false;
