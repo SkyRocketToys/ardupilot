@@ -180,9 +180,15 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
         // Reset EKF altitude if home hasn't been set yet (we use EKF altitude as substitute for alt above home)
         ahrs.resetHeightDatum();
         Log_Write_Event(DATA_EKF_ALT_RESET);
+
+        // we have reset height, so arming height is zero
+        arming_altitude_m = 0;        
     } else if (ap.home_state == HOME_SET_NOT_LOCKED) {
         // Reset home position if it has already been set before (but not locked)
         set_home_to_current_location(false);
+
+        // remember the height when we armed
+        arming_altitude_m = inertial_nav.get_altitude() * 0.01;
     }
     calc_distance_and_bearing();
 
@@ -222,9 +228,6 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     // Start the arming delay
     ap.in_arming_delay = true;
 
-    // remember the height when we armed
-    arming_altitude_m = inertial_nav.get_altitude() * 0.01;
-    
     // return success
     return true;
 }
