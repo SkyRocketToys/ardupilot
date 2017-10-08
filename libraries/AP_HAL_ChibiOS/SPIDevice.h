@@ -47,6 +47,7 @@ public:
         DeviceBus(APM_SPI_PRIORITY) {}
     struct spi_dev_s *dev;
     uint8_t bus;
+    SPIConfig spicfg;
 };
 
 struct SPIDesc {

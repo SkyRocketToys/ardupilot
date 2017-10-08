@@ -117,29 +117,20 @@ bool SPIDevice::set_speed(AP_HAL::Device::Speed speed)
  */
 void SPIDevice::do_transfer(const uint8_t *send, uint8_t *recv, uint32_t len)
 {
+    bool old_cs_forced = cs_forced;
 
-    spiAcquireBus(spi_devices[device_desc.bus]);              /* Acquire ownership of the bus.    */
+    if (!set_chip_select(true)) {
+        return;
+    }
 
-    SPIConfig spicfg = {
-        NULL,
-        device_desc.port,
-        device_desc.pin,
-        (uint16_t)(freq_flag | device_desc.mode),
-        0
-    };
-    spiStart(spi_devices[device_desc.bus], &spicfg);        /* Setup transfer parameters.       */
     osalSysLock();
-    spiSelectI(spi_devices[device_desc.bus]);                /* Slave Select assertion.          */
     spiStartExchangeI(spi_devices[device_desc.bus], len,
                 send, recv); 
     (void) osalThreadSuspendS(&spi_devices[device_desc.bus]->thread);
                                /* Atomic transfer operations.      */
-    if (!cs_forced) {
-        spiUnselectI(spi_devices[device_desc.bus]);          /* Slave Select de-assertion.       */
-    }
     osalSysUnlock();
-    
-    spiReleaseBus(spi_devices[device_desc.bus]);              /* Ownership release.               */
+
+    set_chip_select(old_cs_forced);
 }
 
 uint16_t SPIDevice::derive_freq_flag(uint32_t _frequency)
@@ -244,7 +235,28 @@ bool SPIDevice::adjust_periodic_callback(AP_HAL::Device::PeriodicHandle h, uint3
  */
 bool SPIDevice::set_chip_select(bool set)
 {
-    return false;
+    if (set && cs_forced) {
+        return true;
+    }
+    if (!set && !cs_forced) {
+        return false;
+    }
+    if (!set && cs_forced) {
+        spiUnselectI(spi_devices[device_desc.bus]);          /* Slave Select de-assertion.       */
+        spiReleaseBus(spi_devices[device_desc.bus]);              /* Ownership release.               */
+        cs_forced = false;
+    } else {
+        spiAcquireBus(spi_devices[device_desc.bus]);              /* Acquire ownership of the bus.    */
+        bus.spicfg.end_cb = nullptr;
+        bus.spicfg.ssport = device_desc.port;
+        bus.spicfg.sspad = device_desc.pin;
+        bus.spicfg.cr1 = (uint16_t)(freq_flag | device_desc.mode);
+        bus.spicfg.cr2 = 0;
+        spiStart(spi_devices[device_desc.bus], &bus.spicfg);        /* Setup transfer parameters.       */
+        spiSelectI(spi_devices[device_desc.bus]);                /* Slave Select assertion.          */
+        cs_forced = true;
+    }
+    return true;
 }
 
 
