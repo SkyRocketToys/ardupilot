@@ -57,7 +57,7 @@ class upload_fw(Task.Task):
     def run(self):
         upload_tools = self.env.get_flat('UPLOAD_TOOLS')
         src = self.inputs[0]
-        return self.exec_command("python {}/px_uploader.py --port /dev/serial/by-id/usb-APM_NUCLEO* \
+        return self.exec_command("python {}/px_uploader.py --port /dev/serial/by-id/usb-* \
                     --baud-bootloader 115200 {}".format(
                    upload_tools, src))
 

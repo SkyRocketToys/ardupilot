@@ -645,8 +645,7 @@ def main():
                 try:
                     if "linux" in _platform:
                         # Linux, don't open Mac OS and Win ports
-                        if "COM" not in port and "tty.usb" not in port:
-                            up = uploader(port, args.baud_bootloader, baud_flightstack, args.baud_bootloader_flash)
+                        up = uploader(port, args.baud_bootloader, baud_flightstack, args.baud_bootloader_flash)
                     elif "darwin" in _platform:
                         # OS X, don't open Windows and Linux ports
                         if "COM" not in port and "ACM" not in port:
