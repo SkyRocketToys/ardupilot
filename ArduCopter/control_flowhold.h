@@ -47,16 +47,17 @@ private:
 
     uint8_t log_counter;
     bool limited;
+    Vector2f xy_I;
 
     // accumulated INS delta velocity in north-east form since last flow update
     Vector2f delta_velocity_ne;
 
     // last flow rate in radians/sec in north-east axis
-    Vector2f last_flow_rate_rps_ne;
+    Vector2f last_flow_rate_rps;
     
     // timestamp of last flow data
     uint32_t last_flow_ms;
 
     float last_ins_height;
-    float height_estimate;
+    float height_offset;
 };
