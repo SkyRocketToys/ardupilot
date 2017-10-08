@@ -115,7 +115,6 @@ CSRC = $(STARTUPSRC) \
        $(FATFSSRC) \
 	   $(HWDEF)/common/stubs.c \
 	   $(HWDEF)/fmuv3/board.c \
-	   $(HWDEF)/pixhawk-cube/extra_board.c \
 	   $(HWDEF)/common/usbcfg.c \
 	   $(HWDEF)/common/ppm.c \
 	   $(HWDEF)/common/flash.c \
@@ -159,7 +158,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 INCDIR = $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) $(FATFSINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) $(VARIOUSINC) \
-		 $(HWDEF)/common $(HWDEF)/pixhawk-cube
+		 $(HWDEF)/common $(HWDEF)/fmuv3
 
 #
 # Project, sources and paths

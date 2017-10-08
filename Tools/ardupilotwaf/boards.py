@@ -373,7 +373,7 @@ class pixhawk_cube(chibios):
         env.BOARD = 'pixhawk-cube'
         env.LINKFLAGS += [
                     '-L%s'\
-                    % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/').abspath(),
                     '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
                     % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
         ]
