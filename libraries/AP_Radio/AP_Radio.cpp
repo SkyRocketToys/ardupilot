@@ -16,7 +16,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Description: This enables support for direct attached radio receivers
     // @Values: 0:None,1:CYRF6936
     // @User: Advanced
-    AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, RADIO_TYPE_NONE),
+    AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, 1),
 
     // @Param: _PROT
     // @DisplayName: protocol
@@ -30,7 +30,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Description: radio debug level
     // @Range: 0 4
     // @User: Advanced
-    AP_GROUPINFO("_DEBUG",  3, AP_Radio, debug_level, 0),
+    AP_GROUPINFO("_DEBUG",  3, AP_Radio, debug_level, 4),
 
     // @Param: _DISCRC
     // @DisplayName: disable receive CRC

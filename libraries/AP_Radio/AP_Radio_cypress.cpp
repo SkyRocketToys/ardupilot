@@ -3,7 +3,9 @@
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
 
 #include <AP_Math/AP_Math.h>
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 #include <board_config.h>
+#endif
 #include "AP_Radio_cypress.h"
 #include <utility>
 #include <stdio.h>
@@ -252,8 +254,10 @@ AP_Radio_cypress::AP_Radio_cypress(AP_Radio &_radio) :
  */
 bool AP_Radio_cypress::init(void)
 {
-    dev = std::move(hal.spi->get_device(CYRF_SPI_DEVICE));
-
+    dev = hal.spi->get_device(CYRF_SPI_DEVICE);
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    chVTObjectInit(&timeout_vt);
+#endif
     load_bind_info();
 
     sem = hal.util->new_semaphore();    
@@ -273,15 +277,20 @@ bool AP_Radio_cypress::reset(void)
     /*
       to reset radio hold reset high for 0.5s, then low for 0.5s
      */
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     stm32_configgpio(CYRF_RESET_PIN);
     stm32_gpiowrite(CYRF_RESET_PIN, 1);
     hal.scheduler->delay(500);
     stm32_gpiowrite(CYRF_RESET_PIN, 0);
     hal.scheduler->delay(500);
-
     // use AUX5 as radio IRQ pin
     stm32_configgpio(CYRF_IRQ_INPUT);
-
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    hal.gpio->write(HAL_GPIO_CYRF_RESET, 1);
+    hal.scheduler->delay(500);
+    hal.gpio->write(HAL_GPIO_CYRF_RESET, 0);
+    hal.scheduler->delay(500);
+#endif
     radio_init();
     dev->get_semaphore()->give();
 
@@ -619,7 +628,11 @@ void AP_Radio_cypress::radio_init(void)
     start_receive();
 
     // setup handler for rising edge of IRQ pin
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    hal.gpio->attach_interrupt(HAL_GPIO_CYRF_IRQ, irq_radio_trampoline, HAL_GPIO_INTERRUPT_RISING);
+#endif
 }
 
 void AP_Radio_cypress::dump_registers(uint8_t n)
@@ -983,7 +996,11 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
                       RX bound to the same TX)
                     */
                     state = STATE_SEND_TELEM;
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
                     hrt_call_after(&wait_call, 1000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+                    chVTSet(&timeout_vt, MS2ST(1), irq_timeout_trampoline, nullptr);
+#endif
                 }
             }
         } else {
@@ -1013,8 +1030,13 @@ void AP_Radio_cypress::start_receive(void)
     } else {
         dsm.receive_timeout_usec = 12000;
     }
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     //dsm.receive_timeout_usec = 45000;
     hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, US2ST(dsm.receive_timeout_usec), irq_timeout_trampoline, nullptr);
+#endif
 }
 
 /*
@@ -1129,7 +1151,12 @@ void AP_Radio_cypress::irq_timeout(void)
     stats.timeouts++;
     if (!dev->get_semaphore()->take_nonblocking()) {
         // schedule a new timeout
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
         hrt_call_after(&wait_call, dsm.receive_timeout_usec, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, US2ST(dsm.receive_timeout_usec), irq_timeout_trampoline, nullptr);
+#endif
         return;
     }
 
@@ -1166,22 +1193,35 @@ void AP_Radio_cypress::irq_timeout(void)
 /*
   called on rising edge of radio IRQ pin
  */
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 int AP_Radio_cypress::irq_radio_trampoline(int irq, void *context)
 {
     radio_instance->irq_handler();
     return 0;
 }
-
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+void AP_Radio_cypress::irq_radio_trampoline()
+{
+    radio_instance->irq_handler();
+}
+#endif
 
 /*
   called on HRT timeout
  */
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 int AP_Radio_cypress::irq_timeout_trampoline(int irq, void *context)
 {
     radio_instance->irq_timeout();
     return 0;
 }
-
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+void AP_Radio_cypress::irq_timeout_trampoline(void *arg)
+{
+    (void)arg;
+    radio_instance->irq_timeout();
+}
+#endif
 /*
  Set the current DSM channel with SOP, CRC and data code
  */
@@ -1544,8 +1584,12 @@ void AP_Radio_cypress::send_telem_packet(void)
     transmit16((uint8_t*)&pkt);
 
     state = STATE_SEND_TELEM_WAIT;
-    
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     hrt_call_after(&wait_call, 2000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, US2ST(dsm.receive_timeout_usec), irq_timeout_trampoline, nullptr);
+#endif
 }
 
 /*
@@ -1602,18 +1646,34 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
     
         write_register(CYRF_TX_OVERRIDE, CYRF_FRC_PRE);
         write_register(CYRF_TX_CTRL, CYRF_TX_GO);
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
         hrt_call_after(&wait_call, 500000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, MS2ST(500), irq_timeout_trampoline, nullptr);
+#endif
     } else {
         write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
         write_register(CYRF_RX_ABORT, 0);
         transmit16(pkt);
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
         hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, MS2ST(10), irq_timeout_trampoline, nullptr);
+#endif
     }
 #else
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_TX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
     transmit16(pkt);
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     hrt_call_after(&wait_call, 10000, (hrt_callout)irq_timeout_trampoline, nullptr);
+#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+    //Note: please review Frequency in chconf.h to ensure the range of wait
+    chVTSet(&timeout_vt, MS2ST(10), irq_timeout_trampoline, nullptr);
+#endif
 #endif
 }
 
