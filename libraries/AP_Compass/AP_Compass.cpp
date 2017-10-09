@@ -797,6 +797,9 @@ void Compass::_detect_backends(void)
         // first MPU9250 to run without disturbance at high rate
         //ADD_BACKEND(DRIVER_AK8963, AP_Compass_AK8963::probe_mpu9250(*this, 1, ROTATION_YAW_270),
         //            AP_Compass_AK8963::name, false);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
+        ADD_BACKEND(DRIVER_BMM150, AP_Compass_BMM150::probe(*this, hal.i2c_mgr->get_device(0, 0x10)),
+                    AP_Compass_BMM150::name, true);
 #else
     #error Unrecognised HAL_COMPASS_TYPE setting
 #endif

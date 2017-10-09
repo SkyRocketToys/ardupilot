@@ -12,3 +12,4 @@
 #include "Storage.h"
 #include "RCInput.h"
 #include "RCOutput.h"
+#include "I2CDevice.h"

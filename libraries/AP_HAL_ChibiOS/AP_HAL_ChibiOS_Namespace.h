@@ -5,7 +5,7 @@ namespace ChibiOS {
     class AnalogSource;
     class ChibiDigitalSource;
     class ChibiGPIO;
-    class I2CDevice;
+    class ChibiI2CDevice;
     class I2CDeviceManager;
     class OpticalFlow;
     class PrivateMember;
