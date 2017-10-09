@@ -36,7 +36,7 @@ const AP_Param::GroupInfo FlowHold::var_info[] = {
     // @Description: Controls maximum apparent flow rate in flowhold
     // @Range: 0.1 2.5
     // @User: Standard
-    AP_GROUPINFO("_FLOW_MAX", 2, FlowHold, flow_max, 0.3),
+    AP_GROUPINFO("_FLOW_MAX", 2, FlowHold, flow_max, 0.6),
 
     // @Param: _FILT_HZ
     // @DisplayName: Flow Filter Frequency
@@ -64,7 +64,7 @@ const AP_Param::GroupInfo FlowHold::var_info[] = {
 
 // constructor
 FlowHold::FlowHold(void) :
-    flow_pi_xy(0.35, 0.6, 3000, 5, 0.0025)
+    flow_pi_xy(0.2, 0.3, 3000, 5, 0.0025)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
