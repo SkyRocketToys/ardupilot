@@ -5,7 +5,7 @@
 
 if [ $# -lt 1 ]; then
     # default to FMUv3
-    ELF=build/px4-v3/bin/arducopter
+    ELF=build/skyviper-v2450/bin/arducopter
 else
     ELF=$1
 fi
