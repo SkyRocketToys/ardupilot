@@ -276,14 +276,12 @@ class chibios(Board):
             '-std=gnu++0x',
             '-fno-threadsafe-statics',
             '-Wall',
-            '-Werror',
             '-Wextra',
             '-Wno-sign-compare',
             '-Wfloat-equal',
             '-Wpointer-arith',
             '-Wmissing-declarations',
             '-Wno-unused-parameter',
-            '-Werror=format-security',
             '-Werror=array-bounds',
             '-Wfatal-errors',
             '-Werror=unused-variable',
@@ -292,7 +290,6 @@ class chibios(Board):
             '-Werror=init-self',
             '-Wframe-larger-than=1024',
             '-Werror=unused-but-set-variable',
-            '-Wformat=1',
             '-Wdouble-promotion',
             '-Wno-missing-field-initializers',
             '-Os',
@@ -371,6 +368,21 @@ class pixhawk_cube(chibios):
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE',
         )
         env.BOARD = 'pixhawk-cube'
+        env.LINKFLAGS += [
+                    '-L%s'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/').abspath(),
+                    '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
+        ]
+
+class skyviper_v2450(chibios):
+    name = 'skyviper-v2450'
+    def configure_env(self, cfg, env):
+        super(skyviper_v2450, self).configure_env(cfg, env)
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450',
+        )
+        env.BOARD = 'skyviper-v2450'
         env.LINKFLAGS += [
                     '-L%s'\
                     % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/').abspath(),
