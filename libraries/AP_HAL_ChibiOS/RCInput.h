@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AP_HAL_ChibiOS.h"
+#include <AP_Radio/AP_Radio.h>
 
 
 #ifndef RC_INPUT_MAX_CHANNELS
@@ -25,6 +26,7 @@ public:
     void clear_overrides() override;
 
     void _timer_tick(void);
+    bool rc_bind(int dsmMode) override;
 
 private:
     /* override state */
@@ -38,4 +40,8 @@ private:
     int16_t _rssi = -1;
     uint32_t _rcin_timestamp_last_signal;
     bool _init;
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio *radio;
+    uint32_t last_radio_us;
+#endif
 };

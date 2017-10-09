@@ -10,6 +10,12 @@ void ChibiRCInput::init()
 {
     ppm_init(1000000, true);
     chMtxObjectInit(&rcin_mutex);
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    radio = AP_Radio::instance();
+    if (radio) {
+        radio->init();
+    }
+#endif
     _init = true;
 }
 
@@ -63,6 +69,12 @@ uint16_t ChibiRCInput::read(uint8_t channel)
     }
     uint16_t v = _rc_values[channel];
     chMtxUnlock(&rcin_mutex);
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (radio && channel == 0) {
+        // hook to allow for update of radio on main thread, for mavlink sends
+        radio->update();
+    }
+#endif
     return v;
 }
 
@@ -133,7 +145,30 @@ void ChibiRCInput::_timer_tick(void)
         _rcin_timestamp_last_signal = AP_HAL::micros();
         chMtxUnlock(&rcin_mutex);
     }
+
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (radio && radio->last_recv_us() != last_radio_us) {
+        last_radio_us = radio->last_recv_us();
+        chMtxLock(&rcin_mutex);
+        _rcin_timestamp_last_signal = last_radio_us;
+        _num_channels = radio->num_channels();
+        for (uint8_t i=0; i<_num_channels; i++) {
+            _rc_values[i] = radio->read(i);
+        }
+        chMtxLock(&rcin_mutex);
+    }
+#endif
     // note, we rely on the vehicle code checking new_input()
     // and a timeout for the last valid input to handle failsafe
+}
+
+bool ChibiRCInput::rc_bind(int dsmMode)
+{
+#if HAL_RCINPUT_WITH_AP_RADIO
+    if (radio) {
+        radio->start_recv_bind();
+    }
+#endif
+    return true;
 }
 #endif //#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
