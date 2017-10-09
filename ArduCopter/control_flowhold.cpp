@@ -450,19 +450,21 @@ void FlowHold::update_height_estimate(void)
     /*
       update height estimate
      */
-    const float min_velocity_change = 0.03;
-    const float min_flow_change = 0.03;
-    const float height_delta_max = 0.1;
+    const float min_velocity_change = 0.04;
+    const float min_flow_change = 0.04;
+    const float height_delta_max = 0.25;
 
     /*
       for each axis update the height estimate
      */
     float delta_height = 0;
-    uint8_t count=0;
+    uint8_t total_weight=0;
     float height_estimate = ins_height + height_offset;
+
     for (uint8_t i=0; i<2; i++) {
         // only use height estimates when we have significant delta-velocity and significant delta-flow
-        if (fabsf(delta_flowrate[i]) < min_flow_change ||
+        float abs_flow = fabsf(delta_flowrate[i]);
+        if (abs_flow < min_flow_change ||
             fabsf(delta_vel_rate[i]) < min_velocity_change) {
             continue;
         }
@@ -472,11 +474,11 @@ void FlowHold::update_height_estimate(void)
             // discard negative heights
             continue;
         }
-        delta_height += height - height_estimate;
-        count++;
+        delta_height += (height - height_estimate) * abs_flow;
+        total_weight += abs_flow;
     }
-    if (count > 0) {
-        delta_height /= count;
+    if (total_weight > 0) {
+        delta_height /= total_weight;
     }
     
     if (delta_height < 0) {
@@ -490,7 +492,7 @@ void FlowHold::update_height_estimate(void)
     float new_offset = height_offset + constrain_float(delta_height, -height_delta_max, height_delta_max);
 
     // apply a simple filter
-    height_offset = 0.9 * height_offset + 0.1 * new_offset;
+    height_offset = 0.8 * height_offset + 0.2 * new_offset;
     
     if (ins_height + height_offset < height_min) {
         // height estimate is never allowed below the minimum
