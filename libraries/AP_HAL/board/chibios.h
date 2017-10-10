@@ -4,7 +4,6 @@
 #define HAL_CPU_CLASS HAL_CPU_CLASS_150
 #define HAL_MINIMIZE_FEATURES       1
 #define HAL_OS_FATFS_IO 1
-#define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
 
 #define HAL_GPIO_A_LED_PIN        0
 #define HAL_GPIO_B_LED_PIN        1
@@ -41,6 +40,8 @@
 
 #define HAL_INS_MPU9250_NAME "mpu9250"
 #define HAL_INS_MPU9250_EXT_NAME "mpu9250_ext"
+
+#define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
 
 #define STORAGE_FLASH_PAGE		22
 #define HAL_STORAGE_SIZE        16384
