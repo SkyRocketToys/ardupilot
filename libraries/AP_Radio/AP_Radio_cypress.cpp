@@ -14,6 +14,7 @@
 #include <AP_Math/crc.h>
 #include "telem_structure.h"
 #include <AP_Notify/AP_Notify.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
 
 /*
   driver for CYRF6936 radio
@@ -22,11 +23,12 @@
   configuration code and register defines
    https://github.com/esden/superbitrf-firmware
  */
-
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 THD_WORKING_AREA(_irq_handler_wa, 512);
-#define TIMEOUT_PRIORITY 182	//Right above timer thread
+#define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
+#endif
 
 #ifndef CYRF_SPI_DEVICE
 # define CYRF_SPI_DEVICE "cypress"
@@ -42,7 +44,7 @@ THD_WORKING_AREA(_irq_handler_wa, 512);
 
 extern const AP_HAL::HAL& hal;
 
-#define debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { hal.console->printf(fmt, ##args); }} while (0)
+#define Debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { hal.console->printf(fmt, ##args); }} while (0)
 
 #define LP_FIFO_SIZE  16      // Physical data FIFO lengths in Radio
 
@@ -243,7 +245,9 @@ enum {
 
 // object instance for trampoline
 AP_Radio_cypress *AP_Radio_cypress::radio_instance;
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 thread_t *AP_Radio_cypress::_irq_handler_ctx;
+#endif
 /*
   constructor
  */
@@ -351,7 +355,7 @@ void AP_Radio_cypress::update(void)
  */
 void AP_Radio_cypress::print_debug_info(void)
 {
-    debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u TXI:%u TX:%u 1:%4u 2:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
+    Debug(2, "recv:%3u bad:%3u to:%3u re:%u N:%2u TXI:%u TX:%u 1:%4u 2:%4u 3:%4u 4:%4u 5:%4u 6:%4u 7:%4u 8:%4u 14:%u\n",
           stats.recv_packets - last_stats.recv_packets,
           stats.bad_packets - last_stats.bad_packets,
           stats.timeouts - last_stats.timeouts,
@@ -413,7 +417,7 @@ uint8_t AP_Radio_cypress::num_channels(void)
  */
 void AP_Radio_cypress::check_fw_ack(void)
 {
-    debug(4,"check need_ack\n");
+    Debug(4,"check need_ack\n");
     if (fwupload.need_ack && sem->take_nonblocking()) {
         // ack the send of a DATA96 fw packet to TX
         fwupload.need_ack = false;
@@ -421,7 +425,7 @@ void AP_Radio_cypress::check_fw_ack(void)
         uint32_t ack_to = fwupload.offset + fwupload.acked;
         memcpy(&data16[0], &ack_to, 4);
         mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
-        debug(4,"sent ack DATA16\n");
+        Debug(4,"sent ack DATA16\n");
         sem->give();
     }
 }
@@ -600,7 +604,7 @@ void AP_Radio_cypress::radio_set_config(const struct config *conf, uint8_t size)
  */
 void AP_Radio_cypress::radio_init(void)
 {
-    debug(1, "Cypress: radio_init starting\n");
+    Debug(1, "Cypress: radio_init starting\n");
 
     // wait for radio to settle
     uint16_t i;
@@ -613,7 +617,7 @@ void AP_Radio_cypress::radio_init(void)
         hal.scheduler->delay(10);
     }
     if (i == 1000) {
-        debug(1, "Cypress: radio_init failed\n");
+        Debug(1, "Cypress: radio_init failed\n");
         return;
     }
 
@@ -636,7 +640,7 @@ void AP_Radio_cypress::radio_init(void)
     // start in RECV state
     state = STATE_RECV;
 
-    debug(1, "Cypress: radio_init done\n");
+    Debug(1, "Cypress: radio_init done\n");
 
     start_receive();
 
@@ -747,7 +751,7 @@ void AP_Radio_cypress::check_double_bind(void)
     // than we have ever sent. There must be another RX sending
     // telemetry packets. We will reset our mfg_id and go back waiting
     // for a new bind packet, hopefully with the right TX
-    debug(1,"Double-bind detected\n");
+    Debug(1,"Double-bind detected\n");
     memset(dsm.mfg_id, 1, sizeof(dsm.mfg_id));
     dsm.last_recv_us = 0;
     dsm_setup_transfer_dsmx();
@@ -770,11 +774,11 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
                     &num_values,
                     ARRAY_SIZE(pwm_channels))) {
         // invalid packet
-        debug(2, "DSM: bad decode\n");
+        Debug(2, "DSM: bad decode\n");
         return false;
     }
     if (num_values < 5) {
-        debug(2, "DSM: num_values=%u\n", num_values);
+        Debug(2, "DSM: num_values=%u\n", num_values);
         return false;
     }
 
@@ -803,7 +807,7 @@ bool AP_Radio_cypress::parse_dsm_channels(const uint8_t *data)
         uint8_t v = d & 0xFF;
         if (chan == 7 && key == 0) {
             // got an ack from key 0
-            debug(4, "ack %u seq=%u acked=%u length=%u len=%u\n",
+            Debug(4, "ack %u seq=%u acked=%u length=%u len=%u\n",
                   v, fwupload.sequence, fwupload.acked, fwupload.length, fwupload.len);
             if (fwupload.sequence == v && sem->take_nonblocking()) {
                 fwupload.sequence++;
@@ -883,7 +887,7 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
 
     if (state == STATE_AUTOBIND) {
         uint8_t rssi = read_register(CYRF_RSSI) & 0x1F;
-        debug(3,"bind RSSI %u\n", rssi);
+        Debug(3,"bind RSSI %u\n", rssi);
         if (rssi < get_autobind_rssi()) {
             ok = false;
         }
@@ -893,7 +897,7 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         uint8_t mfg_id[4] = {uint8_t(~pkt[0]), uint8_t(~pkt[1]), uint8_t(~pkt[2]), uint8_t(~pkt[3])};
         uint8_t num_chan = pkt[11];
         uint8_t protocol = pkt[12];
-        
+        (void)num_chan;
         // change to normal receive
         memcpy(dsm.mfg_id, mfg_id, 4);
         state = STATE_RECV;
@@ -907,7 +911,7 @@ void AP_Radio_cypress::process_bind(const uint8_t *pkt, uint8_t len)
         dsm.protocol = (enum dsm_protocol)protocol;
         dsm_setup_transfer_dsmx();
 
-        debug(1, "BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
+        Debug(1, "BIND OK: mfg_id={0x%02x, 0x%02x, 0x%02x, 0x%02x} N=%u P=0x%02x DSM2=%u\n",
               mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3],
               num_chan,
               protocol,
@@ -934,7 +938,7 @@ void AP_Radio_cypress::dsm2_start_sync(void)
         dsm.channels[1] = (dsm.channels[0] + 5) % DSM_MAX_CHANNEL;
         dsm.sync = DSM2_OK;
     } else {
-        debug(2, "DSM2 start sync\n");
+        Debug(2, "DSM2 start sync\n");
         dsm.sync = DSM2_SYNC_A;
     }
 }
@@ -958,13 +962,13 @@ void AP_Radio_cypress::process_packet(const uint8_t *pkt, uint8_t len)
             if (dsm.sync == DSM2_SYNC_A) {
                 dsm.channels[0] = dsm.current_rf_channel;
                 dsm.sync = DSM2_SYNC_B;
-                debug(2, "DSM2 SYNCA chan=%u\n", dsm.channels[0]);
+                Debug(2, "DSM2 SYNCA chan=%u\n", dsm.channels[0]);
                 dsm.last_recv_us = now;
             } else {
                 if (dsm.current_rf_channel != dsm.channels[0]) {
                     dsm.channels[1] = dsm.current_rf_channel;
                     dsm.sync = DSM2_OK;                    
-                    debug(2, "DSM2 SYNCB chan=%u\n", dsm.channels[1]);
+                    Debug(2, "DSM2 SYNCB chan=%u\n", dsm.channels[1]);
                     dsm.last_recv_us = now;
                 }
             }
@@ -1076,7 +1080,7 @@ void AP_Radio_cypress::irq_handler_recv(uint8_t rx_status)
         if (reason & CYRF_BAD_CRC) {
             dsm.crc_errors++;
             if (dsm.crc_errors > 20) {
-                debug(2, "Flip CRC\n");
+                Debug(2, "Flip CRC\n");
                 // flip crc seed, this allows us to resync with transmitter
                 dsm.crc_seed = ~dsm.crc_seed;
                 dsm.crc_errors = 0;
@@ -1174,10 +1178,10 @@ void AP_Radio_cypress::irq_timeout(void)
     }
 
     if (get_fcc_test() != 0 && state != STATE_SEND_FCC) {
-        debug(3,"Starting FCC test\n");
+        Debug(3,"Starting FCC test\n");
         state = STATE_SEND_FCC;
     } else if (get_fcc_test() == 0 && state == STATE_SEND_FCC) {
-        debug(3,"Ending FCC test\n");
+        Debug(3,"Ending FCC test\n");
         state = STATE_RECV;
     }
     
@@ -1286,13 +1290,13 @@ void AP_Radio_cypress::dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t so
 
     if (get_disable_crc() != dsm.last_discrc) {
         dsm.last_discrc = get_disable_crc();
-        debug(3,"Cypress: DISCRC=%u\n", dsm.last_discrc);
+        Debug(3,"Cypress: DISCRC=%u\n", dsm.last_discrc);
         write_register(CYRF_RX_OVERRIDE, dsm.last_discrc?CYRF_DIS_RXCRC:0);
     }
 
     if (get_transmit_power() != dsm.last_transmit_power+1) {
         dsm.last_transmit_power = get_transmit_power()-1;
-        debug(3,"Cypress: TXPOWER=%u\n", dsm.last_transmit_power);
+        Debug(3,"Cypress: TXPOWER=%u\n", dsm.last_transmit_power);
         write_register(CYRF_TX_CFG, CYRF_DATA_CODE_LENGTH | CYRF_DATA_MODE_8DR | dsm.last_transmit_power);
     }
     
@@ -1352,7 +1356,7 @@ void AP_Radio_cypress::dsm_generate_channels_dsmx(uint8_t mfg_id[4], uint8_t cha
         }
     }
 
-    debug(2, "Generated DSMX channels\n");
+    Debug(2, "Generated DSMX channels\n");
 }
 
 /*
@@ -1402,7 +1406,7 @@ void AP_Radio_cypress::dsm_choose_channel(void)
 
         state = STATE_AUTOBIND;
         
-        debug(3,"recv autobind %u\n", now - dsm.last_autobind_send);
+        Debug(3,"recv autobind %u\n", now - dsm.last_autobind_send);
         dsm.last_autobind_send = now;
         return;
     }
@@ -1480,7 +1484,7 @@ void AP_Radio_cypress::start_recv_bind(void)
         return;
     }
 
-    debug(1, "Cypress: start_recv_bind\n");
+    Debug(1, "Cypress: start_recv_bind\n");
 
     write_register(CYRF_XACT_CFG, CYRF_MODE_SYNTH_RX | CYRF_FRC_END);
     write_register(CYRF_RX_ABORT, 0);
@@ -1536,7 +1540,7 @@ void AP_Radio_cypress::load_bind_info(void)
     uint8_t factory_test = get_factory_test();
     
     if (factory_test != 0) {
-        debug(1, "In factory test %u\n", factory_test);
+        Debug(1, "In factory test %u\n", factory_test);
         memset(dsm.mfg_id, 0, sizeof(dsm.mfg_id));
         dsm.mfg_id[0] = factory_test;
         dsm.protocol = DSM_DSM2_2;
@@ -1601,7 +1605,7 @@ void AP_Radio_cypress::send_telem_packet(void)
         pkt.payload.fw.offset = fwupload.offset+fwupload.acked;
         memcpy(&pkt.payload.fw.data[0], &fwupload.pending_data[fwupload.acked], pkt.payload.fw.len);
         fwupload.len = pkt.payload.fw.len;
-        debug(4, "sent fw seq=%u offset=%u len=%u type=%u\n",
+        Debug(4, "sent fw seq=%u offset=%u len=%u type=%u\n",
                pkt.payload.fw.seq,
                pkt.payload.fw.offset,
                pkt.payload.fw.len,
@@ -1660,10 +1664,10 @@ void AP_Radio_cypress::send_FCC_test_packet(void)
         break;
     }
 
-    debug(5,"FCC send %u\n", channel);
+    Debug(5,"FCC send %u\n", channel);
 
     if (channel != dsm.forced_channel) {
-        debug(1,"FCC channel %u\n", channel);
+        Debug(1,"FCC channel %u\n", channel);
         dsm.forced_channel = channel;
     
         radio_set_config(cyrf_config, ARRAY_SIZE(cyrf_config));
@@ -1718,7 +1722,7 @@ void AP_Radio_cypress::handle_data_packet(mavlink_channel_t chan, const mavlink_
 {
     uint32_t ofs=0;
     memcpy(&ofs, &m.data[0], 4);
-    debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, ofs);
+    Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, ofs);
     if (sem->take_nonblocking()) {
         fwupload.chan = chan;
         fwupload.need_ack = false;
