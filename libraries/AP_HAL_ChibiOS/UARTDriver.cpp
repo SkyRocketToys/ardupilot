@@ -118,7 +118,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
 
 void ChibiUARTDriver::begin(uint32_t b)
 {
-    	begin(b, 0, 0);
+    begin(b, 0, 0);
 }
 
 void ChibiUARTDriver::end()

@@ -155,7 +155,7 @@ void ChibiRCInput::_timer_tick(void)
         for (uint8_t i=0; i<_num_channels; i++) {
             _rc_values[i] = radio->read(i);
         }
-        chMtxLock(&rcin_mutex);
+        chMtxUnlock(&rcin_mutex);
     }
 #endif
     // note, we rely on the vehicle code checking new_input()
