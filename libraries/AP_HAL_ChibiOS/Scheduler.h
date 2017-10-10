@@ -36,10 +36,6 @@
 
 #define APM_MAIN_THREAD_STACK_SIZE 8192
 
-void _timer_thread(void *arg);
-void _io_thread(void *arg);
-void _storage_thread(void *arg);
-void _uart_thread(void *arg);
 /* Scheduler implementation: */
 class ChibiOS::ChibiScheduler : public AP_HAL::Scheduler {
 public:
