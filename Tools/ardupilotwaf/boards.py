@@ -315,6 +315,7 @@ class chibios(Board):
             '-mcpu=cortex-m4',
             '-Os',
             '-g',
+            '-flto',
             '-fomit-frame-pointer',
             '-falign-functions=16',
             '-ffunction-sections',
