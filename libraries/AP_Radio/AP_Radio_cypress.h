@@ -119,6 +119,7 @@ private:
     struct hrt_call wait_call;
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
     virtual_timer_t timeout_vt;
+    static thread_t *_irq_handler_ctx;
 #endif
     void radio_set_config(const struct config *config, uint8_t size);
 
@@ -139,8 +140,9 @@ private:
     static int irq_radio_trampoline(int irq, void *context);
     static int irq_timeout_trampoline(int irq, void *context);
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-    static void irq_radio_trampoline(void);
-    static void irq_timeout_trampoline(void* arg);
+    static void irq_handler_thd(void* arg);
+    static void trigger_irq_radio_event(void);
+    static void trigger_timeout_event(void *arg);
 #endif    
 
     static const uint8_t max_channels = 16;
