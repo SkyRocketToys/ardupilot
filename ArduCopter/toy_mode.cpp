@@ -416,7 +416,31 @@ void ToyMode::update()
     } else {
         throttle_high_counter = 0;
     }
-
+        
+    /*
+     * attemp to improve the setting of home location if it takes off when EKF is not happy
+     */
+    //           
+    if(copter.motors->armed() && !copter.position_ok()){
+        // if we have a 3d lock and valid location
+        if(copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D){
+            //aquire horizontal accuracy
+            float toy_horizontal_acc;
+            copter.gps.horizontal_accuracy(toy_horizontal_acc);
+            //if gps horizontal accuracy of below 15m
+            if(toy_horizontal_acc <= 1500){
+                //if home location has not been set yet
+                if(copter.ap.home_state == HOME_UNSET){
+                    //bypass EKF check and set currect location as HOME location
+                    Location indoor_loc = copter.gps.location(); 
+                    copter.ahrs.set_home(indoor_loc);
+                    copter.set_home_state(HOME_SET_NOT_LOCKED);
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "INDOOR MODE: setting home location here");
+                }
+            }
+        }
+    }
+    
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
@@ -428,7 +452,7 @@ void ToyMode::update()
     }
 
     if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max &&
-        copter.fence.check_destination_within_fence(copter.current_loc)) {
+        !copter.fence.check_fence(copter.current_loc.alt/100.0f)) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
