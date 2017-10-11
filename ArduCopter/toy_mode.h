@@ -42,6 +42,7 @@ private:
 
     void thrust_limiting(float *thrust, uint8_t num_motors);
     void arm_check_compass(void);
+    control_mode_t get_non_gps_mode();
     
     enum toy_action {
         ACTION_NONE         = 0,
