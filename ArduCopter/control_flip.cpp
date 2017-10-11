@@ -40,7 +40,7 @@ int8_t    flip_pitch_dir;           // pitch direction (-1 = pitch forward, 1 = 
 bool Copter::flip_init(bool ignore_checks)
 {
     // only allow flip from ACRO, Stabilize, AltHold or Drift flight modes
-    if (control_mode != ACRO && control_mode != STABILIZE && control_mode != ALT_HOLD) {
+    if (control_mode != ACRO && control_mode != STABILIZE && control_mode != ALT_HOLD && control_mode != FLOWHOLD) {
         return false;
     }
 
