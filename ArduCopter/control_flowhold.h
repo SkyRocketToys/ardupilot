@@ -28,7 +28,7 @@ private:
 
     bool flowhold_init(bool ignore_checks);
     void flowhold_run();
-    void flowhold_flow_to_angle(Vector2f &angle, const Vector2f &flow_gain);
+    void flowhold_flow_to_angle(Vector2f &angle, bool stick_input);
     void update_height_estimate(void);
 
     // minimum assumed height
@@ -38,10 +38,10 @@ private:
     const float height_max = 3.0;
     
     AP_Float flow_max;
-    AP_Float flow_speed;
     AC_PI_2D flow_pi_xy;
     AP_Float flow_filter_hz;
     AP_Int8  flow_min_quality;
+    AP_Int8  brake_rate_dps;
 
     float quality_filtered;
 
@@ -60,4 +60,10 @@ private:
 
     float last_ins_height;
     float height_offset;
+
+    // are we braking after pilot input?
+    bool braking;
+
+    // last time there was significant stick input
+    uint32_t last_stick_input_ms;
 };
