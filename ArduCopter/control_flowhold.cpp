@@ -52,15 +52,20 @@ const AP_Param::GroupInfo FlowHold::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_MIN_QUAL", 4, FlowHold, flow_min_quality, 10),
 
-    // @Param: _FLOW_SPEED
-    // @DisplayName: Flow Speed
-    // @Description: Controls maximum pilot speed in FlowMode
-    // @Range: 0.1 2.5
+    // 5 was FLOW_SPEED
+    
+    // @Param: _BRAKE_RATE
+    // @DisplayName: Braking rate
+    // @Description: Controls deceleration rate on stick release
+    // @Range: 1 30
     // @User: Standard
-    AP_GROUPINFO("_FLOW_SPEED", 5, FlowHold, flow_speed, 1.5),
+    // @Units: deg/sec
+    AP_GROUPINFO("_BRAKE_RATE", 6, FlowHold, brake_rate_dps, 8),
     
     AP_GROUPEND
 };
+
+#define CONTROL_FLOWHOLD_EARTH_FRAME 0
 
 // constructor
 FlowHold::FlowHold(void) :
@@ -114,14 +119,10 @@ bool FlowHold::init(bool ignore_checks)
 /*
   calculate desired attitude from flow sensor. Called when flow sensor is healthy
  */
-void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, const Vector2f &flow_gain)
+void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stick_input)
 {
-    // get pilot desired flow rates
-    Vector2f target_flow;
-
-    target_flow.x = -copter.channel_roll->get_control_in() * flow_speed / 4500;
-    target_flow.y = -copter.channel_pitch->get_control_in() * flow_speed / 4500;
-
+    uint32_t now = AP_HAL::millis();
+    
     // get corrected raw flow rate
     Vector2f raw_flow = copter.optflow.flowRate() - copter.optflow.bodyRate();
 
@@ -135,20 +136,12 @@ void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, const Vector2f &flow_
     // scale by height estimate, limiting it to height_min to height_max
     float ins_height = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
     float height_estimate = ins_height + height_offset;
+
+    // compensate for height, this converts to (approx) m/s
     sensor_flow *= constrain_float(height_estimate, height_min, height_max);
-                    
-    // get difference between measured and target flow in body frame
-    Vector2f input_bf = sensor_flow - target_flow;
-    
+
     // rotate controller input to earth frame
-    Vector2f input_ef = copter.ahrs.rotate_body_to_earth2D(input_bf);
-
-    // apply flow gains. This reduces influence of flow as pilot input increases
-    input_ef.x *= flow_gain.x;
-    input_ef.y *= flow_gain.y;
-
-    // freeze I when we have pilot input
-    bool freeze_I = (flow_gain.x < 0.95 || flow_gain.y < 0.95);
+    Vector2f input_ef = copter.ahrs.rotate_body_to_earth2D(sensor_flow);
 
     // run PI controller
     flow_pi_xy.set_input(input_ef);
@@ -159,8 +152,23 @@ void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, const Vector2f &flow_
     // get P term
     ef_output = flow_pi_xy.get_p();
 
-    // get I term
-    if (!freeze_I) {
+    if (stick_input) {
+        last_stick_input_ms = now;
+        braking = true;
+    }
+    if (!stick_input && braking) {
+        // stop braking if either 3s has passed, or we have slowed below 0.3m/s
+        if (now - last_stick_input_ms > 3000 || sensor_flow.length() < 0.3) {
+            braking = false;
+#if 0
+            printf("braking done at %u vel=%f\n", now - last_stick_input_ms,
+                   sensor_flow.length());
+#endif
+        }
+    }
+    
+    if (!stick_input && !braking) {
+        // get I term
         if (limited) {
             // only allow I term to shrink in length
             xy_I = flow_pi_xy.get_i_shrink();
@@ -169,13 +177,28 @@ void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, const Vector2f &flow_
             xy_I = flow_pi_xy.get_pi();
         }
     }
+
+    if (!stick_input && braking) {
+        // calculate brake angle for each axis separately
+        for (uint8_t i=0; i<2; i++) {
+            float &velocity = sensor_flow[i];
+            float abs_vel_cms = fabsf(velocity)*100;
+            const float brake_gain = (15.0f * brake_rate_dps.get() + 95.0f) / 100.0f;
+            float lean_angle_cd = brake_gain * abs_vel_cms * (1.0f+500.0f/(abs_vel_cms+60.0f));
+            if (velocity < 0) {
+                lean_angle_cd = -lean_angle_cd;
+            }
+            bf_angles[i] = lean_angle_cd;
+        }
+        ef_output.zero();
+    }
+
     
     ef_output += xy_I;
-    
     ef_output *= copter.aparm.angle_max;
 
     // convert to body frame
-    bf_angles = copter.ahrs.rotate_earth_to_body2D(ef_output);
+    bf_angles += copter.ahrs.rotate_earth_to_body2D(ef_output);
 
     // set limited flag to prevent integrator windup
     limited = fabsf(bf_angles.x) > copter.aparm.angle_max || fabsf(bf_angles.y) > copter.aparm.angle_max;
@@ -185,10 +208,9 @@ void FlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, const Vector2f &flow_
     bf_angles.y = constrain_float(bf_angles.y, -copter.aparm.angle_max, copter.aparm.angle_max);
 
     if (log_counter++ % 20 == 0) {
-        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,TFx,TFy,Ax,Ay,Qual,Ix,Iy", "Qfffffffff",
+        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy", "Qfffffffff",
                                                AP_HAL::micros64(),
                                                sensor_flow.x, sensor_flow.y,
-                                               target_flow.x, target_flow.y,
                                                bf_angles.x, bf_angles.y,
                                                quality_filtered,
                                                xy_I.x, xy_I.y);
@@ -251,9 +273,10 @@ void FlowHold::run()
     Vector2f bf_angles;
 
     // calculate alt-hold angles
+    int16_t roll_in = copter.channel_roll->get_control_in();
+    int16_t pitch_in = copter.channel_pitch->get_control_in();
     float angle_max = copter.attitude_control->get_althold_lean_angle_max();
-    copter.get_pilot_desired_lean_angles(copter.channel_roll->get_control_in(),
-                                         copter.channel_pitch->get_control_in(),
+    copter.get_pilot_desired_lean_angles(roll_in, pitch_in,
                                          bf_angles.x, bf_angles.y,
                                          angle_max);
     
@@ -262,16 +285,7 @@ void FlowHold::run()
         // don't use for first 3s when we are just taking off
         Vector2f flow_angles;
 
-        // reduce flow influence as pilot input increases
-        Vector2f flow_gain;
-        flow_gain.x = linear_interpolate(1, 0,
-                                         fabsf(bf_angles.x),
-                                         0, angle_max/2);
-        flow_gain.y = linear_interpolate(1, 0,
-                                         fabsf(bf_angles.y),
-                                         0, angle_max/2);
-
-        flowhold_flow_to_angle(flow_angles, flow_gain);
+        flowhold_flow_to_angle(flow_angles, (roll_in != 0) || (pitch_in != 0));
         flow_angles.x = constrain_float(flow_angles.x, -angle_max/2, angle_max/2);
         flow_angles.y = constrain_float(flow_angles.y, -angle_max/2, angle_max/2);
         bf_angles += flow_angles;
@@ -288,7 +302,7 @@ void FlowHold::run()
         copter.attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(bf_angles.x, bf_angles.y, target_yaw_rate, copter.get_smoothing_gain());
 #if FRAME_CONFIG == HELI_FRAME    
         // force descent rate and call position controller
-        copter.pos_control->set_alt_target_from_climb_rate(-abs(copter.g.land_speed), G_Dt, false);
+        copter.pos_control->set_alt_target_from_climb_rate(-abs(copter.g.land_speed), copter.G_Dt, false);
 #else
         copter.attitude_control->reset_rate_controller_I_terms();
         copter.attitude_control->set_yaw_target_to_current_heading();
