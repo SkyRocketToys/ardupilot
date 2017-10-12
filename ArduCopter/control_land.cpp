@@ -99,8 +99,7 @@ void Copter::land_nogps_run()
         // check for land cancel by pilot, but not if we've triggered
         // a crash in last 2 seconds, to cope with LAND from
         // obstruction detection
-        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
-            rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+        if (land_check_cancel() &&
             millis() - crash.last_trigger_ms > 2000) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
@@ -229,8 +228,7 @@ void Copter::land_run_horizontal_control()
         // check for land cancel by pilot, but not if we've triggered
         // a crash in last 2 seconds, to cope with LAND from
         // obstruction detection
-        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
-            rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+        if (land_check_cancel() &&
             millis() - crash.last_trigger_ms > 2000) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
@@ -332,4 +330,17 @@ void Copter::set_mode_land_with_pause(mode_reason_t reason)
 // landing_with_GPS - returns true if vehicle is landing using GPS
 bool Copter::landing_with_GPS() {
     return (control_mode == LAND && land_with_gps);
+}
+
+/*
+  check if we should cancel a landing with throttle
+ */
+bool Copter::land_check_cancel(void)
+{
+    if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
+        rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+        !failsafe.battery) {
+        return true;
+    }
+    return false;
 }
