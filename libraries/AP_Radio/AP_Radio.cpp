@@ -86,7 +86,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Description: This sets the radio to a fixed test channel for factory testing. Using a fixed channel avoids the need for binding in factory testing.
     // @Values: 0:Disabled,1:TestChan1,2:TestChan2,3:TestChan3,4:TestChan4,5:TestChan5,6:TestChan6,7:TestChan7,8:TestChan8
     // @User: Advanced
-    AP_GROUPINFO("_TESTCH", 11, AP_Radio, factory_test, 1),    
+    AP_GROUPINFO("_TESTCH", 11, AP_Radio, factory_test, 0),    
 
     // @Param: _TSIGCH
     // @DisplayName: RSSI value channel for telemetry data on transmitter
