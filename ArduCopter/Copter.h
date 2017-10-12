@@ -922,6 +922,8 @@ private:
     void land_run_vertical_control(bool pause_descent = false);
     void land_run_horizontal_control();
     void land_do_not_use_GPS();
+    bool land_check_cancel();
+    
     void set_mode_land_with_pause(mode_reason_t reason);
     bool landing_with_GPS();
     bool loiter_init(bool ignore_checks);
