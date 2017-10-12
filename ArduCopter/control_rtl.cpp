@@ -130,7 +130,7 @@ void Copter::rtl_return_start()
 /*
   input pilot stick mixing during RTL
  */
-void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch)
+void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch, float &target_climb_rate)
 {
 #if RTL_STICK_MIXING == ENABLED
     if (failsafe.radio) {
@@ -140,7 +140,9 @@ void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch)
 
     int16_t roll_in = channel_roll->get_control_in();
     int16_t pitch_in = channel_pitch->get_control_in();
-    if (roll_in || pitch_in) {
+    int16_t throttle_in = channel_throttle->get_control_in();
+    
+    if (roll_in || pitch_in || throttle_in > 700) {
         rtl_pilot_steering = true;
     } else {
         if (rtl_pilot_steering) {
@@ -173,6 +175,13 @@ void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch)
     }
     nav_pitch += pilot_pitch;
     nav_pitch = constrain_float(nav_pitch, -angle_limit, angle_limit);
+
+    if (throttle_in > 700) {
+        // allow pilot to climb over objects in RTL, then resume normal flight on release
+        target_climb_rate = get_pilot_desired_climb_rate(throttle_in);
+        target_climb_rate = constrain_float(target_climb_rate, -g.pilot_velocity_z_max, g.pilot_velocity_z_max);
+    }
+    
 #endif
 }
 
@@ -209,16 +218,24 @@ void Copter::rtl_climb_return_run()
     // set motors to full range
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
+    float old_alt_target = pos_control->get_pos_target().z;
+    float nav_roll = wp_nav->get_roll();
+    float nav_pitch = wp_nav->get_pitch();
+    float target_climb_rate = 0;
+    
+    rtl_stick_mixing(nav_roll, nav_pitch, target_climb_rate);
+
     // run waypoint controller
     failsafe_terrain_set_status(wp_nav->update_wpnav());
 
+    if (target_climb_rate > 0) {
+        Vector3f target = pos_control->get_pos_target();
+        target.z = old_alt_target + target_climb_rate * G_Dt;
+        pos_control->set_pos_target(target);
+    }
+    
     // call z-axis position controller (wpnav should have already updated it's alt target)
     pos_control->update_z_controller();
-
-    float nav_roll = wp_nav->get_roll();
-    float nav_pitch = wp_nav->get_pitch();
-
-    rtl_stick_mixing(nav_roll, nav_pitch);
     
     // call attitude controller
     if (auto_yaw_mode == AUTO_YAW_HOLD) {
