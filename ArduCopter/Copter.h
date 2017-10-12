@@ -951,7 +951,7 @@ private:
     void rtl_run();
     void rtl_climb_start();
     void rtl_return_start();
-    void rtl_stick_mixing(float &nav_roll, float &nav_pitch);
+    void rtl_stick_mixing(float &nav_roll, float &nav_pitch, float &target_climb_rate);
     void rtl_climb_return_run();
     void rtl_loiterathome_start();
     void rtl_loiterathome_run();
