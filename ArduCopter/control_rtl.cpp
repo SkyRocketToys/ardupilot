@@ -140,6 +140,10 @@ void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch, float &target_c
 
     if (!fence.check_destination_within_fence(current_loc)) {
         // don't allow stick mixing when outside fence
+        if (rtl_pilot_steering) {
+            rtl_pilot_steering = false;
+            rtl_return_start();
+        }
         return;
     }
     
