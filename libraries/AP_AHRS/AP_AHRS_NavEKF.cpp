@@ -1429,6 +1429,9 @@ bool AP_AHRS_NavEKF::get_origin(Location &ret) const
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKF_TYPE_SITL:
+        if (!_sitl) {
+            return false;
+        }
         const struct SITL::sitl_fdm &fdm = _sitl->state;
         ret = fdm.home;
         return true;
