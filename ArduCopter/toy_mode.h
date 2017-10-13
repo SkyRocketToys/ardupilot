@@ -79,6 +79,7 @@ private:
         FLAG_THR_ARM        = 1<<1,  // arm on high throttle
         FLAG_UPGRADE_LOITER = 1<<2,  // auto upgrade from ALT_HOLD to LOITER
         FLAG_RTL_CANCEL     = 1<<3,  // cancel RTL on large stick input
+        FLAG_ALT_FENCE_LIMIT= 1<<4,  // limit throttle input above geofence alt in all modes
     };
 
     enum blink_patterns {
