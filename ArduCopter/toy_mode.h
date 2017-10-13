@@ -151,6 +151,9 @@ private:
     // remember the last mode we set
     control_mode_t last_set_mode = LOITER;
 
+    // last time we think we're definately not landed
+    uint32_t last_not_landed_ms;
+    
     struct load_data {
         uint16_t m[4];
     };
