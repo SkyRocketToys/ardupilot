@@ -370,11 +370,19 @@ void ToyMode::update()
     // throttle threshold for throttle arming
     bool throttle_near_max =
         copter.channel_throttle->get_control_in() > 700;
+
+    // keep track of when we were definately last not landed
+    bool descent_rate_low = fabsf(copter.inertial_nav.get_velocity_z()) < 100;
+    if (copter.motors->armed() && (!copter.motors->limit.throttle_lower || !descent_rate_low)) {
+        last_not_landed_ms = now;
+    }
     
     /*
-      disarm if throttle is low for 1 second when landed
+      disarm if throttle is low for 1 second when landed, or low and
+      we have been not flying for 2 seconds
      */
-    if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() && copter.ap.land_complete) {
+    if ((flags & FLAG_THR_DISARM) && throttle_at_min && copter.motors->armed() &&
+        (copter.ap.land_complete || now - last_not_landed_ms > 2000)) {
         throttle_low_counter++;
         const uint8_t disarm_limit = copter.mode_has_manual_throttle(copter.control_mode)?TOY_LAND_MANUAL_DISARM_COUNT:TOY_LAND_DISARM_COUNT;
         if (throttle_low_counter >= disarm_limit) {
