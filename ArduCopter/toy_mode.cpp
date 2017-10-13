@@ -805,11 +805,11 @@ void ToyMode::throttle_adjust(float &throttle_control)
     }
 
     // limit descent rate close to the ground
-    float height = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
+    float height_above_arming = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
     if (throttle_control < 500 &&
-        height < TOY_DESCENT_SLOW_HEIGHT + TOY_DESCENT_SLOW_RAMP &&
+        height_above_arming < TOY_DESCENT_SLOW_HEIGHT + TOY_DESCENT_SLOW_RAMP &&
         copter.motors->armed() && !copter.ap.land_complete) {
-        float limit = linear_interpolate(TOY_DESCENT_SLOW_MIN, 0, height,
+        float limit = linear_interpolate(TOY_DESCENT_SLOW_MIN, 0, height_above_arming,
                                          TOY_DESCENT_SLOW_HEIGHT, TOY_DESCENT_SLOW_HEIGHT+TOY_DESCENT_SLOW_RAMP);
         if (throttle_control < limit) {
             // limit descent rate close to the ground
@@ -817,11 +817,29 @@ void ToyMode::throttle_adjust(float &throttle_control)
         }
     }
 
-    if ((flags & FLAG_ALT_FENCE_LIMIT) && height > copter.fence.get_safe_alt_max()) {
-        // limit climb rate when above fence height in all pilot
-        // altitude controlled modes, regardless of whether fence is
-        // enabled. This gives us a maximum height in ALT_HOLD mode
-        throttle_control = MIN(throttle_control, throttle_mid);
+    if (flags & FLAG_ALT_FENCE_LIMIT) {    
+        float height = height_above_arming;
+        int32_t alt_above_home_cm;
+        float margin = copter.fence.get_margin();
+        
+        if (copter.current_loc.get_alt_cm(Location_Class::ALT_FRAME_ABOVE_HOME, alt_above_home_cm)) {
+            // if possible use current_loc height to be consistent with fence logic
+            height = alt_above_home_cm * 0.01;
+        }
+    
+        if (height > copter.fence.get_safe_alt_max() - margin*3) {
+            // limit climb rate when above fence height in all pilot
+            // altitude controlled modes, regardless of whether fence is
+            // enabled. This gives us a maximum height in ALT_HOLD mode
+            float fence_limit = copter.fence.get_safe_alt_max() - margin;
+            float distance_from_fence_limit = height - fence_limit;
+            float throttle_limit = linear_interpolate(throttle_mid+200, throttle_mid-200,
+                                                      distance_from_fence_limit,
+                                                      -2*margin, 2*margin);
+            if (throttle_control > throttle_limit) {
+                throttle_control = throttle_limit;
+            }
+        }
     }
 }
 
