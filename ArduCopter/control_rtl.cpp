@@ -138,6 +138,11 @@ void Copter::rtl_stick_mixing(float &nav_roll, float &nav_pitch, float &target_c
         return;
     }
 
+    if (!fence.check_destination_within_fence(current_loc)) {
+        // don't allow stick mixing when outside fence
+        return;
+    }
+    
     int16_t roll_in = channel_roll->get_control_in();
     int16_t pitch_in = channel_pitch->get_control_in();
     int16_t throttle_in = channel_throttle->get_control_in();
