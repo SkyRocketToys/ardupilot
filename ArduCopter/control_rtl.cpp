@@ -549,6 +549,9 @@ void Copter::rtl_compute_return_target(bool terrain_following_allowed)
     // set returned target alt to new target_alt
     rtl_path.return_target.set_alt_cm(target_alt, rtl_path.terrain_used ? Location_Class::ALT_FRAME_ABOVE_TERRAIN : Location_Class::ALT_FRAME_ABOVE_HOME);
 
+    // ensure we do not descend unless above fence
+    rtl_path.return_target.alt = MAX(rtl_path.return_target.alt, curr_alt);
+
 #if AC_FENCE == ENABLED
     // ensure not above fence altitude if alt fence is enabled
     // Note: because the rtl_path.climb_target's altitude is simply copied from the return_target's altitude,
@@ -566,7 +569,4 @@ void Copter::rtl_compute_return_target(bool terrain_following_allowed)
         }
     }
 #endif
-
-    // ensure we do not descend
-    rtl_path.return_target.alt = MAX(rtl_path.return_target.alt, curr_alt);
 }
