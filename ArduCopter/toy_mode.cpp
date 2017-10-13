@@ -110,8 +110,8 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
-    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged
-    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel
+    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged. AltLimitFence means to limit climb in all altitude controlled modes to not take the copter above the fence altitude, even if the fence is disabled.
+    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel,4:AltLimitFence
     // @User: Standard
     AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
 
@@ -807,6 +807,13 @@ void ToyMode::throttle_adjust(float &throttle_control)
             // limit descent rate close to the ground
             throttle_control = limit;
         }
+    }
+
+    if ((flags & FLAG_ALT_FENCE_LIMIT) && height > copter.fence.get_safe_alt_max()) {
+        // limit climb rate when above fence height in all pilot
+        // altitude controlled modes, regardless of whether fence is
+        // enabled. This gives us a maximum height in ALT_HOLD mode
+        throttle_control = MIN(throttle_control, throttle_mid);
     }
 }
 
