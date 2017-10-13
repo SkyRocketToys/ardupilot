@@ -168,5 +168,8 @@ private:
         AP_Int8  load_type;
     } load_test;
     
+    //for storing location in indoor mode
+    Location indoor_loc;
+    
     static const struct load_data load_data1[];
 };
