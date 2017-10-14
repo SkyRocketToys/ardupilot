@@ -134,6 +134,7 @@ private:
     uint16_t red_blink_count;
     uint16_t green_blink_count;
     uint8_t blink_disarm;
+    uint32_t position_ok_ms;
 
     struct {
         AP_Float volt_min;

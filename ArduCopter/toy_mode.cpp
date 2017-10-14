@@ -425,11 +425,26 @@ void ToyMode::update()
         throttle_high_counter = 0;
     }
 
+    /*
+      we remember the time that position_ok() become true so that when
+      we do an update the new alt estimate has had time to settle
+      before we use it
+     */
+    if (copter.position_ok()) {
+        if (position_ok_ms == 0) {
+            position_ok_ms = now;
+        }
+    } else {
+        position_ok_ms = 0;
+    }
+    
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
             AP_Notify::flags.hybrid_loiter = false;
-        } else if (copter.position_ok() && set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
+        } else if (copter.position_ok() &&
+                   (now - position_ok_ms > 50) &&
+                   set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
         }
