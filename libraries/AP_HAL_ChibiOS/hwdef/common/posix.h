@@ -43,8 +43,8 @@ extern "C" {
 ///@brief Standard POSIX typedefs.
 ///
 /// - Using these makes code portable accross many acrchitectures
-typedef uint32_t blkcnt_t;  /*< blkcnt_t for this architecture */
-typedef uint32_t blksize_t; /*< blksize_t for this architecture */
+//typedef uint32_t blkcnt_t;  /*< blkcnt_t for this architecture */
+//typedef uint32_t blksize_t; /*< blksize_t for this architecture */
 extern int errno;
 // =============================================
 
@@ -103,8 +103,8 @@ struct stat
     gid_t     st_gid;    /*<  group ID of owner */
     dev_t     st_rdev;   /*<  device ID (if special file) */
     off_t     st_size;   /*<  total size, in bytes */
-    blksize_t st_blksize;/*<  blocksize for filesystem I/O */
-    blkcnt_t  st_blocks; /*<  number of 512B blocks allocated */
+    uint32_t st_blksize;/*<  blocksize for filesystem I/O */
+    uint32_t  st_blocks; /*<  number of 512B blocks allocated */
     time_t    st_atime;  /*<  time of last access */
     time_t    st_mtime;  /*<  time of last modification */
     time_t    st_ctime;  /*<  time of last status change */
