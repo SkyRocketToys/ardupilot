@@ -472,8 +472,8 @@
                                      PIN_PUPDR_FLOATING(2U) |       \
                                      PIN_PUPDR_FLOATING(3U) |       \
                                      PIN_PUPDR_FLOATING(4U) |      \
-                                     PIN_PUPDR_PULLUP(5U) |      \
-                                     PIN_PUPDR_PULLUP(6U) |      \
+                                     PIN_PUPDR_FLOATING(5U) |      \
+                                     PIN_PUPDR_FLOATING(6U) |      \
                                      PIN_PUPDR_FLOATING(7U) |      \
                                      PIN_PUPDR_PULLUP(8U) |    \
                                      PIN_PUPDR_PULLUP(9U) |   \

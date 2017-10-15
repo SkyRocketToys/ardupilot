@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O0 -g -fomit-frame-pointer -falign-functions=16  -DCHPRINTF_USE_FLOAT=1
+  USE_OPT = -Os -g -fomit-frame-pointer -falign-functions=16  -DCHPRINTF_USE_FLOAT=1
 endif
 
 # C specific options here (added to USE_OPT).

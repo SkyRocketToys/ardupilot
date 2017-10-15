@@ -98,14 +98,37 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
         }
     } else {
         if (_baudrate != 0) {
-            SerialConfig sercfg =
-            {
-              _baudrate,
-              0,
-              USART_CR2_STOP1_BITS,
-              0
-            };
+            //setup Rx DMA
+            if(!was_initialised) {
+                rxdma = STM32_DMA_STREAM(STM32_UART_USART2_RX_DMA_STREAM);
+                bool b = dmaStreamAllocate(rxdma,
+                                           0,
+                                           (stm32_dmaisr_t)rxbuff_full_irq,
+                                           (void *)this);
+                osalDbgAssert(!b, "stream already allocated");
+                dmaStreamSetPeripheral(rxdma, &((SerialDriver*)_serial)->usart->DR);
+            }
+            sercfg.speed = _baudrate;
+            sercfg.cr1 = USART_CR1_IDLEIE;
+            sercfg.cr2 = USART_CR2_STOP1_BITS;
+            sercfg.cr3 = USART_CR3_DMAR;
+            sercfg.irq_cb = rx_irq_cb;
+            sercfg.ctx = (void*)this;
+            
             sdStart((SerialDriver*)_serial, &sercfg);
+            //Configure serial driver to skip handling RX packets
+            //because we will handle them via DMA
+            ((SerialDriver*)_serial)->usart->CR1 &= ~USART_CR1_RXNEIE;
+            //Start DMA
+            if(!was_initialised) {
+                uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
+                                   STM32_DMA_CR_CHSEL(USART_RX_DMA_CHANNEL) | STM32_DMA_CR_PL(0);
+                dmaStreamSetMemory0(rxdma, rx_bounce_buf);
+                dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
+                dmaStreamSetMode(rxdma, dmamode    | STM32_DMA_CR_DIR_P2M |
+                                     STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
+                dmaStreamEnable(rxdma);
+            }
         }
     }
 
@@ -115,6 +138,32 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     _uart_owner_thd = chThdGetSelfX();
 }
 
+void ChibiUARTDriver::rx_irq_cb(void* self)
+{
+    ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
+
+    volatile uint16_t sr = ((SerialDriver*)(uart_drv->_serial))->usart->SR;
+    if(sr & USART_SR_IDLE) {
+        volatile uint16_t dr = ((SerialDriver*)(uart_drv->_serial))->usart->DR;
+        (void)dr;
+        //disable dma, triggering DMA transfer complete interrupt
+        uart_drv->rxdma->stream->CR &= ~STM32_DMA_CR_EN;
+    }
+}
+
+void ChibiUARTDriver::rxbuff_full_irq(void* self, uint32_t flags)
+{
+    ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
+    uint8_t len = RX_BOUNCE_BUFSIZE - uart_drv->rxdma->stream->NDTR;
+    if (len == 0) {
+        return;
+    }
+    uart_drv->_readbuf.write(uart_drv->rx_bounce_buf, len);
+    //restart the DMA transfers
+    dmaStreamSetMemory0(uart_drv->rxdma, uart_drv->rx_bounce_buf);
+    dmaStreamSetTransactionSize(uart_drv->rxdma, RX_BOUNCE_BUFSIZE);
+    dmaStreamEnable(uart_drv->rxdma);
+}
 
 void ChibiUARTDriver::begin(uint32_t b)
 {
@@ -270,6 +319,30 @@ void ChibiUARTDriver::_timer_tick(void)
     }
     _in_timer = true;
 
+    // try to fill the read buffer
+    ByteBuffer::IoVec vec[2];
+
+    const auto n_vec = _readbuf.reserve(vec, _readbuf.space());
+    for (int i = 0; i < n_vec; i++) {
+        //Do a non-blocking read
+        if (_is_usb) {
+            ret = 0;
+            ret = chnReadTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
+        } else {
+            ret = 0;
+            //ret = sdAsynchronousRead((SerialDriver*)_serial, vec[i].data, vec[i].len);
+        }
+        if (ret < 0) {
+            break;
+        }
+        _readbuf.commit((unsigned)ret);
+
+        /* stop reading as we read less than we asked for */
+        if ((unsigned)ret < vec[i].len) {
+            break;
+        }
+    }
+
     // write any pending bytes
     n = _writebuf.available();
     if (n > 0) {
@@ -277,9 +350,10 @@ void ChibiUARTDriver::_timer_tick(void)
         const auto n_vec = _writebuf.peekiovec(vec, n);
         for (int i = 0; i < n_vec; i++) {
             if (_is_usb) {
+                ret = 0;
                 ret = chnWriteTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
             } else {
-                ret = chnWriteTimeout((SerialDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
+                ret = sdAsynchronousWrite((SerialDriver*)_serial, vec[i].data, vec[i].len);
             }
             if (ret < 0) {
                 break;
@@ -294,27 +368,24 @@ void ChibiUARTDriver::_timer_tick(void)
     }
 
     // try to fill the read buffer
-    ByteBuffer::IoVec vec[2];
-
-    const auto n_vec = _readbuf.reserve(vec, _readbuf.space());
-    for (int i = 0; i < n_vec; i++) {
-        //Do a non-blocking read
-        if (_is_usb) {
+    // only for usb, we use DMA and callbacks for UART based serial
+    if (_is_usb) {
+        ByteBuffer::IoVec vec[2];
+        const auto n_vec = _readbuf.reserve(vec, _readbuf.space());
+        for (int i = 0; i < n_vec; i++) {
+            //Do a non-blocking read
             ret = chnReadTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
-        } else {
-            ret = chnReadTimeout((SerialDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
-        }
-        if (ret < 0) {
-            break;
-        }
-        _readbuf.commit((unsigned)ret);
+            if (ret < 0) {
+                break;
+            }
+            _readbuf.commit((unsigned)ret);
 
-        /* stop reading as we read less than we asked for */
-        if ((unsigned)ret < vec[i].len) {
-            break;
+            /* stop reading as we read less than we asked for */
+            if ((unsigned)ret < vec[i].len) {
+                break;
+            }
         }
     }
-
     _in_timer = false;
 }
 #endif //CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
