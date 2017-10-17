@@ -426,7 +426,7 @@ void ToyMode::update()
             //aquire horizontal accuracy
             float toy_horizontal_acc;
             if (copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
-                //if gps horizontal accuracy of below 1500mm
+                //if gps horizontal accuracy of below 1500cm
                 if(toy_horizontal_acc <= 1500){
                     //if home location has not been set yet
                     if (copter.ap.home_state == HOME_UNSET) {
