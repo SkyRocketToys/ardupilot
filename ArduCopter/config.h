@@ -77,7 +77,7 @@
 #ifndef RC_FAST_SPEED
    #   define RC_FAST_SPEED 490
 #endif
-
+/*
 # define RANGEFINDER_ENABLED 			DISABLED
 # define RANGEFINDER_TILT_CORRECTION 	DISABLED
 # define PROXIMITY_ENABLED 			DISABLED
@@ -101,7 +101,7 @@
 # define CLI_ENABLED           		DISABLED
 # define FRSKY_TELEM_ENABLED 	        DISABLED
 # define SMARTRTL_ENABLED			DISABLED
-
+*/
 //////////////////////////////////////////////////////////////////////////////
 // Rangefinder
 //
