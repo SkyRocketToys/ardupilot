@@ -10,8 +10,8 @@
 
 
 static ChibiOS::ChibiUARTDriver uartADriver(0);
-static Empty::UARTDriver uartBDriver;
-static ChibiOS::ChibiUARTDriver uartCDriver(1);
+static ChibiOS::ChibiUARTDriver uartBDriver(1);
+static ChibiOS::ChibiUARTDriver uartCDriver(2);
 static ChibiOS::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
@@ -91,7 +91,7 @@ static THD_FUNCTION(main_loop,arg)
     daemon_task = chThdGetSelfX();
 
     hal.uartA->begin(115200);
-    //hal.uartB->begin(38400);
+    hal.uartB->begin(38400);
     hal.uartC->begin(57600);
     hal.rcin->init();
     hal.rcout->init();
