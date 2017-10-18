@@ -122,6 +122,9 @@ private:
     bool upgrade_to_loiter;
     uint32_t last_action_ms;
     uint32_t reset_turtle_start_ms;
+    
+    //for storing location in indoor mode
+    Location indoor_loc;
 
     // time when we were last told we are recording video
     uint32_t last_video_ms;

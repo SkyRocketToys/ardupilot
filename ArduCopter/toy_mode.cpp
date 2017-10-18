@@ -438,6 +438,44 @@ void ToyMode::update()
         position_ok_ms = 0;
     }
     
+    /*
+    * attempt to improve the setting of home location sooner
+    */
+    uint8_t home_state_local = copter.ap.home_state;
+    switch (home_state_local) {
+    case HOME_UNSET:
+        if (copter.motors->armed() && !copter.ekf_position_ok()) {
+            // if we have a 3d lock and valid location
+            if (copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
+                // acquire horizontal accuracy
+                float toy_horizontal_acc;
+                if (copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
+                    // if gps horizontal accuracy of below 15m set current gps-supplied location as home position
+                    if(toy_horizontal_acc <= 15.0f){
+                        indoor_loc = copter.gps.location();
+                        copter.ahrs.set_home(indoor_loc);
+                        copter.set_home_state(HOME_SET_NOT_LOCKED);
+                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "INDOOR MODE:set home loc with horizontal_acc:%.2f,",toy_horizontal_acc); 
+                    }   
+                }
+            }
+        }
+        break;
+    case HOME_SET_NOT_LOCKED:
+        /*
+        * as soon as EKF is happy reset the altitude based on origin but retain the original lat lng during flight
+        */
+        if (copter.motors->armed() && copter.ekf_position_ok()) {
+            if (copter.ap.home_state == HOME_SET_NOT_LOCKED) {
+                const struct Location &ekf_origin = copter.inertial_nav.get_origin();
+                indoor_loc.alt = ekf_origin.alt;
+                copter.ahrs.set_home(indoor_loc);
+                copter.set_home_state(HOME_SET_AND_LOCKED);
+            }
+        }
+        break;
+    }
+
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != ALT_HOLD) {
             upgrade_to_loiter = false;
