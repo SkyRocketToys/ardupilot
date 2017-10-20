@@ -138,6 +138,7 @@ private:
     uint8_t takeoff_cmd;
     uint8_t takeoff_state;
     int32_t takeoff_arm_ms;
+    int32_t takeoff_last_press_ms;
     
     // time when we were last told we are recording video
     uint32_t last_video_ms;
