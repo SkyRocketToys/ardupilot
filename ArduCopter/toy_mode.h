@@ -45,6 +45,8 @@ private:
     control_mode_t get_non_gps_mode();
     void check_mag_field_takeoff(void);
     
+    void handle_takeoff_cmd(bool takeoff_btn,bool takeoff_cancel);
+    
     enum toy_action {
         ACTION_NONE         = 0,
         ACTION_TAKE_PHOTO   = 1,
@@ -98,6 +100,13 @@ private:
         BLINK_VSLOW  = 0xF000,
         BLINK_MED_1  = 0xF0F0,
     };
+    
+    enum takeoff_states {
+        TAKEOFF_ON_GROUND   = 0,
+        TAKEOFF_INITIATE    = 1,
+        TAKEOFF_ARMED       = 2,
+        TAKEOFF_IN_AIR      = 3,
+    };
 
     bool done_first_update;
     AP_Int8 enable;
@@ -124,7 +133,12 @@ private:
     bool upgrade_to_loiter;
     uint32_t last_action_ms;
     uint32_t reset_turtle_start_ms;
-
+    
+    //used for takeoff cmd
+    uint8_t takeoff_cmd;
+    uint8_t takeoff_state;
+    int32_t takeoff_arm_ms;
+    
     // time when we were last told we are recording video
     uint32_t last_video_ms;
     
