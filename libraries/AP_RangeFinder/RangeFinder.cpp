@@ -714,7 +714,7 @@ void RangeFinder::detect_instance(uint8_t instance)
         }
         break;
     case RangeFinder_TYPE_BARO:
-        _add_backend(AP_RangeFinder_Baro::detect(*this, instance, state[instance]));
+        _add_backend(AP_RangeFinder_Baro::detect(state[instance]));
         break;
     default:
         break;
