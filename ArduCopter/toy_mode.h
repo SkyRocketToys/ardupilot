@@ -70,6 +70,7 @@ private:
         ACTION_TOGGLE_SSIMPLE = 22,
         ACTION_LOAD_TEST = 23,
         ACTION_MODE_FLOW = 24,
+        ACTION_MODE_SMARTRTL = 25,
     };
 
     enum toy_action last_action;
