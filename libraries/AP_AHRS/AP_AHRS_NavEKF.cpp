@@ -145,6 +145,9 @@ void AP_AHRS_NavEKF::update_EKF2(void)
             }
         }
     }
+
+    EKF2.setInhibitGpsVertVelUse(_flags.indoor_mode);
+    
     if (_ekf2_started) {
         EKF2.UpdateFilter();
         if (active_EKF_type() == EKF_TYPE2) {
@@ -216,6 +219,9 @@ void AP_AHRS_NavEKF::update_EKF3(void)
             }
         }
     }
+
+    EKF3.setInhibitGpsVertVelUse(_flags.indoor_mode);
+
     if (_ekf3_started) {
         EKF3.UpdateFilter();
         if (active_EKF_type() == EKF_TYPE3) {
