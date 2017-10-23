@@ -457,8 +457,7 @@ void ToyMode::update()
     /*
     * attempt to improve the setting of home location sooner
     */
-    uint8_t home_state_local = copter.ap.home_state;
-    switch (home_state_local) {
+    switch (copter.ap.home_state) {
     case HOME_UNSET:
         if (copter.motors->armed() && !copter.ekf_position_ok()) {
             // if we have a 3d lock and valid location
@@ -469,25 +468,32 @@ void ToyMode::update()
                     // if gps horizontal accuracy of below 15m set current gps-supplied location as home position
                     if(toy_horizontal_acc <= 15.0f){
                         indoor_loc = copter.gps.location();
+                        // set height above arming    
+                        indoor_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
                         copter.ahrs.set_home(indoor_loc);
                         copter.set_home_state(HOME_SET_NOT_LOCKED);
                         indoor_loc_set = true;
-                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "INDOOR MODE:set home loc with horizontal_acc:%.2f,",toy_horizontal_acc); 
+                        // send new home location to GCS
+                        GCS_MAVLINK::send_home_all(indoor_loc);
+                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "INDOOR MODE: set home loc with horizontal_acc: %.2f", toy_horizontal_acc); 
                     }   
                 }
             }
         }
         break;
     case HOME_SET_NOT_LOCKED:
-        /*
-        * as soon as EKF is happy and indoor_loc_set was set reset the altitude based on origin but retain the original lat lng during flight
-        */
+        // as soon as EKF is happy and indoor_loc_set was set to true then reset the altitude based on origin but retain the original lat lng during flight
         if (copter.motors->armed() && copter.ekf_position_ok() && indoor_loc_set) {
             const struct Location &ekf_origin = copter.inertial_nav.get_origin();
             indoor_loc.alt = ekf_origin.alt;
             copter.ahrs.set_home(indoor_loc);
             copter.set_home_state(HOME_SET_AND_LOCKED);
+            // send new home location to GCS
+            GCS_MAVLINK::send_home_all(indoor_loc);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "TMODE: EKF OK reset altitude to:%.2f", ekf_origin.alt); 
         }
+        break;
+    default:
         break;
     }
 
