@@ -97,6 +97,16 @@ void NavEKF2_core::controlMagYawReset()
         // and get an updated quaternion
         Quaternion newQuat = calcQuatAndFieldStates(eulerAngles.x, eulerAngles.y);
 
+        if (doneFieldFromTables && frontend->_mag_ef_type == 1) {
+            // we need to re-do the field from the tables
+            if (AP::gps().status() >= AP_GPS::GPS_OK_FIX_3D) {
+                setEarthFieldFromTables();
+            } else {
+                // we've lost GPS lock. re-do when we regain 3D lock
+                doneFieldFromTables = false;
+            }
+        }
+        
         // if a yaw reset has been requested, apply the updated quaternion to the current state
         if (magYawResetRequest) {
             // previous value used to calculate a reset delta
