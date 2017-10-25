@@ -593,6 +593,9 @@ private:
     // and return attitude quaternion
     Quaternion calcQuatAndFieldStates(float roll, float pitch);
 
+    // set earth magnetic field states from intensity, inclination and declination tables
+    void setEarthFieldFromTables(void);
+    
     // zero stored variables
     void InitialiseVariables();
 
@@ -1058,7 +1061,8 @@ private:
     float posDownAtLastMagReset;    // vertical position last time the mag states were reset (m)
     float yawInnovAtLastMagReset;   // magnetic yaw innovation last time the yaw and mag field states were reset (rad)
     Quaternion quatAtLastMagReset;  // quaternion states last time the mag states were reset
-
+    bool doneFieldFromTables;       // have we initialised earth field from tables
+    
     // flags indicating severe numerical errors in innovation variance calculation for different fusion operations
     struct {
         bool bad_xmag:1;
