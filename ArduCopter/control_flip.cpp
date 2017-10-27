@@ -17,12 +17,19 @@
  *          Flip_Roll (while copter is between +45deg ~ -90) : roll right at 400deg/sec, reduce throttle
  *          Flip_Recover (while copter is between -90deg and original target angle) : use earth frame angle controller to return vehicle to original attitude
  */
-
+#if TOY_MODE_ENABLED == ENABLED
+#define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
+#define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
+#define FLIP_ROTATION_RATE  40000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
+#define FLIP_TIMEOUT_MS     2000    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
+#define FLIP_RECOVERY_ANGLE 500     // consider successful recovery when roll is back within 5 degrees of original
+#else
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
 #define FLIP_ROTATION_RATE  40000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
 #define FLIP_TIMEOUT_MS     2500    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
 #define FLIP_RECOVERY_ANGLE 500     // consider successful recovery when roll is back within 5 degrees of original
+#endif
 
 #define FLIP_ROLL_RIGHT      1      // used to set flip_dir
 #define FLIP_ROLL_LEFT      -1      // used to set flip_dir
@@ -123,7 +130,8 @@ void Copter::flip_run()
         attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
 
         // increase throttle
-        throttle_out += FLIP_THR_INC;
+        //throttle_out += FLIP_THR_INC;
+        throttle_out = 1.0f;
 
         // beyond 45deg lean angle move to next stage
         if (flip_angle >= 4500) {
@@ -141,7 +149,8 @@ void Copter::flip_run()
         // between 45deg ~ -90deg request 400deg/sec roll
         attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, 0.0, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        //throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        throttle_out = 1.0f;
 
         // beyond -90deg move on to recovery
         if ((flip_angle < 4500) && (flip_angle > -9000)) {
@@ -153,7 +162,8 @@ void Copter::flip_run()
         // between 45deg ~ -90deg request 400deg/sec pitch
         attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        //throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        throttle_out = 1.0f;
 
         // check roll for inversion
         if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
@@ -165,7 +175,8 @@ void Copter::flip_run()
         // between 45deg ~ -90deg request 400deg/sec pitch
         attitude_control->input_rate_bf_roll_pitch_yaw(0.0, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        //throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        throttle_out = 1.0f;
 
         // check roll for inversion
         if ((labs(ahrs.roll_sensor) < 9000) && (flip_angle > -4500)) {
@@ -178,7 +189,8 @@ void Copter::flip_run()
         attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
 
         // increase throttle to gain any lost altitude
-        throttle_out += FLIP_THR_INC;
+        //throttle_out += FLIP_THR_INC;
+        throttle_out = 1.0f;
 
         if (flip_roll_dir != 0) {
             // we are rolling

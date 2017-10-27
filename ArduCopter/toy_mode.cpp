@@ -543,7 +543,15 @@ void ToyMode::update()
         break;
 
     case ACTION_MODE_FLIP:
-        new_mode = FLIP;
+       
+        if (!(copter.channel_roll->get_control_in() < 700 && copter.channel_roll->get_control_in() > 300)) {
+            new_mode = FLIP;
+        } else if(!(copter.channel_pitch->get_control_in() < 700 && copter.channel_pitch->get_control_in() > 300)) {
+            new_mode = FLIP;
+        } else {
+            //do nothing
+        }
+        
         break;
 
     case ACTION_MODE_STAB:
