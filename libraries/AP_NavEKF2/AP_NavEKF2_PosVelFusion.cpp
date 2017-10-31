@@ -822,10 +822,16 @@ void NavEKF2_core::selectHeightForFusion()
         }
     }
 
+#if 0
+    /*
+      this is disabled for skyrocket as it can cause a shift of the
+      height above home when we get GPS lock after takeoff
+     */
     // calculate offset to GPS height data that enables us to switch to GPS height during operation
     if (gpsDataToFuse && (activeHgtSource != HGT_SOURCE_GPS)) {
             calcFiltGpsHgtOffset();
     }
+#endif
 
     // Select the height measurement source
     if (rangeDataToFuse && (activeHgtSource == HGT_SOURCE_RNG)) {
