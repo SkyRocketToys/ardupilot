@@ -76,7 +76,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Param: LEARN
     // @DisplayName: Learn compass offsets automatically
     // @Description: Enable or disable the automatic learning of compass offsets. You can enable learning either using a compass-only method that is suitable only for fixed wing aircraft or using the offsets learnt by the active EKF state estimator. If this option is enabled then the learnt offsets are saved when you disarm the vehicle.
-    // @Values: 0:Disabled,1:Internal-Learning,2:EKF-Learning
+    // @Values: 0:Disabled,1:Internal-Learning,2:EKF-Learning,3:InFlight-Learning
     // @User: Advanced
     AP_GROUPINFO("LEARN",  3, Compass, _learn, COMPASS_LEARN_DEFAULT),
 
