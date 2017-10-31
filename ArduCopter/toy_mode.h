@@ -32,6 +32,11 @@ public:
     
     static const struct AP_Param::GroupInfo var_info[];
     
+    //flip direction
+    int8_t get_toy_mode_flip_direction(void) {
+        return toy_mode_flip_direction;
+    }
+    
 private:
 
     void trim_update(void);
@@ -137,6 +142,9 @@ private:
     uint16_t green_blink_count;
     uint8_t blink_disarm;
     uint32_t position_ok_ms;
+    
+    //flip direction
+    int8_t toy_mode_flip_direction;
 
     struct {
         AP_Float volt_min;

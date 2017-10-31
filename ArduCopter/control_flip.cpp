@@ -21,8 +21,9 @@
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
 #define FLIP_ROTATION_RATE  40000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
-#define FLIP_TIMEOUT_MS     2000    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
+#define FLIP_TIMEOUT_MS     1000    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
 #define FLIP_RECOVERY_ANGLE 500     // consider successful recovery when roll is back within 5 degrees of original
+#define FLIP_START_DELAY_MS	400
 #else
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
@@ -57,9 +58,9 @@ bool Copter::flip_init(bool ignore_checks)
     }
 
     // ensure roll input is less than 40deg
-    if (abs(channel_roll->get_control_in()) >= 4000) {
-        return false;
-    }
+    //if (abs(channel_roll->get_control_in()) >= 4000) {
+    //    return false;
+    //}
 
     // only allow flip when flying
     if (!motors->armed() || ap.land_complete) {
@@ -69,21 +70,27 @@ bool Copter::flip_init(bool ignore_checks)
     // capture original flight mode so that we can return to it after completion
     flip_orig_control_mode = control_mode;
 
-    // initialise state
-    flip_state = Flip_Start;
-    flip_start_time = millis();
 
     flip_roll_dir = flip_pitch_dir = 0;
 
     // choose direction based on pilot's roll and pitch sticks
-    if (channel_pitch->get_control_in() > 300) {
-        flip_pitch_dir = FLIP_PITCH_BACK;
-    }else if(channel_pitch->get_control_in() < -300) {
-        flip_pitch_dir = FLIP_PITCH_FORWARD;
-    }else if (channel_roll->get_control_in() >= 0) {
-        flip_roll_dir = FLIP_ROLL_RIGHT;
-    }else{
-        flip_roll_dir = FLIP_ROLL_LEFT;
+    //if (channel_pitch->get_control_in() > 300) {
+    //    flip_pitch_dir = FLIP_PITCH_BACK;
+    //} else if (channel_pitch->get_control_in() < -300) {
+    //    flip_pitch_dir = FLIP_PITCH_FORWARD;
+    //} else if (channel_roll->get_control_in() > 300) {
+    //    flip_roll_dir = FLIP_ROLL_RIGHT;
+    //} else if (channel_roll->get_control_in() < -300) {
+    //    flip_roll_dir = FLIP_ROLL_LEFT;
+    //}
+    
+    //get flip direction
+    flip_roll_dir = g2.toy_mode.get_toy_mode_flip_direction();
+    
+    if (flip_roll_dir != 0 || flip_pitch_dir != 0) {
+        // initialise state
+        flip_state = Flip_Start;
+        flip_start_time = millis();
     }
 
     // log start of flip
@@ -126,13 +133,18 @@ void Copter::flip_run()
     switch (flip_state) {
 
     case Flip_Start:
-        // under 45 degrees request 400deg/sec roll or pitch
-        attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
 
         // increase throttle
         //throttle_out += FLIP_THR_INC;
         throttle_out = 1.0f;
-
+        
+        //throttle up before flipping
+        if((millis() - flip_start_time) > FLIP_START_DELAY_MS)
+        {
+            // under 45 degrees request 400deg/sec roll or pitch
+            attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
+        }
+        
         // beyond 45deg lean angle move to next stage
         if (flip_angle >= 4500) {
             if (flip_roll_dir != 0) {
@@ -141,7 +153,7 @@ void Copter::flip_run()
             } else {
                 // we are pitching
                 flip_state = Flip_Pitch_A;
-        }
+            }
         }
         break;
 
@@ -189,8 +201,8 @@ void Copter::flip_run()
         attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
 
         // increase throttle to gain any lost altitude
-        //throttle_out += FLIP_THR_INC;
-        throttle_out = 1.0f;
+        throttle_out += FLIP_THR_INC;
+        //throttle_out = 1.0f;
 
         if (flip_roll_dir != 0) {
             // we are rolling

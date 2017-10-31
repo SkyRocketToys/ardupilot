@@ -15,6 +15,11 @@
 #define TOY_DESCENT_SLOW_MIN 300
 #define TOY_RESET_TURTLE_TIME 5000
 
+#define TOY_FLIP_ROLL_RIGHT      1      // used to set flip_dir
+#define TOY_FLIP_ROLL_LEFT      -1      // used to set flip_dir
+#define TOY_FLIP_PITCH_BACK      1      // used to set flip_dir
+#define TOY_FLIP_PITCH_FORWARD  -1      // used to set flip_dir
+
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _ENABLE
@@ -241,6 +246,7 @@ void ToyMode::update()
     uint16_t ch5_in = hal.rcin->read(CH_5);
     uint16_t ch6_in = hal.rcin->read(CH_6);
     uint16_t ch7_in = hal.rcin->read(CH_7);
+    
     bool left_change = ((ch5_in > 1700 && last_ch5 <= 1700) || (ch5_in <= 1700 && last_ch5 > 1700));
 
     if (copter.failsafe.radio || ch5_in < 900) {
@@ -352,6 +358,7 @@ void ToyMode::update()
     case ACTION_ARM_LAND_RTL:
     case ACTION_LOAD_TEST:
     case ACTION_MODE_FLOW:
+    case ACTION_MODE_FLIP:
         if (last_action == action ||
             now - last_action_ms < TOY_ACTION_DELAY_MS) {
             // for the above actions, button must be released before
@@ -543,13 +550,22 @@ void ToyMode::update()
         break;
 
     case ACTION_MODE_FLIP:
-       
-        if (!(copter.channel_roll->get_control_in() < 700 && copter.channel_roll->get_control_in() > 300)) {
+        
+        //flip mode should only trigger only when the allocated button is pressed and a stick input is triggered
+        toy_mode_flip_direction = 0;
+                
+        if (copter.channel_pitch->get_control_in() < -1000) {
+            toy_mode_flip_direction = TOY_FLIP_PITCH_FORWARD;
+        } else if (copter.channel_pitch->get_control_in() > 1000) {
+            toy_mode_flip_direction = TOY_FLIP_PITCH_BACK;
+        } else if (copter.channel_roll->get_control_in() > -1000) {
+            toy_mode_flip_direction = TOY_FLIP_ROLL_RIGHT;
+        } else if (copter.channel_roll->get_control_in() < 1000) {
+            toy_mode_flip_direction = TOY_FLIP_ROLL_LEFT;
+        } 
+        
+        if (toy_mode_flip_direction != 0) {
             new_mode = FLIP;
-        } else if(!(copter.channel_pitch->get_control_in() < 700 && copter.channel_pitch->get_control_in() > 300)) {
-            new_mode = FLIP;
-        } else {
-            //do nothing
         }
         
         break;
