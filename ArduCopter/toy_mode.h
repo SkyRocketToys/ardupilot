@@ -43,6 +43,7 @@ private:
     void thrust_limiting(float *thrust, uint8_t num_motors);
     void arm_check_compass(void);
     control_mode_t get_non_gps_mode();
+    void check_mag_field_takeoff(void);
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -175,4 +176,7 @@ private:
     } load_test;
     
     static const struct load_data load_data1[];
+
+    // will we re-check the mag field after takeoff and cancel learning?
+    bool mag_re_check_field;
 };

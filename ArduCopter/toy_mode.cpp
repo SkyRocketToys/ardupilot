@@ -231,7 +231,10 @@ void ToyMode::update()
     if (trim_auto > 0) {
         trim_update();
     }
-            
+
+    // re-check mag field if needed
+    check_mag_field_takeoff();
+    
     // set ALT_HOLD as indoors for the EKF (disables GPS vertical velocity fusion)
     copter.ahrs.set_indoor_mode(copter.control_mode == ALT_HOLD || copter.control_mode == FLOWHOLD);
     
@@ -1076,8 +1079,46 @@ void ToyMode::arm_check_compass(void)
         if (copter.compass.get_learn_type() != Compass::LEARN_INFLIGHT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: enable compass learning");
             copter.compass.set_learn_type(Compass::LEARN_INFLIGHT, false);
+
+            // if we are configured but field strengths are bad then
+            // it could be a magnetic anomoly. re-check the fields
+            // after takeoff and cancel learning if OK
+            mag_re_check_field = copter.compass.configured();
         }
+    } else {
+        mag_re_check_field = false;
     }
 }
 
+/*
+  re-check magnetic field after takeoff and disable learning if it is
+  now in range
+ */
+void ToyMode::check_mag_field_takeoff(void)
+{
+    if (!mag_re_check_field) {
+        return;
+    }
+    if (AP_HAL::millis() - copter.arm_time_ms > 10000) {
+        // only in first 10 seconds
+        mag_re_check_field = false;
+        return;
+    }
+    if (copter.compass.get_learn_type() != Compass::LEARN_INFLIGHT) {
+        mag_re_check_field = false;
+        return;        
+    }
+    
+    Vector3f offsets = copter.compass.get_offsets();
+    float field = copter.compass.get_field().length();
+    if (offsets.length() > copter.compass.get_offsets_max() ||
+        field < 200 || field > 800) {
+        // still a bad field
+        return;
+    }
+    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: mag field OK");
+    copter.compass.set_learn_type(Compass::LEARN_EKF, false);    
+}
+
 #endif // TOY_MODE_ENABLED
+
