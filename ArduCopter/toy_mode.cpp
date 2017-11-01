@@ -17,8 +17,8 @@
 
 #define TOY_FLIP_ROLL_RIGHT      1      // used to set flip_dir
 #define TOY_FLIP_ROLL_LEFT      -1      // used to set flip_dir
-#define TOY_FLIP_PITCH_BACK      1      // used to set flip_dir
-#define TOY_FLIP_PITCH_FORWARD  -1      // used to set flip_dir
+#define TOY_FLIP_PITCH_BACK      2      // used to set flip_dir
+#define TOY_FLIP_PITCH_FORWARD  -2      // used to set flip_dir
 
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
@@ -243,9 +243,15 @@ void ToyMode::update()
     // set ALT_HOLD as indoors for the EKF (disables GPS vertical velocity fusion)
     copter.ahrs.set_indoor_mode(copter.control_mode == ALT_HOLD || copter.control_mode == FLOWHOLD);
     
+    //uint16_t ch1_in = hal.rcin->read(CH_1);
+    //uint16_t ch2_in = hal.rcin->read(CH_2);
     uint16_t ch5_in = hal.rcin->read(CH_5);
     uint16_t ch6_in = hal.rcin->read(CH_6);
     uint16_t ch7_in = hal.rcin->read(CH_7);
+    
+    //if ((ch1_in > 1600) && (ch2_in > 1600)) {
+    //    
+    //}
     
     bool left_change = ((ch5_in > 1700 && last_ch5 <= 1700) || (ch5_in <= 1700 && last_ch5 > 1700));
 
@@ -358,7 +364,6 @@ void ToyMode::update()
     case ACTION_ARM_LAND_RTL:
     case ACTION_LOAD_TEST:
     case ACTION_MODE_FLOW:
-    case ACTION_MODE_FLIP:
         if (last_action == action ||
             now - last_action_ms < TOY_ACTION_DELAY_MS) {
             // for the above actions, button must be released before
@@ -551,17 +556,23 @@ void ToyMode::update()
 
     case ACTION_MODE_FLIP:
         
-        //flip mode should only trigger only when the allocated button is pressed and a stick input is triggered
+        /*
+         * flip mode should only trigger only when the allocated button is 
+         * pressed and a stick input is triggered - also need to ignore pitch/roll 
+         * control during the press so that it the drone does not tilt during the 
+         * initial throttle up - how to do this?
+         * */
+        
         toy_mode_flip_direction = 0;
                 
         if (copter.channel_pitch->get_control_in() < -1000) {
             toy_mode_flip_direction = TOY_FLIP_PITCH_FORWARD;
         } else if (copter.channel_pitch->get_control_in() > 1000) {
             toy_mode_flip_direction = TOY_FLIP_PITCH_BACK;
-        } else if (copter.channel_roll->get_control_in() > -1000) {
-            toy_mode_flip_direction = TOY_FLIP_ROLL_RIGHT;
-        } else if (copter.channel_roll->get_control_in() < 1000) {
+        } else if (copter.channel_roll->get_control_in() < -1000) {
             toy_mode_flip_direction = TOY_FLIP_ROLL_LEFT;
+        } else if (copter.channel_roll->get_control_in() > 1000) {
+            toy_mode_flip_direction = TOY_FLIP_ROLL_RIGHT;
         } 
         
         if (toy_mode_flip_direction != 0) {

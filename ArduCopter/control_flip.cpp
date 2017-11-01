@@ -20,10 +20,12 @@
 #if TOY_MODE_ENABLED == ENABLED
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
-#define FLIP_ROTATION_RATE  40000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
+#define FLIP_ROTATION_RATE  95000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
 #define FLIP_TIMEOUT_MS     1000    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
 #define FLIP_RECOVERY_ANGLE 500     // consider successful recovery when roll is back within 5 degrees of original
-#define FLIP_START_DELAY_MS	400
+#define FLIP_START_DELAY_MS	400     // would allow to throttle up first
+#define FLIP_ROLL_TIMER     200     // time limit for rolling before it goes to recoevery stage
+#define FLIP_PITCH_TIMER    200     // time limit for pitching before it goes to recovery stage
 #else
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
@@ -34,15 +36,16 @@
 
 #define FLIP_ROLL_RIGHT      1      // used to set flip_dir
 #define FLIP_ROLL_LEFT      -1      // used to set flip_dir
-
-#define FLIP_PITCH_BACK      1      // used to set flip_dir
-#define FLIP_PITCH_FORWARD  -1      // used to set flip_dir
+#define FLIP_PITCH_BACK      2      // used to set flip_dir
+#define FLIP_PITCH_FORWARD  -2      // used to set flip_dir
 
 FlipState flip_state;               // current state of flip
 control_mode_t   flip_orig_control_mode;   // flight mode when flip was initated
 uint32_t  flip_start_time;          // time since flip began
+uint32_t  flip_state_timer;         // time holder for each flip state
 int8_t    flip_roll_dir;            // roll direction (-1 = roll left, 1 = roll right)
 int8_t    flip_pitch_dir;           // pitch direction (-1 = pitch forward, 1 = pitch back)
+int8_t    flip_dir;
 
 // flip_init - initialise flip controller
 bool Copter::flip_init(bool ignore_checks)
@@ -70,7 +73,6 @@ bool Copter::flip_init(bool ignore_checks)
     // capture original flight mode so that we can return to it after completion
     flip_orig_control_mode = control_mode;
 
-
     flip_roll_dir = flip_pitch_dir = 0;
 
     // choose direction based on pilot's roll and pitch sticks
@@ -84,10 +86,12 @@ bool Copter::flip_init(bool ignore_checks)
     //    flip_roll_dir = FLIP_ROLL_LEFT;
     //}
     
-    //get flip direction
-    flip_roll_dir = g2.toy_mode.get_toy_mode_flip_direction();
+    //get flip direction from toy mode 
+    flip_dir = g2.toy_mode.get_toy_mode_flip_direction();
     
-    if (flip_roll_dir != 0 || flip_pitch_dir != 0) {
+    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off",flip_roll_dir);
+    
+    if (flip_dir != 0) {
         // initialise state
         flip_state = Flip_Start;
         flip_start_time = millis();
@@ -112,7 +116,11 @@ void Copter::flip_run()
     float recovery_angle;
 
     // if pilot inputs roll > 40deg or timeout occurs abandon flip
-    if (!motors->armed() || (abs(channel_roll->get_control_in()) >= 4000) || (abs(channel_pitch->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
+    //if (!motors->armed() || (abs(channel_roll->get_control_in()) >= 4000) || (abs(channel_pitch->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
+    //    flip_state = Flip_Abandon;
+    //}
+    
+    if (!motors->armed() || (abs(channel_throttle->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
         flip_state = Flip_Abandon;
     }
 
@@ -121,12 +129,31 @@ void Copter::flip_run()
 
     // get corrected angle based on direction and axis of rotation
     // we flip the sign of flip_angle to minimize the code repetition
-    int32_t flip_angle;
+    int32_t flip_angle = 0;
 
-    if (flip_roll_dir != 0) {
-        flip_angle = ahrs.roll_sensor * flip_roll_dir;
-    } else {
-        flip_angle = ahrs.pitch_sensor * flip_pitch_dir;
+    //if (flip_roll_dir != 0) {
+    //    flip_angle = ahrs.roll_sensor * flip_roll_dir;
+    //} else {
+    //    flip_angle = ahrs.pitch_sensor * flip_pitch_dir;
+    //}
+    
+    switch (flip_dir) {
+        case FLIP_ROLL_RIGHT:
+            flip_angle = ahrs.roll_sensor * 1;
+            flip_roll_dir = 1;
+            break;
+        case FLIP_ROLL_LEFT:
+            flip_angle = ahrs.roll_sensor * -1;
+            flip_roll_dir = -1;
+            break;
+        case FLIP_PITCH_BACK:
+            flip_angle = ahrs.pitch_sensor * 1;
+            flip_pitch_dir = 1;
+            break;
+        case FLIP_PITCH_FORWARD:
+            flip_angle = ahrs.pitch_sensor * -1;
+            flip_pitch_dir = -1;
+            break;
     }
 
     // state machine
@@ -141,16 +168,17 @@ void Copter::flip_run()
         //throttle up before flipping
         if((millis() - flip_start_time) > FLIP_START_DELAY_MS)
         {
-            // under 45 degrees request 400deg/sec roll or pitch
+            // under 45 degrees request FLIP_ROTATION_RATE roll or pitch
             attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
+            flip_state_timer = millis();
         }
         
         // beyond 45deg lean angle move to next stage
         if (flip_angle >= 4500) {
-            if (flip_roll_dir != 0) {
+            if (flip_dir == FLIP_ROLL_RIGHT || flip_dir == FLIP_ROLL_LEFT) {
                 // we are rolling
-            flip_state = Flip_Roll;
-            } else {
+                flip_state = Flip_Roll;
+            } else if (flip_dir == FLIP_PITCH_BACK || flip_dir == FLIP_PITCH_FORWARD) {
                 // we are pitching
                 flip_state = Flip_Pitch_A;
             }
@@ -164,10 +192,11 @@ void Copter::flip_run()
         //throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
         throttle_out = 1.0f;
 
-        // beyond -90deg move on to recovery
-        if ((flip_angle < 4500) && (flip_angle > -9000)) {
+        // beyond -90deg move on to recovery or timer exceed the alocated time
+        if (((flip_angle < 4500) && (flip_angle > -9000)) || ((millis() - flip_state_timer) > FLIP_ROLL_TIMER)) {
             flip_state = Flip_Recover;
         }
+        
         break;
 
     case Flip_Pitch_A:
@@ -176,11 +205,16 @@ void Copter::flip_run()
         // decrease throttle
         //throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
         throttle_out = 1.0f;
-
-        // check roll for inversion
-        if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
-            flip_state = Flip_Pitch_B;
+        
+        // beyond -90deg move on to recovery
+        if (((flip_angle < 4500) && (flip_angle > -9000)) || ((millis() - flip_state_timer > FLIP_ROLL_TIMER))) {
+            flip_state = Flip_Recover;
         }
+        
+        //// check roll for inversion
+        //if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
+        //    flip_state = Flip_Pitch_B;
+        //}
         break;
 
     case Flip_Pitch_B:
