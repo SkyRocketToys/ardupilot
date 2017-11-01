@@ -112,10 +112,10 @@ void CompassLearn::update(void)
 
     if (!converged && sem->take_nonblocking()) {
         // stop updating the offsets once converged
-        compass.set_offsets(0, best_offsets);
         if (num_samples > 30 && best_error < 50 && worst_error > 65) {
             // set the offsets and enable compass for EKF use. Let the
             // EKF learn the remaining compass offset error
+            compass.set_offsets(0, best_offsets);
             compass.save_offsets(0);
             compass.set_use_for_yaw(0, true);
             compass.set_learn_type(Compass::LEARN_EKF, true);
