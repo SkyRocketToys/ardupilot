@@ -45,7 +45,7 @@ private:
     control_mode_t get_non_gps_mode();
     void check_mag_field_takeoff(void);
     
-    void handle_takeoff_cmd(bool takeoff_btn,bool takeoff_cancel);
+    void handle_takeoff_cmd();
     
     enum toy_action {
         ACTION_NONE         = 0,
@@ -73,6 +73,7 @@ private:
         ACTION_TOGGLE_SSIMPLE = 22,
         ACTION_LOAD_TEST = 23,
         ACTION_MODE_FLOW = 24,
+        ACTION_TAKEOFF_CANCEL_TAKEOFF_LAND = 25,
     };
 
     enum toy_action last_action;
@@ -102,10 +103,11 @@ private:
     };
     
     enum takeoff_states {
-        TAKEOFF_ON_GROUND   = 0,
-        TAKEOFF_INITIATE    = 1,
-        TAKEOFF_ARMED       = 2,
-        TAKEOFF_IN_AIR      = 3,
+        TAKEOFF_ON_GROUND               = 0,
+        TAKEOFF_INITIATE                = 1,
+        TAKEOFF_SPIN_PROPS_MENACINGLY   = 2,
+        TAKEOFF_DO_ASCEND               = 3,
+        TAKEOFF_TIMER_FINISHED          = 4,
     };
 
     bool done_first_update;
@@ -135,6 +137,7 @@ private:
     uint32_t reset_turtle_start_ms;
     
     //used for takeoff cmd
+    bool takeoff_init = false;
     uint8_t takeoff_cmd;
     uint8_t takeoff_state;
     int32_t takeoff_arm_ms;
