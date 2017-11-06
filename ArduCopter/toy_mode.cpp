@@ -41,56 +41,56 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _ACTION1
     // @DisplayName: Tmode action 1
     // @Description: This is the action taken for the left action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION1", 4, ToyMode, actions[0], ACTION_TOGGLE_VIDEO),
 
     // @Param: _ACTION2
     // @DisplayName: Tmode action 2
     // @Description: This is the action taken for the right action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION2", 5, ToyMode, actions[1], ACTION_TAKE_PHOTO),
 
     // @Param: _ACTION3
     // @DisplayName: Tmode action 3
     // @Description: This is the action taken for the power button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION3", 6, ToyMode, actions[2], ACTION_DISARM),
 
     // @Param: _ACTION4
     // @DisplayName: Tmode action 4
     // @Description: This is the action taken for the left action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION4", 7, ToyMode, actions[3], ACTION_NONE),
 
     // @Param: _ACTION5
     // @DisplayName: Tmode action 5
     // @Description: This is the action taken for the right action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION5", 8, ToyMode, actions[4], ACTION_NONE),
 
     // @Param: _ACTION6
     // @DisplayName: Tmode action 6
     // @Description: This is the action taken for the power button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_ACTION6", 9, ToyMode, actions[5], ACTION_NONE),
 
     // @Param: _LEFT
     // @DisplayName: Tmode left action
     // @Description: This is the action taken for the left button (mode button) being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_LEFT", 10, ToyMode, actions[6], ACTION_TOGGLE_MODE),
 
     // @Param: _LEFT_LONG
     // @DisplayName: Tmode left long action
     // @Description: This is the action taken for a long press of the left button (home button)
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_LEFT_LONG", 11, ToyMode, actions[7], ACTION_NONE),
 
@@ -104,7 +104,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _RIGHT
     // @DisplayName: Tmode right action
     // @Description: This is the action taken for the right button (RTL) being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,25:TakeoffLandRTL
     // @User: Standard
     AP_GROUPINFO("_RIGHT", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
 
@@ -189,6 +189,34 @@ control_mode_t ToyMode::get_non_gps_mode(void)
         return control_mode_t(primary_mode[1].get());
     }
     return ALT_HOLD;
+}
+
+/*
+  arm with fallback to non-GPS mode
+ */
+void ToyMode::arm_with_fallback(void)
+{
+    arm_check_compass();
+    if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
+        /*
+          support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
+        */
+        if (set_and_remember_mode(get_non_gps_mode(), MODE_REASON_TMODE)) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: indoor update arm");
+            copter.fence.enable(false);
+            if (!copter.init_arm_motors(true)) {
+                // go back to LOITER
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: indoor arm failed");
+                set_and_remember_mode(LOITER, MODE_REASON_TMODE);
+            } else {
+                upgrade_to_loiter = true;
+                AP_Notify::flags.hybrid_loiter = true;
+                throttle_arm_ms = AP_HAL::millis();
+            }
+        }
+    } else {
+        throttle_arm_ms = AP_HAL::millis();
+    }
 }
 
 /*
@@ -350,6 +378,7 @@ void ToyMode::update()
     case ACTION_TOGGLE_SIMPLE:
     case ACTION_TOGGLE_SSIMPLE:
     case ACTION_ARM_LAND_RTL:
+    case ACTION_TAKEOFF_LAND_RTL:
     case ACTION_LOAD_TEST:
     case ACTION_MODE_FLOW:
         if (last_action == action ||
@@ -416,26 +445,7 @@ void ToyMode::update()
         throttle_high_counter++;
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: throttle arm");
-            arm_check_compass();
-            if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
-                /*
-                  support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
-                 */
-                if (set_and_remember_mode(get_non_gps_mode(), MODE_REASON_TMODE)) {
-                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: indoor update arm");
-                    copter.fence.enable(false);
-                    if (!copter.init_arm_motors(true)) {
-                        // go back to LOITER
-                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: indoor arm failed");
-                        set_and_remember_mode(LOITER, MODE_REASON_TMODE);
-                    } else {
-                        upgrade_to_loiter = true;
-                        AP_Notify::flags.hybrid_loiter = true;
-                    }
-                }
-            } else {
-                throttle_arm_ms = AP_HAL::millis();
-            }
+            arm_with_fallback();
         }
     } else {
         throttle_high_counter = 0;
@@ -582,6 +592,40 @@ void ToyMode::update()
     case ACTION_ARM_LAND_RTL:
         if (!copter.motors->armed()) {
             action_arm();
+        } else if (old_mode == RTL) {
+            // switch between RTL and LOITER when in GPS modes
+            new_mode = LOITER;
+        } else if (old_mode == LAND) {
+            if (last_set_mode == LAND || !copter.position_ok()) {
+                // this is a land that we asked for, or we don't have good positioning
+                new_mode = get_non_gps_mode();
+            } else if (copter.mode_requires_GPS(last_set_mode)) {
+                new_mode = LOITER;
+            } else {
+                new_mode = get_non_gps_mode();
+            }
+        } else if (copter.mode_requires_GPS(old_mode)) {
+            // if we're in a GPS mode, then RTL
+            new_mode = RTL;
+        } else {
+            // if we're in a non-GPS mode, then LAND
+            new_mode = LAND;
+        }
+        break;
+
+    case ACTION_TAKEOFF_LAND_RTL:
+        if (!copter.motors->armed()) {
+            action_arm();
+            if (!copter.motors->armed()) {
+                // try again with fallback
+                arm_with_fallback();
+            }
+            if (copter.motors->armed()) {
+                throttle_arm_ms = AP_HAL::millis();
+                takeoff_started_ms = now;
+                copter.set_auto_armed(true);
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
+            }
         } else if (old_mode == RTL) {
             // switch between RTL and LOITER when in GPS modes
             new_mode = LOITER;
@@ -813,6 +857,30 @@ void ToyMode::action_arm(void)
 void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
+
+    if (takeoff_started_ms != 0 &&
+        fabsf(throttle_control - throttle_mid) > copter.g.throttle_deadzone) {
+        // pilot has taken over throttle on takeoff
+        takeoff_started_ms = 0;
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: pilot cancel takeoff");
+    }
+    
+    /*
+      implement auto-takeoff action
+     */
+    const float takeoff_throttle_cmd = 700.0f;
+    const uint16_t_t takeoff_time_ms = 1500;
+    if (now - takeoff_started_ms < takeoff_time_ms) {
+        throttle_control = takeoff_throttle_cmd;
+        return;
+    } else if (takeoff_started_ms != 0) {
+        takeoff_started_ms = 0;
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: finished takeoff");
+    }
+
+    /*
+      limit throttle on started for smoother climb when user raises throttle too quickly
+     */
     const uint32_t soft_start_ms = 5000;
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
     if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
@@ -1121,4 +1189,3 @@ void ToyMode::check_mag_field_takeoff(void)
 }
 
 #endif // TOY_MODE_ENABLED
-
