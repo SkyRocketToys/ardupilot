@@ -195,6 +195,8 @@ void Copter::flip_run()
         // beyond -90deg move on to recovery or timer exceed the alocated time
         if (((flip_angle < 4500) && (flip_angle > -9000)) || ((millis() - flip_state_timer) > FLIP_ROLL_TIMER)) {
             flip_state = Flip_Recover;
+            
+                                                       
         }
         
         break;
@@ -207,14 +209,18 @@ void Copter::flip_run()
         throttle_out = 1.0f;
         
         // beyond -90deg move on to recovery
-        if (((flip_angle < 4500) && (flip_angle > -9000)) || ((millis() - flip_state_timer > FLIP_ROLL_TIMER))) {
+        if (((flip_angle < 4500) && (flip_angle > -9000)) || ((millis() - flip_state_timer > FLIP_PITCH_TIMER))) {
             flip_state = Flip_Recover;
+            
+            if (((millis() - flip_state_timer) > FLIP_ROLL_TIMER)) {
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "pitch time out");
+            } 
         }
         
-        //// check roll for inversion
-        //if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
-        //    flip_state = Flip_Pitch_B;
-        //}
+        // check roll for inversion
+        if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
+            flip_state = Flip_Pitch_B;
+        }
         break;
 
     case Flip_Pitch_B:
@@ -235,8 +241,8 @@ void Copter::flip_run()
         attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
 
         // increase throttle to gain any lost altitude
-        throttle_out += FLIP_THR_INC;
-        //throttle_out = 1.0f;
+        //throttle_out += FLIP_THR_INC;
+        throttle_out = 1.0f;
 
         if (flip_roll_dir != 0) {
             // we are rolling

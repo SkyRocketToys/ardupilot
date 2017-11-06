@@ -565,13 +565,13 @@ void ToyMode::update()
         
         toy_mode_flip_direction = 0;
                 
-        if (copter.channel_pitch->get_control_in() < -1000) {
+        if (copter.channel_pitch->get_control_in() < -2000) {
             toy_mode_flip_direction = TOY_FLIP_PITCH_FORWARD;
-        } else if (copter.channel_pitch->get_control_in() > 1000) {
+        } else if (copter.channel_pitch->get_control_in() > 2000) {
             toy_mode_flip_direction = TOY_FLIP_PITCH_BACK;
-        } else if (copter.channel_roll->get_control_in() < -1000) {
+        } else if (copter.channel_roll->get_control_in() < -2000) {
             toy_mode_flip_direction = TOY_FLIP_ROLL_LEFT;
-        } else if (copter.channel_roll->get_control_in() > 1000) {
+        } else if (copter.channel_roll->get_control_in() > 2000) {
             toy_mode_flip_direction = TOY_FLIP_ROLL_RIGHT;
         } 
         
