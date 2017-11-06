@@ -72,7 +72,7 @@ private:
         ACTION_TOGGLE_SSIMPLE = 22,
         ACTION_LOAD_TEST = 23,
         ACTION_MODE_FLOW = 24,
-        ACTION_TAKEOFF_CANCEL_TAKEOFF_LAND = 25,
+        ACTION_TAKEOFF_LAND = 25,
     };
 
     enum toy_action last_action;
