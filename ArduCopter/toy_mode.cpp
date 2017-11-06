@@ -1186,3 +1186,4 @@ void ToyMode::check_mag_field_takeoff(void)
 }
 
 #endif // TOY_MODE_ENABLED
+
