@@ -40,10 +40,9 @@ public:
     float board_voltage(void) override { return _board_voltage; }
     float servorail_voltage(void) override { return _servorail_voltage; }
     uint16_t power_status_flags(void) override { return _power_flags; }
-
+    static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 private:
     void read_adc(uint32_t *val);
-    int _adc_fd = -1;
     int _battery_handle;
     int _servorail_handle;
     int _system_power_handle;

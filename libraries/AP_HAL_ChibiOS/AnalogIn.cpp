@@ -1,6 +1,5 @@
 #include <AP_HAL/AP_HAL.h>
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 #include "AnalogIn.h"
 
 #define ANLOGIN_DEBUGGING 0
@@ -16,10 +15,10 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define ADC_GRP1_NUM_CHANNELS   2
+#define ADC_GRP1_NUM_CHANNELS   3
 #define ADC_GRP1_BUF_DEPTH      8
 static adcsample_t samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH] = {0};
-
+static float avg_samples[ADC_GRP1_NUM_CHANNELS];
 /*
   scaling table between ADC count and actual input voltage, to account
   for voltage dividers on the board. 
@@ -28,6 +27,7 @@ static const struct {
     uint8_t channel;
     float scaling;
 } pin_scaling[] = {
+    { 4,   6.6f/4096  },    // VCC 5V rail sense
     { 2,   3.3f/4096  },    // 3DR Brick voltage, usually 10.1:1
                             // scaled from battery voltage
     { 3,   3.3f/4096  },    // 3DR Brick current, usually 17:1 scaled
@@ -155,7 +155,30 @@ ChibiAnalogIn::ChibiAnalogIn() :
     _board_voltage(0),
     _servorail_voltage(0),
     _power_flags(0)
-{}
+{
+    memset(samples, 0, sizeof(samples));
+    for (uint8_t i = 0; i < ADC_GRP1_NUM_CHANNELS; i++) {
+        avg_samples[i] = 0.0f;
+    }
+}
+
+void ChibiAnalogIn::adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+{
+    if (buffer != samples) {
+        return;
+    }
+    for (uint8_t i = 0; i < ADC_GRP1_NUM_CHANNELS; i++) {
+        avg_samples[i] = 0.0f;
+    }
+    for (uint8_t i = 0; i < ADC_GRP1_BUF_DEPTH; i++) {
+        for (uint8_t j = 0; j < ADC_GRP1_NUM_CHANNELS; j++) { 
+            avg_samples[j] += samples[(i*ADC_GRP1_NUM_CHANNELS)+j];
+        }
+    }
+    for (uint8_t i = 0; i < ADC_GRP1_NUM_CHANNELS; i++) {
+        avg_samples[i] /= ADC_GRP1_BUF_DEPTH;
+    }
+}
 
 void ChibiAnalogIn::init()
 {
@@ -163,22 +186,20 @@ void ChibiAnalogIn::init()
     memset(&adcgrpcfg, 0, sizeof(adcgrpcfg));
     adcgrpcfg.circular = true;
     adcgrpcfg.num_channels = ADC_GRP1_NUM_CHANNELS;
+    adcgrpcfg.end_cb = adccallback;
     adcgrpcfg.cr2 = ADC_CR2_SWSTART;
-    adcgrpcfg.smpr2 = ADC_SMPR2_SMP_AN2(ADC_SAMPLE_480) | ADC_SMPR2_SMP_AN3(ADC_SAMPLE_480);
+    adcgrpcfg.smpr2 = ADC_SMPR2_SMP_AN2(ADC_SAMPLE_480) | ADC_SMPR2_SMP_AN3(ADC_SAMPLE_480) |
+     ADC_SMPR2_SMP_AN4(ADC_SAMPLE_480);
     adcgrpcfg.sqr1 = ADC_SQR1_NUM_CH(ADC_GRP1_NUM_CHANNELS),
-    adcgrpcfg.sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN2) |ADC_SQR3_SQ2_N(ADC_CHANNEL_IN3);
-    adcStartConversion(&ADCD1, &adcgrpcfg, &samples[0],ADC_GRP1_BUF_DEPTH); 
+    adcgrpcfg.sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN4) |ADC_SQR3_SQ2_N(ADC_CHANNEL_IN2) |
+     ADC_SQR3_SQ3_N(ADC_CHANNEL_IN3);
+    adcStartConversion(&ADCD1, &adcgrpcfg, &samples[0], ADC_GRP1_BUF_DEPTH); 
 }
 
 void ChibiAnalogIn::read_adc(uint32_t *val)
 {
-    for (uint8_t i = 0; i < ADC_GRP1_BUF_DEPTH; i++) {
-        for (uint8_t j = 0; j < ADC_GRP1_NUM_CHANNELS; j++) { 
-            val[j] += samples[(i*ADC_GRP1_NUM_CHANNELS)+j];
-        }
-    }
     for (uint8_t i = 0; i < ADC_GRP1_NUM_CHANNELS; i++) {
-        val[i] /= ADC_GRP1_BUF_DEPTH;
+        val[i] = avg_samples[i];
     }
 }
 /*
@@ -186,11 +207,6 @@ void ChibiAnalogIn::read_adc(uint32_t *val)
  */
 void ChibiAnalogIn::_timer_tick(void)
 {
-    if (_adc_fd == -1) {
-        // not initialised yet
-        return;
-    }
-
     // read adc at 100Hz
     uint32_t now = AP_HAL::micros();
     uint32_t delta_t = now - _last_run;
@@ -199,7 +215,7 @@ void ChibiAnalogIn::_timer_tick(void)
     }
     _last_run = now;
 
-    uint32_t buf_adc[ADC_GRP1_NUM_CHANNELS];
+    uint32_t buf_adc[ADC_GRP1_NUM_CHANNELS] = {0};
 
     /* read all channels available */
     read_adc(buf_adc);
@@ -237,4 +253,3 @@ AP_HAL::AnalogSource* ChibiAnalogIn::channel(int16_t pin)
     return nullptr;
 }
 
-#endif // CONFIG_HAL_BOARD

@@ -5,9 +5,9 @@
 #include "Scheduler.h"
 
 #include <AP_HAL_ChibiOS/UARTDriver.h>
-#include <AP_HAL_Empty/AnalogIn.h>
+#include <AP_HAL_ChibiOS/AnalogIn.h>
 #include <AP_HAL_ChibiOS/Storage.h>
-#include <AP_HAL_Empty/RCOutput.h>
+#include <AP_HAL_ChibiOS/RCOutput.h>
 #include <AP_HAL_ChibiOS/RCInput.h>
 
 #include <AP_Scheduler/AP_Scheduler.h>
@@ -204,7 +204,7 @@ void ChibiScheduler::_run_timers(bool called_from_timer_thread)
     }
 
     // process analog input
-    //((AnalogIn *)hal.analogin)->_timer_tick();
+    ((ChibiAnalogIn *)hal.analogin)->_timer_tick();
 
     _in_timer_proc = false;
 }

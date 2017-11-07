@@ -18,7 +18,7 @@
  # define AP_BATT_VOLTDIVIDER_DEFAULT       10.1f
  # define AP_BATT_CURR_AMP_PERVOLT_DEFAULT  17.0f
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
- # define AP_BATT_VOLT_PIN                  2
+ # define AP_BATT_VOLT_PIN                  4
  # define AP_BATT_CURR_PIN                  3
  # define AP_BATT_VOLTDIVIDER_DEFAULT       10.1f
  # define AP_BATT_CURR_AMP_PERVOLT_DEFAULT  17.0f
