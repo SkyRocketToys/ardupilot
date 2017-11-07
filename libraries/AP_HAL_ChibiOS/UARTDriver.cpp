@@ -105,7 +105,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
         if (_baudrate != 0) {
             //setup Rx DMA
             if(!was_initialised) {
-                rxdma = STM32_DMA_STREAM(STM32_UART_USART2_RX_DMA_STREAM);
+                rxdma = STM32_DMA_STREAM(_serial_tab[_serial_num].dma_stream_id);
                 bool b = dmaStreamAllocate(rxdma,
                                            0,
                                            (stm32_dmaisr_t)rxbuff_full_irq,
@@ -127,7 +127,8 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
             //Start DMA
             if(!was_initialised) {
                 uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
-                                   STM32_DMA_CR_CHSEL(USART_RX_DMA_CHANNEL) | STM32_DMA_CR_PL(0);
+                                   STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_channel_id) |
+                                   STM32_DMA_CR_PL(0);
                 dmaStreamSetMemory0(rxdma, rx_bounce_buf);
                 dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
                 dmaStreamSetMode(rxdma, dmamode    | STM32_DMA_CR_DIR_P2M |

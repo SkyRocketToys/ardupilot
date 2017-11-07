@@ -5,8 +5,6 @@
 #include "AP_HAL_ChibiOS.h"
 
 #define RX_BOUNCE_BUFSIZE 32
-#define USART_RX_DMA_CHANNEL STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM,                     \
-                                                  STM32_USART2_RX_DMA_CHN)
 class ChibiOS::ChibiUARTDriver : public AP_HAL::UARTDriver {
 public:
     ChibiUARTDriver(uint8_t serial_num);
@@ -31,7 +29,8 @@ public:
     struct SerialDef {
         BaseSequentialStream* serial;
         bool is_usb;
-        ChibiUARTDriver* self;
+        uint8_t dma_stream_id;
+        uint8_t dma_channel_id; 
     };
 private:
 
