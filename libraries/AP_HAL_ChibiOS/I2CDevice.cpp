@@ -102,6 +102,9 @@ bool I2CDevice::_transfer(const uint8_t *send, uint32_t send_len,
         i2cReleaseBus(I2CD[_busnum]);
         if (ret != MSG_OK){
             _errors = i2cGetErrors(I2CD[_busnum]);
+            //restart the bus
+            i2cStop(I2CD[_busnum]);
+            i2cStart(I2CD[_busnum], &i2ccfg);
         } else {
             return true;
         }

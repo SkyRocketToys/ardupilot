@@ -99,6 +99,11 @@ bool mmc_lld_is_write_protected(MMCDriver *mmcp) {
  * @todo    Add your board-specific code, if any.
  */
 void boardInit(void) {
+
+  //Setup ADC pins for Voltage and Current Sensing
+  palSetGroupMode(GPIOA, PAL_PORT_BIT(2), 0, PAL_MODE_INPUT_ANALOG); //Pin PA2
+  palSetGroupMode(GPIOA, PAL_PORT_BIT(3), 0, PAL_MODE_INPUT_ANALOG); //Pin PA3
+
   palSetPadMode(GPIOE, 12, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_OPENDRAIN | PAL_STM32_OSPEED_MID2);
   palClearPad(GPIOE, 12);
 

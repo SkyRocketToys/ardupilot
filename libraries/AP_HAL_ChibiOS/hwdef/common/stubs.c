@@ -192,6 +192,11 @@ void _exit( int status )
 }
 
 __attribute__((used))
+void _fini(void)
+{
+}
+
+__attribute__((used))
 int _kill( int pid, int sig )
 {
   (void)pid; (void)sig;

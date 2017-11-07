@@ -1,8 +1,8 @@
 #pragma once
 
 namespace ChibiOS {
-    class AnalogIn;
-    class AnalogSource;
+    class ChibiAnalogIn;
+    class ChibiAnalogSource;
     class ChibiDigitalSource;
     class ChibiGPIO;
     class ChibiI2CDevice;

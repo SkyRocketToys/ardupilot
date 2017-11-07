@@ -4,6 +4,7 @@
  * Only import this header from inside AP_HAL_ChibiOS
  */
 
+#include "AnalogIn.h"
 #include "GPIO.h"
 #include "Scheduler.h"
 #include "Util.h"

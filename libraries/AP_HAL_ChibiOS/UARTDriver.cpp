@@ -10,12 +10,17 @@ extern const AP_HAL::HAL& hal;
 using namespace ChibiOS;
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SD2, false},   //Serial 0
-    {(BaseSequentialStream*) &SD1, false},   //Serial 0
-    {(BaseSequentialStream*) &SDU1, true},   //Serial 1
+    {(BaseSequentialStream*) &SD2, false, 
+      STM32_UART_USART2_RX_DMA_STREAM, STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM,                     \
+                                                            STM32_USART2_RX_DMA_CHN)},   //Serial 0
+    {(BaseSequentialStream*) &SD1, false,
+     STM32_UART_USART1_RX_DMA_STREAM, STM32_DMA_GETCHANNEL(STM32_UART_USART1_RX_DMA_STREAM,                     \
+                                                  STM32_USART1_RX_DMA_CHN)},   //Serial 0
+    {(BaseSequentialStream*) &SDU1, true, 0, 0},   //Serial 1
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
+_serial_num(serial_num),
 _baudrate(57600),
 _is_usb(false),
 _in_timer(false),
@@ -23,7 +28,6 @@ _initialised(false)
 {
     _serial = _serial_tab[serial_num].serial;
     _is_usb = _serial_tab[serial_num].is_usb;
-    _serial_num = serial_num;
     chMtxObjectInit(&_write_mutex);
 }
 
