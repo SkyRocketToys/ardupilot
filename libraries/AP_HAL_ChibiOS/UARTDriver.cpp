@@ -10,13 +10,11 @@ extern const AP_HAL::HAL& hal;
 using namespace ChibiOS;
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SD2, false, 
+    {(BaseSequentialStream*) &SD2, false, true,
       STM32_UART_USART2_RX_DMA_STREAM, STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM,                     \
                                                             STM32_USART2_RX_DMA_CHN)},   //Serial 0
-    {(BaseSequentialStream*) &SD1, false,
-     STM32_UART_USART1_RX_DMA_STREAM, STM32_DMA_GETCHANNEL(STM32_UART_USART1_RX_DMA_STREAM,                     \
-                                                  STM32_USART1_RX_DMA_CHN)},   //Serial 0
-    {(BaseSequentialStream*) &SDU1, true, 0, 0},   //Serial 1
+    {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 0
+    {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 1
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
@@ -28,6 +26,7 @@ _initialised(false)
 {
     _serial = _serial_tab[serial_num].serial;
     _is_usb = _serial_tab[serial_num].is_usb;
+    _dma_rx = _serial_tab[serial_num].dma_rx;
     chMtxObjectInit(&_write_mutex);
 }
 
@@ -104,7 +103,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     } else {
         if (_baudrate != 0) {
             //setup Rx DMA
-            if(!was_initialised) {
+            if(!was_initialised && _dma_rx) {
                 rxdma = STM32_DMA_STREAM(_serial_tab[_serial_num].dma_stream_id);
                 bool b = dmaStreamAllocate(rxdma,
                                            0,
@@ -114,26 +113,33 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
                 dmaStreamSetPeripheral(rxdma, &((SerialDriver*)_serial)->usart->DR);
             }
             sercfg.speed = _baudrate;
-            sercfg.cr1 = USART_CR1_IDLEIE;
+            if (_dma_rx) {
+                sercfg.cr1 = USART_CR1_IDLEIE;
+                sercfg.cr3 = USART_CR3_DMAR;
+            } else {
+                sercfg.cr1 = 0;
+                sercfg.cr3 = 0;
+            }
             sercfg.cr2 = USART_CR2_STOP1_BITS;
-            sercfg.cr3 = USART_CR3_DMAR;
             sercfg.irq_cb = rx_irq_cb;
             sercfg.ctx = (void*)this;
             
             sdStart((SerialDriver*)_serial, &sercfg);
-            //Configure serial driver to skip handling RX packets
-            //because we will handle them via DMA
-            ((SerialDriver*)_serial)->usart->CR1 &= ~USART_CR1_RXNEIE;
-            //Start DMA
-            if(!was_initialised) {
-                uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
-                                   STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_channel_id) |
-                                   STM32_DMA_CR_PL(0);
-                dmaStreamSetMemory0(rxdma, rx_bounce_buf);
-                dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
-                dmaStreamSetMode(rxdma, dmamode    | STM32_DMA_CR_DIR_P2M |
-                                     STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
-                dmaStreamEnable(rxdma);
+            if(_dma_rx) {
+                //Configure serial driver to skip handling RX packets
+                //because we will handle them via DMA
+                ((SerialDriver*)_serial)->usart->CR1 &= ~USART_CR1_RXNEIE;
+                //Start DMA
+                if(!was_initialised) {
+                    uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
+                                       STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_channel_id) |
+                                       STM32_DMA_CR_PL(0);
+                    dmaStreamSetMemory0(rxdma, rx_bounce_buf);
+                    dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
+                    dmaStreamSetMode(rxdma, dmamode    | STM32_DMA_CR_DIR_P2M |
+                                         STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
+                    dmaStreamEnable(rxdma);
+                }
             }
         }
     }
@@ -147,7 +153,9 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
 void ChibiUARTDriver::rx_irq_cb(void* self)
 {
     ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
-
+    if (!uart_drv->_dma_rx) {
+        return;
+    }
     volatile uint16_t sr = ((SerialDriver*)(uart_drv->_serial))->usart->SR;
     if(sr & USART_SR_IDLE) {
         volatile uint16_t dr = ((SerialDriver*)(uart_drv->_serial))->usart->DR;
@@ -160,6 +168,9 @@ void ChibiUARTDriver::rx_irq_cb(void* self)
 void ChibiUARTDriver::rxbuff_full_irq(void* self, uint32_t flags)
 {
     ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
+    if (!uart_drv->_dma_rx) {
+        return;
+    }
     uint8_t len = RX_BOUNCE_BUFSIZE - uart_drv->rxdma->stream->NDTR;
     if (len == 0) {
         return;
@@ -334,9 +345,11 @@ void ChibiUARTDriver::_timer_tick(void)
         if (_is_usb) {
             ret = 0;
             ret = chnReadTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
+        } else if(!_dma_rx){
+            ret = 0;
+            ret = chnReadTimeout((SerialDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
         } else {
             ret = 0;
-            //ret = sdAsynchronousRead((SerialDriver*)_serial, vec[i].data, vec[i].len);
         }
         if (ret < 0) {
             break;

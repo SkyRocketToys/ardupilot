@@ -273,7 +273,7 @@ void ChibiScheduler::_uart_thread(void* arg)
 
         // process any pending serial bytes
         ((ChibiUARTDriver *)hal.uartA)->_timer_tick();
-        //((ChibiUARTDriver *)hal.uartB)->_timer_tick();
+        ((ChibiUARTDriver *)hal.uartB)->_timer_tick();
         ((ChibiUARTDriver *)hal.uartC)->_timer_tick();
         /*((ChibiUARTDriver *)hal.uartD)->_timer_tick();
         ((ChibiUARTDriver *)hal.uartE)->_timer_tick();

@@ -29,11 +29,12 @@ public:
     struct SerialDef {
         BaseSequentialStream* serial;
         bool is_usb;
+        bool dma_rx;
         uint8_t dma_stream_id;
         uint8_t dma_channel_id; 
     };
 private:
-
+    bool _dma_rx;
     uint8_t _serial_num;
     uint32_t _baudrate;
     BaseSequentialStream* _serial;
