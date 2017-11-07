@@ -459,40 +459,73 @@ void ToyMode::update()
     */
     switch (copter.ap.home_state) {
     case HOME_UNSET:
-        if (copter.motors->armed() && !copter.ekf_position_ok()) {
-            // if we have a 3d lock and valid location
-            if (copter.gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-                // acquire horizontal accuracy
-                float toy_horizontal_acc;
-                if (copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
-                    // if gps horizontal accuracy of below 15m set current gps-supplied location as home position
-                    if(toy_horizontal_acc <= 15.0f){
-                        indoor_loc = copter.gps.location();
-                        // set height above arming    
-                        indoor_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
-                        copter.ahrs.set_home(indoor_loc);
-                        copter.set_home_state(HOME_SET_NOT_LOCKED);
-                        indoor_loc_set = true;
-                        // send new home location to GCS
-                        GCS_MAVLINK::send_home_all(indoor_loc);
-                        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "INDOOR MODE: set home loc with horizontal_acc: %.2f", toy_horizontal_acc); 
-                    }   
-                }
-            }
+    
+        if (!copter.motors->armed()) { 
+            // we only reset home at takeoff/while flying
+            break;
         }
+        
+        if(copter.ekf_position_ok()) {
+            // assume EKF has already set home 
+            break;
+        }
+        
+        if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) { 
+            // GPS fix is not currently good enough
+            break;
+        }
+        
+        // acquire horizontal accuracy
+        float toy_horizontal_acc;
+        if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) { 
+             // not getting hacc is a serious issue....
+             break;
+        } 
+
+        if(toy_horizontal_acc > 15.0f) {
+            // need to know position to within 15m before we can use it as home 
+            break;
+        }
+        
+        indoor_loc = copter.gps.location();
+        // set height above arming    
+        indoor_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
+        copter.ahrs.set_home(indoor_loc);
+        copter.set_home_state(HOME_SET_NOT_LOCKED);
+        indoor_loc_set = true;
+        // send home location to GCS
+        GCS_MAVLINK::send_home_all(indoor_loc);
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: set home with hacc: %.2f", toy_horizontal_acc); 
+
         break;
     case HOME_SET_NOT_LOCKED:
         // as soon as EKF is happy and indoor_loc_set was set to true then reset the altitude based on origin but retain the original lat lng during flight
-        if (copter.motors->armed() && copter.ekf_position_ok() && indoor_loc_set) {
+        if (!copter.motors->armed() ) {
+            // we only reset home at takeoff/while flying
+            break;
+        }
+        if (!copter.ekf_position_ok()) {
+            // we still don't know where we are
+            break;
+        }
+        
+        if(!indoor_loc_set) {
+            // we weren't the one that moved home into this state - so we can't
+            
+            // trust indoor_loc
+            break;
+        } else {
+            //reset home altitude
             const struct Location &ekf_origin = copter.inertial_nav.get_origin();
             indoor_loc.alt = ekf_origin.alt;
             copter.ahrs.set_home(indoor_loc);
             copter.set_home_state(HOME_SET_AND_LOCKED);
-            // send new home location to GCS
+            // send home location to GCS
             GCS_MAVLINK::send_home_all(indoor_loc);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "TMODE: EKF OK reset altitude to:%.2f", ekf_origin.alt); 
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: EKF OK reset altitude to:%.2f", ekf_origin.alt); 
         }
         break;
+        
     default:
         break;
     }
