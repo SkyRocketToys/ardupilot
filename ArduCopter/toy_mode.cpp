@@ -622,9 +622,10 @@ void ToyMode::update()
             }
             if (copter.motors->armed()) {
                 throttle_arm_ms = AP_HAL::millis();
-                takeoff_started_ms = now;
+                takeoff_init = true;
+                //takeoff_started_ms = now;
                 copter.set_auto_armed(true);
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff initialised");
             }
         } else if (old_mode == RTL) {
             // switch between RTL and LOITER when in GPS modes
@@ -863,8 +864,20 @@ void ToyMode::throttle_adjust(float &throttle_control)
     }
     
     /*
-      implement auto-takeoff action
-     */
+      implement delay on auto-takeoff to allow initialisations to complete
+    */
+    if (takeoff_init) {
+        // allow 3 seconds delay
+        if (now - takeoff_init_ms > 3000) {
+            takeoff_started_ms = now;
+            takeoff_init = false;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
+        }
+    }
+    
+    /*
+        implement auto-takeoff action
+    */
     const float takeoff_throttle_cmd = 700.0f;
     const uint16_t takeoff_time_ms = 1500;
     if (now - takeoff_started_ms < takeoff_time_ms) {

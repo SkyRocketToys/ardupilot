@@ -129,6 +129,8 @@ private:
     
     //used for takeoff cmd
     int32_t takeoff_started_ms;
+    bool takeoff_init = false;
+    uint16_t takeoff_init_ms;
     
     // time when we were last told we are recording video
     uint32_t last_video_ms;
