@@ -23,11 +23,8 @@
 #include "hal.h"
 
 static I2CDriver* I2CD[] = {
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450 
     &I2CD2,
     &I2CD1
-#endif
 };
 namespace ChibiOS {
 

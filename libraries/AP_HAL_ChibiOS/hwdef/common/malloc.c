@@ -9,7 +9,7 @@
   needed.
  */
 
-#include <posix.h>
+#include <stdio.h>
 #include <string.h>
 #include <hal.h>
 #include <chheap.h>

@@ -9,12 +9,23 @@ extern const AP_HAL::HAL& hal;
 
 using namespace ChibiOS;
 
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
+#define HAVE_USB_SERIAL
+#endif
+
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
     {(BaseSequentialStream*) &SD2, false, true,
-      STM32_UART_USART2_RX_DMA_STREAM, STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM,                     \
-                                                            STM32_USART2_RX_DMA_CHN)},   //Serial 0
-    {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 0
-    {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 1
+      STM32_UART_USART2_RX_DMA_STREAM, 
+      STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM, STM32_USART2_RX_DMA_CHN)
+    },   //Serial 0
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
+    {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 1
+    {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 2
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
+    {(BaseSequentialStream*) &SD6, false, false, 0, 0},   //Serial 1
+#endif
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
@@ -38,10 +49,6 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     bool was_initialised = _initialised;
     uint16_t min_tx_buffer = 4096;
     uint16_t min_rx_buffer = 1024;
-    if (_is_usb) {
-        min_tx_buffer = 4096;
-        min_rx_buffer = 1024;
-    }
     // on PX4 we have enough memory to have a larger transmit and
     // receive buffer for all ports. This means we don't get delays
     // while waiting to write GPS config packets
@@ -84,6 +91,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     }
 
     if (_is_usb) {
+#ifdef HAVE_USB_SERIAL
         /*
          * Initializes a serial-over-USB CDC driver.
          */
@@ -100,6 +108,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
             usbStart(serusbcfg.usbp, &usbcfg);
             usbConnectBus(serusbcfg.usbp);
         }
+#endif
     } else {
         if (_baudrate != 0) {
             //setup Rx DMA
@@ -193,7 +202,10 @@ void ChibiUARTDriver::end()
     while (_in_timer) hal.scheduler->delay(1);
 
     if (_is_usb) {
+#ifdef HAVE_USB_SERIAL
+
         sduStop((SerialUSBDriver*)_serial);
+#endif
     } else {
         sdStop((SerialDriver*)_serial);
     }
@@ -204,7 +216,10 @@ void ChibiUARTDriver::end()
 void ChibiUARTDriver::flush()
 {
     if (_is_usb) {
+#ifdef HAVE_USB_SERIAL
+
         sduSOFHookI((SerialUSBDriver*)_serial);
+#endif
     } else {
         //TODO: Handle this for other serial ports
     }
@@ -228,9 +243,12 @@ uint32_t ChibiUARTDriver::available() {
         return 0;
     }
     if (_is_usb) {
+#ifdef HAVE_USB_SERIAL
+
         if (((SerialUSBDriver*)_serial)->config->usbp->state != USB_ACTIVE) {
             return 0;
         }
+#endif
     }
     return _readbuf.available();
 }
@@ -327,12 +345,16 @@ void ChibiUARTDriver::_timer_tick(void)
 
     // don't try IO on a disconnected USB port
     if (_is_usb) {
+#ifdef HAVE_USB_SERIAL
         if (((SerialUSBDriver*)_serial)->config->usbp->state != USB_ACTIVE) {
             return;
         }
+#endif
     }
     if(_is_usb) {
+#ifdef HAVE_USB_SERIAL
         ((ChibiGPIO *)hal.gpio)->set_usb_connected();
+#endif
     }
     _in_timer = true;
 
@@ -344,7 +366,9 @@ void ChibiUARTDriver::_timer_tick(void)
         //Do a non-blocking read
         if (_is_usb) {
             ret = 0;
+#ifdef HAVE_USB_SERIAL
             ret = chnReadTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
+#endif
         } else if(!_dma_rx){
             ret = 0;
             ret = chnReadTimeout((SerialDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
@@ -370,9 +394,11 @@ void ChibiUARTDriver::_timer_tick(void)
         for (int i = 0; i < n_vec; i++) {
             if (_is_usb) {
                 ret = 0;
+#ifdef HAVE_USB_SERIAL
                 ret = chnWriteTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
+#endif
             } else {
-                ret = sdAsynchronousWrite((SerialDriver*)_serial, vec[i].data, vec[i].len);
+                ret = chnWriteTimeout((SerialDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
             }
             if (ret < 0) {
                 break;

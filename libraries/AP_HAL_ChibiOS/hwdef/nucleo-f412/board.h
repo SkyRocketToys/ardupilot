@@ -26,6 +26,14 @@
  */
 #define BOARD_ST_NUCLEO144_F412ZG
 #define BOARD_NAME                  "STMicroelectronics STM32 Nucleo144-F412ZG"
+/*
+ * APM HW Defines
+ */
+
+#define HRT_TIMER GPTD5
+
+#define HAL_STDOUT_SERIAL SD3
+#define HAL_STDOUT_BAUDRATE 115200
 
 /*
  * Board oscillators-related settings.

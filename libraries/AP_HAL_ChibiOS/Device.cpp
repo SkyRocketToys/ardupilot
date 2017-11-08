@@ -130,7 +130,6 @@ AP_HAL::Device::PeriodicHandle DeviceBus::register_periodic_callback(uint32_t pe
 bool DeviceBus::adjust_timer(AP_HAL::Device::PeriodicHandle h, uint32_t period_usec)
 {
     if (chThdGetSelfX() != thread_ctx) {
-        fprintf(stderr, "can't adjust timer from unknown thread context\n");
         return false;
     }
 

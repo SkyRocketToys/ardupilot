@@ -6,9 +6,8 @@ using namespace ChibiOS;
 
 static uint32_t _gpio_tab[]  = {
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
-    LINE_LED1,
-    LINE_LED2,
-    LINE_LED3
+    PAL_LINE(GPIOB, 7U),
+    PAL_LINE(GPIOC, 4U)
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE ||\
       CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
     LINE_LED1,
@@ -55,22 +54,21 @@ static EXTConfig extcfg = {
 };
 
 static const uint32_t irq_port_list[] = {
-    EXT_MODE_GPIOA, //Chan 0
-    EXT_MODE_GPIOA, //Chan 1
-    EXT_MODE_GPIOA, //Chan 2
-    EXT_MODE_GPIOA, //Chan 3
-    EXT_MODE_GPIOA, //Chan 4
-    EXT_MODE_GPIOA, //Chan 5
-    EXT_MODE_GPIOA, //Chan 6
-    EXT_MODE_GPIOA, //Chan 7
-    EXT_MODE_GPIOA, //Chan 8
-    EXT_MODE_GPIOA, //Chan 9
-    EXT_MODE_GPIOA, //Chan 10
-    EXT_MODE_GPIOA, //Chan 11
-    EXT_MODE_GPIOA, //Chan 12
-    EXT_MODE_GPIOA, //Chan 13
-    EXT_MODE_GPIOA, //Chan 14
-    //Cypress IRQ PortD, 15
+    EXT_MODE_GPIOD, //Chan 0
+    EXT_MODE_GPIOD, //Chan 1
+    EXT_MODE_GPIOD, //Chan 2
+    EXT_MODE_GPIOD, //Chan 3
+    EXT_MODE_GPIOD, //Chan 4
+    EXT_MODE_GPIOD, //Chan 5
+    EXT_MODE_GPIOD, //Chan 6
+    EXT_MODE_GPIOD, //Chan 7
+    EXT_MODE_GPIOD, //Chan 8
+    EXT_MODE_GPIOD, //Chan 9
+    EXT_MODE_GPIOD, //Chan 10
+    EXT_MODE_GPIOD, //Chan 11
+    EXT_MODE_GPIOD, //Chan 12
+    EXT_MODE_GPIOD, //Chan 13
+    EXT_MODE_GPIOD, //Chan 14
     EXT_MODE_GPIOD //Chan 15
 };
 
@@ -80,10 +78,6 @@ ChibiGPIO::ChibiGPIO()
 void ChibiGPIO::init()
 {
     palClearLine(LINE_LED1);
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
-    palClearLine(LINE_LED2);
-    palClearLine(LINE_LED3);
-#endif
     extStart(&EXTD1, &extcfg);
 }
 

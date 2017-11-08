@@ -16,6 +16,7 @@
 
 #pragma once
 
+#define USE_POSIX
 /*
  * Board oscillators-related settings.
  * NOTE: LSE not fitted.

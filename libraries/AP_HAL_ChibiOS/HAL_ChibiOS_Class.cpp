@@ -22,8 +22,9 @@ static ChibiOS::ChibiRCOutput rcoutDriver;
 static ChibiOS::ChibiScheduler schedulerInstance;
 static ChibiOS::ChibiUtil utilInstance;
 static Empty::OpticalFlow opticalFlowDriver;
+#ifdef USE_POSIX
 static FATFS SDC_FS; // FATFS object
-
+#endif
 HAL_ChibiOS::HAL_ChibiOS() :
     AP_HAL::HAL(
         &uartADriver,
@@ -171,7 +172,7 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
     /*
      * Start SD Driver
      */
-
+#ifdef USE_POSIX
     FRESULT err;
     sdcStart(&SDCD1, NULL);
 
@@ -188,6 +189,7 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
         //Create APM Directory
         mkdir("/APM", 0777);
     }
+#endif
     assert(callbacks);
     g_callbacks = callbacks;
 

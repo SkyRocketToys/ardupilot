@@ -109,9 +109,11 @@ CSRC = $(STARTUPSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
 	   $(HWDEF)/nucleo-f412/board.c \
-	   $(HWDEF)/common/usbcfg.c \
 	   $(HWDEF)/common/ppm.c \
-	   $(HWDEF)/common/flash.c
+	   $(HWDEF)/common/flash.c \
+	   $(HWDEF)/common/stubs.c \
+	   $(HWDEF)/common/hrt.c
+#	   $(HWDEF)/common/usbcfg.c \
 #	   $(TESTSRC) \
 #	   test.c
 

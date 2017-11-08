@@ -68,7 +68,7 @@
  * ADC driver system settings.
  */
 #define STM32_ADC_ADCPRE                    ADC_CCR_ADCPRE_DIV4
-#define STM32_ADC_USE_ADC1                  FALSE
+#define STM32_ADC_USE_ADC1                  TRUE
 #define STM32_ADC_ADC1_DMA_STREAM           STM32_DMA_STREAM_ID(2, 4)
 #define STM32_ADC_ADC1_DMA_PRIORITY         2
 #define STM32_ADC_IRQ_PRIORITY              6
@@ -97,7 +97,7 @@
 #define STM32_GPT_USE_TIM2                  FALSE
 #define STM32_GPT_USE_TIM3                  FALSE
 #define STM32_GPT_USE_TIM4                  FALSE
-#define STM32_GPT_USE_TIM5                  FALSE
+#define STM32_GPT_USE_TIM5                  TRUE
 #define STM32_GPT_USE_TIM9                  FALSE
 #define STM32_GPT_USE_TIM11                 FALSE
 #define STM32_GPT_TIM1_IRQ_PRIORITY         7
@@ -111,8 +111,8 @@
 /*
  * I2C driver system settings.
  */
-#define STM32_I2C_USE_I2C1                  FALSE
-#define STM32_I2C_USE_I2C2                  FALSE
+#define STM32_I2C_USE_I2C1                  TRUE
+#define STM32_I2C_USE_I2C2                  TRUE
 #define STM32_I2C_USE_I2C3                  FALSE
 #define STM32_I2C_BUSY_TIMEOUT              50
 #define STM32_I2C_I2C1_RX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 0)
@@ -166,7 +166,7 @@
 #define STM32_PWM_USE_ADVANCED              FALSE
 #define STM32_PWM_USE_TIM1                  FALSE
 #define STM32_PWM_USE_TIM2                  FALSE
-#define STM32_PWM_USE_TIM3                  FALSE
+#define STM32_PWM_USE_TIM3                  TRUE
 #define STM32_PWM_USE_TIM4                  FALSE
 #define STM32_PWM_USE_TIM5                  FALSE
 #define STM32_PWM_USE_TIM9                  FALSE
@@ -180,7 +180,7 @@
 /*
  * SERIAL driver system settings.
  */
-#define STM32_SERIAL_USE_USART1             TRUE
+#define STM32_SERIAL_USE_USART1             FALSE
 #define STM32_SERIAL_USE_USART2             TRUE
 #define STM32_SERIAL_USE_USART3             TRUE
 #define STM32_SERIAL_USE_USART6             TRUE
@@ -253,7 +253,7 @@
 /*
  * USB driver system settings.
  */
-#define STM32_USB_USE_OTG1                  TRUE
+#define STM32_USB_USE_OTG1                  FALSE
 #define STM32_USB_OTG1_IRQ_PRIORITY         14
 #define STM32_USB_OTG1_RX_FIFO_SIZE         512
 #define STM32_USB_OTG_THREAD_PRIO           LOWPRIO

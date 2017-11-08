@@ -23,7 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef _POSIX_H_
 #define _POSIX_H_
-
+#include <board.h>
+#ifdef USE_POSIX
 #define POSIX
 #pragma GCC diagnostic ignored "-Wshadow"
 ///@brief make sure we use our EDOM and ERANGE values
@@ -378,22 +379,10 @@ int posix_fopen_modes_to_open ( const char *mode );
 
 int fprintf(FILE *fp, const char *format, ...);
 
-int vsnprintf(char *str, size_t size, const char *fmt, va_list ap);
-int snprintf(char *str, size_t size, const char *fmt, ...);
-int vasprintf(char **strp, const char *fmt, va_list ap);
-int asprintf(char **strp, const char *fmt, ...);
-int vprintf(const char *fmt, va_list arg);
-int printf(const char *fmt, ...);
-
-
-int sscanf (const char *buf, const char *fmt, ...);
-int vsscanf (const char *buf, const char *s, va_list ap);
-void *malloc(size_t size);
-void *calloc(size_t nmemb, size_t size);
-void free(void *ptr);
 #if __cplusplus
 }
 #endif
 
 // =============================================
+#endif  //USE_POSIX
 #endif                                            //_POSIX_H_

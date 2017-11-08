@@ -13,8 +13,9 @@
 
 #pragma once
 
+#if HAL_USE_SERIAL_USB
 extern const USBConfig usbcfg;
 extern SerialUSBConfig serusbcfg;
 extern SerialUSBDriver SDU1;
-
+#endif
 /** @} */

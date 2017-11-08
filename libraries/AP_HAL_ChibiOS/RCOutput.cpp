@@ -26,7 +26,12 @@ const struct ChibiRCOutput::pwm_group ChibiRCOutput::pwm_group_list[] =
           0,
           0
         },
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
         &PWMD1
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
+        &PWMD3
+#endif
     }
 };
 
