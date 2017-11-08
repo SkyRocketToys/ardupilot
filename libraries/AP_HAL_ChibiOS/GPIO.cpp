@@ -77,7 +77,7 @@ ChibiGPIO::ChibiGPIO()
 
 void ChibiGPIO::init()
 {
-    palClearLine(LINE_LED1);
+    //palClearLine(_gpio_tab[0]);
     extStart(&EXTD1, &extcfg);
 }
 

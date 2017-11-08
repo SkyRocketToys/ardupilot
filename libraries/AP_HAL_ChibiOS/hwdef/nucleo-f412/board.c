@@ -129,4 +129,35 @@ bool mmc_lld_is_write_protected(MMCDriver *mmcp) {
  * @todo    Add your board-specific code, if any.
  */
 void boardInit(void) {
+  //Initialise ADCs
+  palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG); //Pin PA4
+  palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG); //Pin PA0
+  palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG); //Pin PC3
+  palSetPadMode(GPIOC, 2, PAL_MODE_INPUT_ANALOG); //Pin PC2
+  palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG); //Pin PC1
+  
+  //Initialise GPIOs
+  //LEDS
+  palSetPadMode(GPIOB, 7, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  palSetPad(GPIOB, 7);
+
+  palSetPadMode(GPIOB, 6, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  palSetPad(GPIOB, 6);
+
+  //RADIO CS
+  palSetPadMode(GPIOA, 15, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  palSetPad(GPIOA, 15);
+
+  //RADIO IRQ
+  palSetPadMode(GPIOD, 2, PAL_STM32_MODE_INPUT | PAL_STM32_PUPDR_FLOATING);
+
+  //RADIO RESET
+  palSetPadMode(GPIOC, 4, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  palSetPad(GPIOC, 4);
+
+  //MPU CS
+  palSetPadMode(GPIOB, 12, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  palSetPad(GPIOB, 12);
+
+
 }
