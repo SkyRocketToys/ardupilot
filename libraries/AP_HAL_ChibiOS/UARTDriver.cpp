@@ -386,25 +386,6 @@ void ChibiUARTDriver::_timer_tick(void)
         }
     }
 
-    // try to fill the read buffer
-    // only for usb, we use DMA and callbacks for UART based serial
-    if (_is_usb) {
-        ByteBuffer::IoVec vec[2];
-        const auto n_vec = _readbuf.reserve(vec, _readbuf.space());
-        for (int i = 0; i < n_vec; i++) {
-            //Do a non-blocking read
-            ret = chnReadTimeout((SerialUSBDriver*)_serial, vec[i].data, vec[i].len, TIME_IMMEDIATE);
-            if (ret < 0) {
-                break;
-            }
-            _readbuf.commit((unsigned)ret);
-
-            /* stop reading as we read less than we asked for */
-            if ((unsigned)ret < vec[i].len) {
-                break;
-            }
-        }
-    }
     _in_timer = false;
 }
 #endif //CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
