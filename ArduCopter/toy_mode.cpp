@@ -623,7 +623,7 @@ void ToyMode::update()
             if (copter.motors->armed()) {
                 throttle_arm_ms = AP_HAL::millis();
                 takeoff_init = true;
-                //takeoff_started_ms = now;
+                takeoff_init_ms = AP_HAL::millis();
                 copter.set_auto_armed(true);
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff initialised");
             }
@@ -866,12 +866,14 @@ void ToyMode::throttle_adjust(float &throttle_control)
     /*
       implement delay on auto-takeoff to allow initialisations to complete
     */
+    const uint16_t takeoff_delay_ms = 3000;
     if (takeoff_init) {
         // allow 3 seconds delay
-        if (now - takeoff_init_ms > 3000) {
+        uint32_t temp = (now - takeoff_init_ms);
+        if (now - takeoff_init_ms > takeoff_delay_ms) {
             takeoff_started_ms = now;
             takeoff_init = false;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started: %d, %d, %d ", temp, now, takeoff_init_ms);
         }
     }
     
