@@ -21,6 +21,8 @@ fi
     exit 1
 }
 
+./Tools/scripts/apj_tool.py "$ELF" --set-file Tools/Frame_params/SkyViper-2450GPS/defaults.parm
+
 echo "Creating $VEHICLE.bin"
 arm-none-eabi-objcopy -O binary "$ELF" "$VEHICLE".bin || {
     echo "Failed to create bin file"
