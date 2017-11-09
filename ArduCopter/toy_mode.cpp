@@ -130,7 +130,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.01
     // @User: Advanced
     AP_GROUPINFO("_VMAX", 16, ToyMode, filter.volt_max, 3.8),
-    
+
     // @Param: _TMIN
     // @DisplayName: Min thrust multiplier
     // @Description: This sets the thrust multiplier when voltage is high
@@ -154,21 +154,21 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.01
     // @User: Advanced
     AP_GROUPINFO("_LOAD_MUL", 19, ToyMode, load_test.load_mul, 1.0),
-    
+
     // @Param: _LOAD_FILT
     // @DisplayName: Load test filter
     // @Description: This filters the load test output. A value of 1 means no filter. 2 means values are repeated once. 3 means values are repeated 3 times, etc
     // @Range: 0 100
     // @User: Advanced
     AP_GROUPINFO("_LOAD_FILT", 20, ToyMode, load_test.load_filter, 1),
-    
+
     // @Param: _LOAD_TYPE
     // @DisplayName: Load test type
     // @Description: This sets the type of load test
     // @Values: 0:ConstantThrust,1:LogReplay1,2:LogReplay2
     // @User: Advanced
     AP_GROUPINFO("_LOAD_TYPE", 21, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
-   
+
     AP_GROUPEND
 };
 
@@ -242,13 +242,13 @@ void ToyMode::update()
     if (copter.control_mode == LOITER) { 
         copter.fence.enable(true); 
     }
-    
+
     // keep filtered battery voltage for thrust limiting
     filtered_voltage = 0.99 * filtered_voltage + 0.01 * copter.battery.voltage();
-    
+
     // update LEDs
     blink_update();
-    
+
     if (!done_first_update) {
         done_first_update = true;
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
@@ -300,7 +300,7 @@ void ToyMode::update()
     } else if (power_button) {
         action_input = 3;
     }
-    
+
     if (action_input != 0 && left_button) {
         // combined button actions
         action_input += 3;
@@ -339,7 +339,7 @@ void ToyMode::update()
       work out commanded action, if any
      */
     enum toy_action action = action_input?toy_action(actions[action_input-1].get()):ACTION_NONE;
-   
+
     // check for long left button press
     if (action == ACTION_NONE && left_press_counter > TOY_LONG_PRESS_COUNT) {
         left_press_counter = -TOY_COMMAND_DELAY;
@@ -402,7 +402,7 @@ void ToyMode::update()
         last_action = action;
         break;
     }
-    
+
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
         last_action_ms = now;
@@ -421,7 +421,7 @@ void ToyMode::update()
     if (copter.motors->armed() && (!copter.motors->limit.throttle_lower || !descent_rate_low)) {
         last_not_landed_ms = now;
     }
-    
+
     /*
       disarm if throttle is low for 1 second when landed, or low and
       we have been not flying for 2 seconds
@@ -463,7 +463,7 @@ void ToyMode::update()
     } else {
         position_ok_ms = 0;
     }
-    
+
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != get_non_gps_mode()) {
             upgrade_to_loiter = false;
@@ -472,16 +472,16 @@ void ToyMode::update()
                    (now - position_ok_ms > 50) &&
                    set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");
         }
     }
 
     if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max &&
         copter.fence.check_destination_within_fence(copter.current_loc)) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
-    
+
     enum control_mode_t old_mode = copter.control_mode;
     enum control_mode_t new_mode = old_mode;
 
@@ -568,7 +568,7 @@ void ToyMode::update()
             new_mode = ALT_HOLD;
         }
         break;
-        
+
     case ACTION_DISARM:
         if (copter.motors->armed()) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
@@ -588,7 +588,7 @@ void ToyMode::update()
     case ACTION_TOGGLE_SSIMPLE:
         copter.set_simple_mode(copter.ap.simple_mode?0:2);
         break;
-        
+
     case ACTION_ARM_LAND_RTL:
         if (!copter.motors->armed()) {
             action_arm();
@@ -671,10 +671,10 @@ void ToyMode::update()
         // revert back to last primary flight mode if disarmed after landing
         new_mode = control_mode_t(primary_mode[last_mode_choice].get());
     }
-    
+
     if (new_mode != copter.control_mode) {
         load_test.running = false;
-        
+
         if (copter.mode_requires_GPS(new_mode)) {
             copter.fence.enable(true);
         } else {
@@ -736,7 +736,7 @@ void ToyMode::trim_update(void)
                                              throttle_mid);
         }
     }
-    
+
     uint16_t chan[4];
     if (hal.rcin->read(chan, 4) != 4) {
         trim.start_ms = 0;
@@ -753,7 +753,7 @@ void ToyMode::trim_update(void)
     }
 
     uint32_t now = AP_HAL::millis();
-    
+
     if (trim.start_ms == 0) {
         // start timer
         memcpy(trim.chan, chan, 4*sizeof(uint16_t));
@@ -761,7 +761,7 @@ void ToyMode::trim_update(void)
         return;
     }
 
-    
+
     for (uint8_t i=0; i<4; i++) {
         if (abs(trim.chan[i] - chan[i]) > noise_limit) {
             // detected stick movement
@@ -778,7 +778,7 @@ void ToyMode::trim_update(void)
 
     // reset timer so we don't trigger too often
     trim.start_ms = 0;
-    
+
     uint8_t need_trim = 0;
     for (uint8_t i=0; i<4; i++) {
         RC_Channel *ch = RC_Channels::rc_channel(i);
@@ -820,7 +820,7 @@ void ToyMode::action_arm(void)
     }
 
     arm_check_compass();
-    
+
     if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
         // we want GPS and checks are passing, arm and enable fence
         copter.fence.enable(true);
@@ -862,21 +862,20 @@ void ToyMode::throttle_adjust(float &throttle_control)
         takeoff_started_ms = 0;
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: pilot cancel takeoff");
     }
-    
+
     /*
       implement delay on auto-takeoff to allow initialisations to complete
     */
-    const uint16_t takeoff_delay_ms = 3000;
+    const uint16_t takeoff_delay_ms = 1000;
     if (takeoff_init) {
-        // allow 3 seconds delay
-        uint32_t temp = (now - takeoff_init_ms);
+        // allow some  delay
         if (now - takeoff_init_ms > takeoff_delay_ms) {
             takeoff_started_ms = now;
             takeoff_init = false;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started: %d, %d, %d ", temp, now, takeoff_init_ms);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
         }
     }
-    
+
     /*
         implement auto-takeoff action
     */
@@ -915,16 +914,16 @@ void ToyMode::throttle_adjust(float &throttle_control)
         }
     }
 
-    if (flags & FLAG_ALT_FENCE_LIMIT) {    
+    if (flags & FLAG_ALT_FENCE_LIMIT) {
         float height = height_above_arming;
         int32_t alt_above_home_cm;
         float margin = copter.fence.get_margin();
-        
+
         if (copter.current_loc.get_alt_cm(Location_Class::ALT_FRAME_ABOVE_HOME, alt_above_home_cm)) {
             // if possible use current_loc height to be consistent with fence logic
             height = alt_above_home_cm * 0.01;
         }
-    
+
         if (height > copter.fence.get_safe_alt_max() - margin*3) {
             // limit climb rate when above fence height in all pilot
             // altitude controlled modes, regardless of whether fence is
@@ -980,7 +979,7 @@ void ToyMode::blink_update(void)
     if (red_blink_count > 0 && green_blink_count > 0) {
         return;
     }
-    
+
     // setup normal patterns based on flight mode and arming
     uint16_t pattern = 0;
 
@@ -989,15 +988,15 @@ void ToyMode::blink_update(void)
     if (copter.motors->armed() && AP_Notify::flags.failsafe_battery) {
         pattern = BLINK_8;
     } else if (!copter.motors->armed() && (blink_disarm > 0)) {
-		pattern = BLINK_8;
-		blink_disarm--;
-	} else {
+        pattern = BLINK_8;
+        blink_disarm--;
+    } else {
         pattern = BLINK_FULL;
     }
     
     if (copter.motors->armed()) {
-		blink_disarm = 4;
-	}
+        blink_disarm = 4;
+    }
     
     if (red_blink_count == 0) {
         red_blink_pattern = pattern;
@@ -1089,7 +1088,7 @@ void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
                                                (double)thrust_mul,
                                                pwm[0], pwm[1], pwm[2], pwm[3]);
     }
-                                           
+
 }
 
 /*
@@ -1109,7 +1108,7 @@ void ToyMode::load_test_run(void)
             load_test.row = (load_test.row + 1) % ARRAY_SIZE(load_data1);
         }
         break;
-        
+
     case LOAD_TYPE_LOG2:
         // like log1, but all the same
         for (uint8_t i=0; i<4; i++) {
@@ -1152,7 +1151,7 @@ void ToyMode::arm_check_compass(void)
     // check for unreasonable compass offsets
     Vector3f offsets = copter.compass.get_offsets();
     float field = copter.compass.get_field().length();
-    
+
     if (offsets.length() > copter.compass.get_offsets_max() ||
         field < 200 || field > 800 ||
         !copter.compass.configured()) {
@@ -1188,7 +1187,7 @@ void ToyMode::check_mag_field_takeoff(void)
         mag_re_check_field = false;
         return;        
     }
-    
+
     Vector3f offsets = copter.compass.get_offsets();
     float field = copter.compass.get_field().length();
     if (offsets.length() > copter.compass.get_offsets_max() ||
