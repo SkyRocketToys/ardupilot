@@ -373,7 +373,7 @@ void ToyMode::update()
         last_action = action;
         break;
     }
-    
+
     if (action != ACTION_NONE) {
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: action %u", action);
         last_action_ms = now;
@@ -392,7 +392,7 @@ void ToyMode::update()
     if (copter.motors->armed() && (!copter.motors->limit.throttle_lower || !descent_rate_low)) {
         last_not_landed_ms = now;
     }
-    
+
     /*
       disarm if throttle is low for 1 second when landed, or low and
       we have been not flying for 2 seconds
@@ -453,49 +453,49 @@ void ToyMode::update()
     } else {
         position_ok_ms = 0;
     }
-    
+
     /*
     * attempt to improve the setting of home location sooner
     */
     switch (copter.ap.home_state) {
     case HOME_UNSET:
-    
+
         if (!copter.motors->armed()) { 
             // we only reset home at takeoff/while flying
             break;
         }
-        
+
         if(copter.ekf_position_ok()) {
-            // assume EKF has already set home 
+            // assume EKF has already set home
             break;
         }
-        
-        if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) { 
+
+        if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) {
             // GPS fix is not currently good enough
             break;
         }
-        
+
         // acquire horizontal accuracy
         float toy_horizontal_acc;
-        if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) { 
+        if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
              // not getting hacc is a serious issue....
              break;
         } 
 
         if(toy_horizontal_acc > 15.0f) {
-            // need to know position to within 15m before we can use it as home 
+            // need to know position to within 15m before we can use it as home
             break;
         }
-        
+
         indoor_loc = copter.gps.location();
-        // set height above arming    
+        // set height above arming
         indoor_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
         copter.ahrs.set_home(indoor_loc);
         copter.set_home_state(HOME_SET_NOT_LOCKED);
         indoor_loc_set = true;
         // send home location to GCS
         GCS_MAVLINK::send_home_all(indoor_loc);
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: set home with hacc: %.2f", toy_horizontal_acc); 
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: set home with hacc: %.2f", toy_horizontal_acc);
 
         break;
     case HOME_SET_NOT_LOCKED:
@@ -508,21 +508,21 @@ void ToyMode::update()
             // we still don't know where we are
             break;
         }
-        
+
         if(!indoor_loc_set) {
             // we weren't the one that moved home into this state - so we can't
-            
+
             // trust indoor_loc
             break;
         } else {
             //reset home altitude
             const struct Location &ekf_origin = copter.inertial_nav.get_origin();
             indoor_loc.alt = ekf_origin.alt;
-            copter.ahrs.set_home(indoor_loc);
-            copter.set_home_state(HOME_SET_AND_LOCKED);
+            // setting home state to HOME_SET_AND_LOCKED
+            copter.set_home(indoor_loc,true);
             // send home location to GCS
             GCS_MAVLINK::send_home_all(indoor_loc);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: EKF OK reset altitude to:%.2f", ekf_origin.alt); 
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: EKF OK reset altitude in flight");
         }
         break;
         
@@ -538,16 +538,16 @@ void ToyMode::update()
                    (now - position_ok_ms > 50) &&
                    set_and_remember_mode(LOITER, MODE_REASON_TMODE)) {
             copter.fence.enable(true);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");            
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: LOITER update");
         }
     }
 
     if (copter.control_mode == RTL && (flags & FLAG_RTL_CANCEL) && throttle_near_max &&
         copter.fence.check_destination_within_fence(copter.current_loc)) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");        
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: RTL cancel");
         set_and_remember_mode(LOITER, MODE_REASON_TMODE);
     }
-    
+
     enum control_mode_t old_mode = copter.control_mode;
     enum control_mode_t new_mode = old_mode;
 
@@ -634,7 +634,7 @@ void ToyMode::update()
             new_mode = ALT_HOLD;
         }
         break;
-        
+
     case ACTION_DISARM:
         if (copter.motors->armed()) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: Force disarm");
@@ -770,7 +770,7 @@ void ToyMode::trim_update(void)
                                              throttle_mid);
         }
     }
-    
+
     uint16_t chan[4];
     if (hal.rcin->read(chan, 4) != 4) {
         trim.start_ms = 0;
@@ -854,7 +854,7 @@ void ToyMode::action_arm(void)
     }
 
     arm_check_compass();
-    
+
     if (needs_gps && copter.arming.pre_arm_gps_checks(false)) {
         // we want GPS and checks are passing, arm and enable fence
         copter.fence.enable(true);
@@ -920,7 +920,7 @@ void ToyMode::throttle_adjust(float &throttle_control)
             // if possible use current_loc height to be consistent with fence logic
             height = alt_above_home_cm * 0.01;
         }
-    
+
         if (height > copter.fence.get_safe_alt_max() - margin*3) {
             // limit climb rate when above fence height in all pilot
             // altitude controlled modes, regardless of whether fence is
@@ -1085,7 +1085,7 @@ void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
                                                (double)thrust_mul,
                                                pwm[0], pwm[1], pwm[2], pwm[3]);
     }
-                                           
+
 }
 
 /*
@@ -1136,7 +1136,7 @@ void ToyMode::load_test_run(void)
         GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: load_test off (battery)");
         copter.init_disarm_motors();
         load_test.running = false;
-    }    
+    }
 }
 
 /*
@@ -1148,7 +1148,7 @@ void ToyMode::arm_check_compass(void)
     // check for unreasonable compass offsets
     Vector3f offsets = copter.compass.get_offsets();
     float field = copter.compass.get_field().length();
-    
+
     if (offsets.length() > copter.compass.get_offsets_max() ||
         field < 200 || field > 800 ||
         !copter.compass.configured()) {

@@ -14,7 +14,7 @@ public:
     bool enabled(void) const {
         return enable.get() != 0;
     }
-    
+
     void update(void);
 
     // get throttle mid-point
@@ -29,9 +29,9 @@ public:
     void handle_message(mavlink_message_t *msg);
 
     void load_test_run(void);
-    
+
     static const struct AP_Param::GroupInfo var_info[];
-    
+
 private:
 
     void trim_update(void);
@@ -44,7 +44,7 @@ private:
     void arm_check_compass(void);
     control_mode_t get_non_gps_mode();
     void check_mag_field_takeoff(void);
-    
+
     enum toy_action {
         ACTION_NONE         = 0,
         ACTION_TAKE_PHOTO   = 1,
@@ -110,7 +110,7 @@ private:
         uint32_t start_ms;
         uint16_t chan[4];
     } trim;
-    
+
     uint32_t power_counter;
     uint32_t throttle_low_counter;
     uint32_t throttle_high_counter;
@@ -124,14 +124,14 @@ private:
     bool upgrade_to_loiter;
     uint32_t last_action_ms;
     uint32_t reset_turtle_start_ms;
-    
+
     //for storing location in indoor mode
     Location indoor_loc;
     bool indoor_loc_set = false;
 
     // time when we were last told we are recording video
     uint32_t last_video_ms;
-    
+
     // current blink indexes
     uint16_t red_blink_pattern;
     uint16_t green_blink_pattern;
@@ -148,7 +148,7 @@ private:
         AP_Float thrust_min;
         AP_Float thrust_max;
     } filter;
-    
+
     // low-pass voltage
     float filtered_voltage = 4.0;
 
@@ -169,7 +169,7 @@ private:
         LOAD_TYPE_LOG1=1,
         LOAD_TYPE_LOG2=2,
     };
-    
+
     struct {
         bool running;
         uint32_t row;
@@ -178,7 +178,7 @@ private:
         AP_Int8  load_filter;
         AP_Int8  load_type;
     } load_test;
-    
+
     static const struct load_data load_data1[];
 
     // will we re-check the mag field after takeoff and cancel learning?
