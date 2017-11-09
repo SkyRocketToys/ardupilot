@@ -4,8 +4,8 @@
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
  # define HAL_GPIO_A_LED_PIN        0
- # define HAL_GPIO_B_LED_PIN        1
- # define HAL_GPIO_C_LED_PIN        2
+ # define HAL_GPIO_B_LED_PIN        0
+ # define HAL_GPIO_C_LED_PIN        0
  # define HAL_GPIO_LED_ON           LOW
  # define HAL_GPIO_LED_OFF          HIGH
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
