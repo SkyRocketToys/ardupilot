@@ -128,7 +128,6 @@ private:
     uint32_t reset_turtle_start_ms;
 
     //used for takeoff cmd
-    int32_t takeoff_started_ms;
     uint32_t takeoff_init_ms;
     bool takeoff_init = false;
 

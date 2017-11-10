@@ -625,7 +625,7 @@ void ToyMode::update()
                 takeoff_init = true;
                 takeoff_init_ms = AP_HAL::millis();
                 copter.set_auto_armed(true);
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff initialised");
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff arm");
             }
         } else if (old_mode == RTL) {
             // switch between RTL and LOITER when in GPS modes
@@ -855,38 +855,22 @@ void ToyMode::action_arm(void)
 void ToyMode::throttle_adjust(float &throttle_control)
 {
     uint32_t now = AP_HAL::millis();
-
-    if (takeoff_started_ms != 0 &&
-        fabsf(throttle_control - throttle_mid) > copter.g.throttle_deadzone) {
-        // pilot has taken over throttle on takeoff
-        takeoff_started_ms = 0;
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: pilot cancel takeoff");
-    }
-
     /*
-      implement delay on auto-takeoff to allow initialisations to complete
+      implement auto-takeoff
     */
     const uint16_t takeoff_delay_ms = 1000;
+    const float takeoff_alt_cm = 100;
     if (takeoff_init) {
-        // allow some  delay
+        // allow some delay before auto-takeoff to allow initialisations after arming to complete
         if (now - takeoff_init_ms > takeoff_delay_ms) {
-            takeoff_started_ms = now;
+            copter.takeoff_timer_start(takeoff_alt_cm);
+            // indicate we are taking off
+            copter.set_land_complete(false);
+            // clear i terms
+            copter.set_throttle_takeoff();
             takeoff_init = false;
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: takeoff started");
         }
-    }
-
-    /*
-        implement auto-takeoff action
-    */
-    const float takeoff_throttle_cmd = 700.0f;
-    const uint16_t takeoff_time_ms = 1500;
-    if (now - takeoff_started_ms < takeoff_time_ms) {
-        throttle_control = takeoff_throttle_cmd;
-        return;
-    } else if (takeoff_started_ms != 0) {
-        takeoff_started_ms = 0;
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Tmode: finished takeoff");
     }
 
     /*
