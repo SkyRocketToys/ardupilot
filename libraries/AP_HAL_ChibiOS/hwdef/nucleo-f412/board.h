@@ -103,6 +103,8 @@
   PA5 -- RADIO SCK
   PA7 -- RADIO MOSI
   PA11 -- GPS TX
+  PA13 -- SWDIO
+  PA14 -- SWCLK
  */
 
 #define VAL_GPIOA_MODER             (PIN_MODE_INPUT(0U) |  \
@@ -118,8 +120,8 @@
                                      PIN_MODE_INPUT(10U) |     \
                                      PIN_MODE_ALTERNATE(11U) |     \
                                      PIN_MODE_INPUT(12U) |     \
-                                     PIN_MODE_INPUT(13U) |      \
-                                     PIN_MODE_INPUT(14U) |      \
+                                     PIN_MODE_ALTERNATE(13U) |      \
+                                     PIN_MODE_ALTERNATE(14U) |      \
                                      PIN_MODE_INPUT(15U))
 #define VAL_GPIOA_OTYPER            (PIN_OTYPE_PUSHPULL(0U) |    \
                                      PIN_OTYPE_PUSHPULL(1U) |       \
