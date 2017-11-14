@@ -15,7 +15,7 @@ using namespace ChibiOS;
 #endif
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SD2, false, false,
+    {(BaseSequentialStream*) &SD2, false, true,
       STM32_UART_USART2_RX_DMA_STREAM, 
       STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM, STM32_USART2_RX_DMA_CHN)
     },   //Serial 0
