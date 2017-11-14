@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef CHCONF_H
-#define CHCONF_H
+#pragma once
 
 #define _CHIBIOS_RT_CONF_
 
@@ -337,7 +336,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_ENABLE_CHECKS                FALSE
+#define CH_DBG_ENABLE_CHECKS                TRUE
 
 /**
  * @brief   Debug option, consistency checks.
@@ -347,7 +346,7 @@
  *
  * @note    The default is @p FALSE.
  */
-#define CH_DBG_ENABLE_ASSERTS               FALSE
+#define CH_DBG_ENABLE_ASSERTS               TRUE
 
 /**
  * @brief   Debug option, trace buffer.
@@ -355,7 +354,7 @@
  *
  * @note    The default is @p CH_DBG_TRACE_MASK_DISABLED.
  */
-#define CH_DBG_TRACE_MASK                   CH_DBG_TRACE_MASK_DISABLED
+#define CH_DBG_TRACE_MASK                   CH_DBG_TRACE_MASK_NONE
 
 /**
  * @brief   Trace buffer entries.
@@ -515,6 +514,5 @@
 /* Port-specific settings (override port settings defaulted in chcore.h).    */
 /*===========================================================================*/
 
-#endif  /* CHCONF_H */
 
 /** @} */

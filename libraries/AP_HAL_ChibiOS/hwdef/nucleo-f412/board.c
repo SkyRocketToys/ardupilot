@@ -80,6 +80,11 @@ void __early_init(void) {
   stm32_clock_init();
 }
 
+void __late_init(void) {
+  halInit();
+  chSysInit();
+}
+
 #if HAL_USE_SDC || defined(__DOXYGEN__)
 /**
  * @brief   SDC card detection.

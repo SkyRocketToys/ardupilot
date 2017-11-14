@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -Os -g -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -Os -g -fomit-frame-pointer -falign-functions=16  -DCHPRINTF_USE_FLOAT=1
 endif
 
 # C specific options here (added to USE_OPT).
@@ -99,6 +99,11 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 # Other files (optional).
 #include $(CHIBIOS)/test/rt/test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+#include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
+
+VARIOUSSRC = $(STREAMSSRC)
+
+VARIOUSINC = $(STREAMSINC)
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -108,10 +113,13 @@ CSRC = $(STARTUPSRC) \
        $(OSALSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
+       $(VARIOUSSRC) \
+	   $(HWDEF)/common/stubs.c \
 	   $(HWDEF)/nucleo-f412/board.c \
 	   $(HWDEF)/common/ppm.c \
 	   $(HWDEF)/common/flash.c \
-	   $(HWDEF)/common/stubs.c \
+	   $(HWDEF)/common/malloc.c \
+	   $(HWDEF)/common/stdio.c \
 	   $(HWDEF)/common/hrt.c
 #	   $(HWDEF)/common/usbcfg.c \
 #	   $(TESTSRC) \
@@ -147,7 +155,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
 INCDIR = $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
-         $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
+         $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) $(VARIOUSINC) \
 		 $(HWDEF)/common $(HWDEF)/nucleo-f412
 
 #
