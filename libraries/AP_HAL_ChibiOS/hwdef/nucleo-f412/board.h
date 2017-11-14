@@ -58,7 +58,7 @@
 /*
  * MCU type as defined in the ST header.
  */
-#define STM32F412Zx
+#define STM32F412Rx
 
 /*
  * APM HW Defines
