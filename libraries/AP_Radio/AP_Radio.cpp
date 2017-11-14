@@ -16,7 +16,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Description: This enables support for direct attached radio receivers
     // @Values: 0:None,1:CYRF6936
     // @User: Advanced
-    AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, 1),
+    AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, 0),
 
     // @Param: _PROT
     // @DisplayName: protocol
