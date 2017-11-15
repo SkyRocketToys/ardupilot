@@ -91,7 +91,6 @@ include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.m
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
-#include $(CHIBIOS)/os/hal/boards/ST_NUCLEO144_F412ZG/board.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
@@ -115,7 +114,7 @@ CSRC = $(STARTUPSRC) \
        $(PLATFORMSRC) \
        $(VARIOUSSRC) \
 	   $(HWDEF)/common/stubs.c \
-	   $(HWDEF)/nucleo-f412/board.c \
+	   $(HWDEF)/skyviper-f412/board.c \
 	   $(HWDEF)/common/ppm.c \
 	   $(HWDEF)/common/flash.c \
 	   $(HWDEF)/common/malloc.c \
@@ -156,7 +155,7 @@ ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 INCDIR = $(CHIBIOS)/os/license \
          $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) $(VARIOUSINC) \
-		 $(HWDEF)/common $(HWDEF)/nucleo-f412
+		 $(HWDEF)/common $(HWDEF)/skyviper-f412
 
 #
 # Project, sources and paths

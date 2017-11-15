@@ -18,14 +18,14 @@
 #define _BOARD_H_
 
 /*
- * Setup for STMicroelectronics STM32 Nucleo144-F412ZG board.
+ * Setup for STMicroelectronics STM32 F412 SkyViper board.
  */
 
 /*
  * Board identifier.
  */
-#define BOARD_ST_NUCLEO144_F412ZG
-#define BOARD_NAME                  "STMicroelectronics STM32 Nucleo144-F412ZG"
+#define BOARD_ST_SKYVIPER_F412
+#define BOARD_NAME                  "STMicroelectronics STM32 SkyViperF412"
 /*
  * APM HW Defines
  */

@@ -23,7 +23,7 @@ static ChibiUARTDriver::SerialDef _serial_tab[] = {
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
     {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 1
     {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 2
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
     {(BaseSequentialStream*) &SD6, false, false, 0, 0},   //Serial 1
 #endif
 };
