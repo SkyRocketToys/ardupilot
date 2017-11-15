@@ -31,6 +31,7 @@
 #define SPIDEV_EXT_LSM9DS0_G    7
 #define SPIDEV_EXT_LSM9DS0_AM   8
 #define SPIDEV_CYRF             9
+#define SPIDEV_FLOW             10
 
 #define SPIDEV_MODE0    0
 #define SPIDEV_MODE1    SPI_CR1_CPHA
