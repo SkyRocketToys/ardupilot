@@ -213,19 +213,21 @@
    PB13 -- MPU CLK
    PB14 -- MPU MISO
    PB15 -- MPU MOSI
+   PB3  -- I2C2 SDA
+   PB10 -- I2C2 SCL
  */
 
 #define VAL_GPIOB_MODER             (PIN_MODE_INPUT(0U) |  \
                                      PIN_MODE_INPUT(1U) |  \
                                      PIN_MODE_INPUT(2U) |      \
-                                     PIN_MODE_INPUT(3U) |         \
+                                     PIN_MODE_ALTERNATE(3U) |         \
                                      PIN_MODE_ALTERNATE(4U) |        \
                                      PIN_MODE_ALTERNATE(5U) |    \
                                      PIN_MODE_INPUT(6U) |    \
                                      PIN_MODE_INPUT(7U) |    \
                                      PIN_MODE_ALTERNATE(8U) |    \
                                      PIN_MODE_ALTERNATE(9U) |      \
-                                     PIN_MODE_INPUT(10U) |     \
+                                     PIN_MODE_ALTERNATE(10U) |     \
                                      PIN_MODE_INPUT(11U) |     \
                                      PIN_MODE_INPUT(12U) |     \
                                      PIN_MODE_ALTERNATE(13U) |      \
@@ -298,14 +300,14 @@
 #define VAL_GPIOB_AFRL              (PIN_AFIO_AF(0U, 0U) |        \
                                      PIN_AFIO_AF(1U, 0U) |           \
                                      PIN_AFIO_AF(2U, 0U) |         \
-                                     PIN_AFIO_AF(3U, 0U) |         \
+                                     PIN_AFIO_AF(3U, 9U) |         \
                                      PIN_AFIO_AF(4U, 5U) |        \
                                      PIN_AFIO_AF(5U, 2U) |        \
                                      PIN_AFIO_AF(6U, 0U) |        \
                                      PIN_AFIO_AF(7U, 0U))
 #define VAL_GPIOB_AFRH              (PIN_AFIO_AF(8U, 4U) |       \
                                      PIN_AFIO_AF(9U, 4U) |       \
-                                     PIN_AFIO_AF(10U, 0U) |        \
+                                     PIN_AFIO_AF(10U, 4U) |        \
                                      PIN_AFIO_AF(11U, 0U) |        \
                                      PIN_AFIO_AF(12U, 0U) |        \
                                      PIN_AFIO_AF(13U, 5U) |          \
