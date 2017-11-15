@@ -1,10 +1,10 @@
 {
     "board_id": 7,
-    "magic": "NucleoF412",
-    "description": "Firmware for the NucleoF412 board",
+    "magic": "SkyViperF412",
+    "description": "Firmware for the SkyViperF412 board",
     "image": "",
     "build_time": 0,
-    "summary": "NucleoF412",
+    "summary": "SkyViperF412",
     "version": "0.1",
     "image_size": 0,
     "git_identity": "",

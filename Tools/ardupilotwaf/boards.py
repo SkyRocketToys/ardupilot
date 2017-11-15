@@ -346,14 +346,14 @@ class chibios(Board):
         super(chibios, self).build(bld)
         bld.load('chibios')
 
-class nucleo_f412(chibios):
-    name = 'nucleo-f412'
+class skyviper_f412(chibios):
+    name = 'skyviper-f412'
     def configure_env(self, cfg, env):
-        super(nucleo_f412, self).configure_env(cfg, env)
+        super(skyviper_f412, self).configure_env(cfg, env)
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412',
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412',
         )
-        env.BOARD = 'nucleo-f412'
+        env.BOARD = 'skyviper-f412'
         env.LINKFLAGS += [
                     '-L%s'\
                     % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
