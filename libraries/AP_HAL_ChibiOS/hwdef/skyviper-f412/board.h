@@ -32,7 +32,7 @@
 
 #define HRT_TIMER GPTD5
 
-#define HAL_STDOUT_SERIAL SD3
+#define HAL_STDOUT_SERIAL SD2
 #define HAL_STDOUT_BAUDRATE 115200
 
 /*
@@ -105,6 +105,11 @@
   PA11 -- GPS TX
   PA13 -- SWDIO
   PA14 -- SWCLK
+  PA9 -- OF NRESET
+  PA8 -- OF MOTION
+  PA10 -- OF MOSI
+  PA12 -- OF MISO
+  PA15 -- RADIO nCS
  */
 
 #define VAL_GPIOA_MODER             (PIN_MODE_INPUT(0U) |  \
@@ -116,13 +121,13 @@
                                      PIN_MODE_INPUT(6U) |    \
                                      PIN_MODE_ALTERNATE(7U) |    \
                                      PIN_MODE_INPUT(8U) |    \
-                                     PIN_MODE_INPUT(9U) |      \
-                                     PIN_MODE_INPUT(10U) |     \
+                                     PIN_MODE_OUTPUT(9U) |      \
+                                     PIN_MODE_ALTERNATE(10U) |     \
                                      PIN_MODE_ALTERNATE(11U) |     \
-                                     PIN_MODE_INPUT(12U) |     \
+                                     PIN_MODE_ALTERNATE(12U) |     \
                                      PIN_MODE_ALTERNATE(13U) |      \
                                      PIN_MODE_ALTERNATE(14U) |      \
-                                     PIN_MODE_INPUT(15U))
+                                     PIN_MODE_OUTPUT(15U))
 #define VAL_GPIOA_OTYPER            (PIN_OTYPE_PUSHPULL(0U) |    \
                                      PIN_OTYPE_PUSHPULL(1U) |       \
                                      PIN_OTYPE_PUSHPULL(2U) |     \
@@ -164,13 +169,13 @@
                                      PIN_PUPDR_FLOATING(6U) |      \
                                      PIN_PUPDR_FLOATING(7U) |      \
                                      PIN_PUPDR_FLOATING(8U) |    \
-                                     PIN_PUPDR_FLOATING(9U) |   \
+                                     PIN_PUPDR_PULLUP(9U) |   \
                                      PIN_PUPDR_FLOATING(10U) |     \
                                      PIN_PUPDR_PULLUP(11U) |     \
                                      PIN_PUPDR_FLOATING(12U) |     \
                                      PIN_PUPDR_FLOATING(13U) |      \
                                      PIN_PUPDR_FLOATING(14U) |      \
-                                     PIN_PUPDR_FLOATING(15U))
+                                     PIN_PUPDR_PULLUP(15U))
 #define VAL_GPIOA_ODR               (PIN_ODR_HIGH(0U) |          \
                                      PIN_ODR_HIGH(1U) |             \
                                      PIN_ODR_HIGH(2U) |           \
@@ -197,9 +202,9 @@
                                      PIN_AFIO_AF(7U, 5U))
 #define VAL_GPIOA_AFRH              (PIN_AFIO_AF(8U, 0U) |       \
                                      PIN_AFIO_AF(9U, 0U) |       \
-                                     PIN_AFIO_AF(10U, 0U) |        \
+                                     PIN_AFIO_AF(10U, 6U) |        \
                                      PIN_AFIO_AF(11U, 8U) |        \
-                                     PIN_AFIO_AF(12U, 0U) |        \
+                                     PIN_AFIO_AF(12U, 6U) |        \
                                      PIN_AFIO_AF(13U, 0U) |          \
                                      PIN_AFIO_AF(14U, 0U) |          \
                                      PIN_AFIO_AF(15U, 0U))
@@ -210,15 +215,18 @@
    PB8 -- MPU SCL
    PB5 -- PWM2
    PB4 -- RADIO MISO
+   PB12 -- MPU nCS
    PB13 -- MPU CLK
    PB14 -- MPU MISO
    PB15 -- MPU MOSI
    PB3  -- I2C2 SDA
    PB10 -- I2C2 SCL
+   PB0 -- OF SCK
+   PB1 -- OF nCS
  */
 
-#define VAL_GPIOB_MODER             (PIN_MODE_INPUT(0U) |  \
-                                     PIN_MODE_INPUT(1U) |  \
+#define VAL_GPIOB_MODER             (PIN_MODE_ALTERNATE(0U) |  \
+                                     PIN_MODE_OUTPUT(1U) |  \
                                      PIN_MODE_INPUT(2U) |      \
                                      PIN_MODE_ALTERNATE(3U) |         \
                                      PIN_MODE_ALTERNATE(4U) |        \
@@ -229,7 +237,7 @@
                                      PIN_MODE_ALTERNATE(9U) |      \
                                      PIN_MODE_ALTERNATE(10U) |     \
                                      PIN_MODE_INPUT(11U) |     \
-                                     PIN_MODE_INPUT(12U) |     \
+                                     PIN_MODE_OUTPUT(12U) |     \
                                      PIN_MODE_ALTERNATE(13U) |      \
                                      PIN_MODE_ALTERNATE(14U) |      \
                                      PIN_MODE_ALTERNATE(15U))
@@ -266,7 +274,7 @@
                                      PIN_OSPEED_MEDIUM(14U) |         \
                                      PIN_OSPEED_MEDIUM(15U))
 #define VAL_GPIOB_PUPDR             (PIN_PUPDR_FLOATING(0U) |      \
-                                     PIN_PUPDR_FLOATING(1U) |         \
+                                     PIN_PUPDR_PULLUP(1U) |         \
                                      PIN_PUPDR_FLOATING(2U) |       \
                                      PIN_PUPDR_FLOATING(3U) |       \
                                      PIN_PUPDR_FLOATING(4U) |      \
@@ -277,7 +285,7 @@
                                      PIN_PUPDR_FLOATING(9U) |   \
                                      PIN_PUPDR_FLOATING(10U) |     \
                                      PIN_PUPDR_FLOATING(11U) |     \
-                                     PIN_PUPDR_FLOATING(12U) |     \
+                                     PIN_PUPDR_PULLUP(12U) |     \
                                      PIN_PUPDR_FLOATING(13U) |      \
                                      PIN_PUPDR_FLOATING(14U) |      \
                                      PIN_PUPDR_FLOATING(15U))
@@ -297,7 +305,7 @@
                                      PIN_ODR_HIGH(13U) |            \
                                      PIN_ODR_HIGH(14U) |            \
                                      PIN_ODR_HIGH(15U))
-#define VAL_GPIOB_AFRL              (PIN_AFIO_AF(0U, 0U) |        \
+#define VAL_GPIOB_AFRL              (PIN_AFIO_AF(0U, 6U) |        \
                                      PIN_AFIO_AF(1U, 0U) |           \
                                      PIN_AFIO_AF(2U, 0U) |         \
                                      PIN_AFIO_AF(3U, 9U) |         \
