@@ -499,7 +499,7 @@ void AP_Baro::init(void)
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
         ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
                                             std::move(hal.i2c_mgr->get_device(1, 0x63))));
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_NUCLEO_F412
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
         ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
                                             std::move(hal.i2c_mgr->get_device(1, 0x63))));
 #endif
