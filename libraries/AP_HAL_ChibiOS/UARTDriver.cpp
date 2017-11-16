@@ -121,11 +121,11 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
             //setup Rx DMA
             if(!was_initialised && _dma_rx) {
                 rxdma = STM32_DMA_STREAM(_serial_tab[_serial_num].dma_stream_id);
-                bool b = dmaStreamAllocate(rxdma,
-                                           0,
+                bool dma_allocated = dmaStreamAllocate(rxdma,
+                                           12,  //IRQ Priority
                                            (stm32_dmaisr_t)rxbuff_full_irq,
                                            (void *)this);
-                osalDbgAssert(!b, "stream already allocated");
+                osalDbgAssert(!dma_allocated, "stream already allocated");
                 dmaStreamSetPeripheral(rxdma, &((SerialDriver*)_serial)->usart->DR);
             }
             sercfg.speed = _baudrate;
@@ -184,7 +184,10 @@ void ChibiUARTDriver::rx_irq_cb(void* self)
 void ChibiUARTDriver::rxbuff_full_irq(void* self, uint32_t flags)
 {
     ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
-    if (!uart_drv->_dma_rx) {
+    if (uart_drv->_lock_rx_in_timer_tick) {
+        return;
+    }
+   if (!uart_drv->_dma_rx) {
         return;
     }
     uint8_t len = RX_BOUNCE_BUFSIZE - uart_drv->rxdma->stream->NDTR;
@@ -349,6 +352,24 @@ void ChibiUARTDriver::_timer_tick(void)
     uint32_t n;
 
     if (!_initialised) return;
+    if (_dma_rx) {
+        _lock_rx_in_timer_tick = true;
+        //Check if DMA is enabled
+        //if not, it might be because the DMA interrupt was silenced
+        //let's handle that here so that we can continue receiving
+        if (!(rxdma->stream->CR & STM32_DMA_CR_EN)) {
+            uint8_t len = RX_BOUNCE_BUFSIZE - rxdma->stream->NDTR;
+            if (len != 0) {
+                _readbuf.write(rx_bounce_buf, len);
+            }
+            //DMA disabled by idle interrupt never got a chance to be handled
+            //we will enable it here
+            dmaStreamSetMemory0(rxdma, rx_bounce_buf);
+            dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
+            dmaStreamEnable(rxdma);
+        }
+        _lock_rx_in_timer_tick = false;
+    }
 
     // don't try IO on a disconnected USB port
     if (_is_usb) {

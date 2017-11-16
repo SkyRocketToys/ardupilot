@@ -51,6 +51,7 @@ private:
     bool _in_timer;
     bool _nonblocking_writes;
     bool _initialised;
+    bool _lock_rx_in_timer_tick = false;
     static void rx_irq_cb(void* sd);
     static void rxbuff_full_irq(void* self, uint32_t flags);
 };
