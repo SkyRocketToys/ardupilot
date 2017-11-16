@@ -21,11 +21,17 @@ static ChibiUARTDriver::SerialDef _serial_tab[] = {
     },   //Serial 0
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
-    {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 1
-    {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 2
+    {(BaseSequentialStream*) &SD4, false, false, 0, 0},   //Serial 1, GPS
+    {(BaseSequentialStream*) &SDU1, true, false, 0, 0},   //Serial 2, USB
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
-    {(BaseSequentialStream*) &SD6, false, false, 0, 0},   //Serial 1
-    {(BaseSequentialStream*) &SD3, false, false, 0, 0},   //Serial 2
+    {(BaseSequentialStream*) &SD6, false, true,
+     STM32_UART_USART6_RX_DMA_STREAM, 
+     STM32_DMA_GETCHANNEL(STM32_UART_USART6_RX_DMA_STREAM, STM32_USART6_RX_DMA_CHN)
+    },   //Serial 1, GPS
+    {(BaseSequentialStream*) &SD3, false, true,
+     STM32_UART_USART3_RX_DMA_STREAM, 
+     STM32_DMA_GETCHANNEL(STM32_UART_USART3_RX_DMA_STREAM, STM32_USART3_RX_DMA_CHN)
+    },   //Serial 2, Sonix
 #endif
 };
 
