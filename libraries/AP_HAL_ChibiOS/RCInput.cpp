@@ -10,12 +10,6 @@ void ChibiRCInput::init()
 {
     ppm_init(1000000, true);
     chMtxObjectInit(&rcin_mutex);
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
-    radio = AP_Radio::instance();
-    if (radio) {
-        radio->init();
-    }
-#endif
     _init = true;
 }
 
@@ -35,6 +29,15 @@ bool ChibiRCInput::new_input()
     _override_valid = false;
     chMtxUnlock(&rcin_mutex);
 
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (!_radio_init) {
+        _radio_init = true;
+        radio = AP_Radio::instance();
+        if (radio) {
+            radio->init();
+        }
+    }
+#endif    
     return valid;
 }
 
