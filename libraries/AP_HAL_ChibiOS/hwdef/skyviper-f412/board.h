@@ -331,13 +331,14 @@
     PC9  -- PWM3
     PC10 -- EXT TX
     PC11 -- EXT RX
+    PC4 -- RADIO CE
  */
 
 #define VAL_GPIOC_MODER             (PIN_MODE_INPUT(0U) |  \
                                      PIN_MODE_INPUT(1U) |  \
                                      PIN_MODE_INPUT(2U) |      \
                                      PIN_MODE_INPUT(3U) |         \
-                                     PIN_MODE_INPUT(4U) |        \
+                                     PIN_MODE_OUTPUT(4U) |        \
                                      PIN_MODE_INPUT(5U) |    \
                                      PIN_MODE_ALTERNATE(6U) |    \
                                      PIN_MODE_ALTERNATE(7U) |    \
@@ -385,7 +386,7 @@
                                      PIN_PUPDR_FLOATING(1U) |         \
                                      PIN_PUPDR_FLOATING(2U) |       \
                                      PIN_PUPDR_FLOATING(3U) |       \
-                                     PIN_PUPDR_FLOATING(4U) |      \
+                                     PIN_PUPDR_PULLUP(4U) |      \
                                      PIN_PUPDR_FLOATING(5U) |      \
                                      PIN_PUPDR_PULLDOWN(6U) |      \
                                      PIN_PUPDR_PULLUP(7U) |      \
