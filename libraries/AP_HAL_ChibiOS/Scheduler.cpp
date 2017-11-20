@@ -68,7 +68,9 @@ void ChibiScheduler::delay_microseconds(uint16_t usec)
  */
 static void set_high_priority()
 {
+#if APM_MAIN_PRIORITY_BOOST != APM_MAIN_PRIORITY
     hal_chibios_set_priority(APM_MAIN_PRIORITY_BOOST);
+#endif
 }
 
 /*
@@ -76,7 +78,9 @@ static void set_high_priority()
  */
 static void set_normal_priority()
 {
+#if APM_MAIN_PRIORITY_BOOST != APM_MAIN_PRIORITY
     hal_chibios_set_priority(APM_MAIN_PRIORITY);
+#endif
 }
 
 /*

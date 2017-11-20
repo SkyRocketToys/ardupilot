@@ -6,7 +6,7 @@
 
 #define CHIBIOS_SCHEDULER_MAX_TIMER_PROCS 8
 
-#define APM_MAIN_PRIORITY_BOOST 241
+#define APM_MAIN_PRIORITY_BOOST 180 // same as normal for now
 #define APM_MAIN_PRIORITY       180
 #define APM_TIMER_PRIORITY      181
 #define APM_SPI_PRIORITY        242
