@@ -459,13 +459,18 @@ void ToyMode::update()
     */
     switch (copter.ap.home_state) {
     case HOME_UNSET:
+    
+        if (best_est_home_loc_stored) {
+            // if the best estimate of the home location was already stored then break
+             break;
+        }
 
         if (!copter.motors->armed()) { 
             // we only reset home at takeoff/while flying
             break;
         }
 
-        if(copter.ekf_position_ok()) {
+        if (copter.ekf_position_ok()) {
             // assume EKF has already set home
             break;
         }
@@ -482,47 +487,45 @@ void ToyMode::update()
              break;
         } 
 
-        if(toy_horizontal_acc > 15.0f) {
+        if (toy_horizontal_acc > 15.0f) {
             // need to know position to within 15m before we can use it as home
             break;
         }
-
-        indoor_loc = copter.gps.location();
-        // set height above arming
-        indoor_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
-        copter.ahrs.set_home(indoor_loc);
-        copter.set_home_state(HOME_SET_NOT_LOCKED);
-        indoor_loc_set = true;
-        // send home location to GCS
-        GCS_MAVLINK::send_home_all(indoor_loc);
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: set home with hacc: %.2f", toy_horizontal_acc);
-
+        
+        if (!best_est_home_loc_stored) {
+            // store current location as best estimate of home location
+            best_est_home_loc = copter.gps.location();
+            best_est_home_loc_stored = true;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: home loc stored with hacc: %.2f", toy_horizontal_acc);
+        }
+        
         break;
     case HOME_SET_NOT_LOCKED:
-        // as soon as EKF is happy and indoor_loc_set was set to true then reset the altitude based on origin but retain the original lat lng during flight
-        if (!copter.motors->armed() ) {
+        // as soon as EKF is happy and best_est_home_loc_stored was set to true then set the altitude based on origin and the lat lng on best_est_home_loc
+        if (!copter.motors->armed()) {
             // we only reset home at takeoff/while flying
             break;
         }
+        
         if (!copter.ekf_position_ok()) {
             // we still don't know where we are
             break;
         }
 
-        if(!indoor_loc_set) {
-            // we weren't the one that moved home into this state - so we can't
-
-            // trust indoor_loc
+        if (!best_est_home_loc_stored) {
+            // we weren't the one that moved home into this state - so we can't 
+            
+            // if best_home_est_loc_stored was not set to true it assumes that home loc was set before arm by EKF
             break;
         } else {
-            //reset home altitude
+            // reset home altitude
             const struct Location &ekf_origin = copter.inertial_nav.get_origin();
-            indoor_loc.alt = ekf_origin.alt;
-            // setting home state to HOME_SET_AND_LOCKED
-            copter.set_home(indoor_loc,true);
+            best_est_home_loc.alt = ekf_origin.alt;
+            // set home state to HOME_SET_AND_LOCKED
+            copter.set_home(best_est_home_loc,true);
             // send home location to GCS
-            GCS_MAVLINK::send_home_all(indoor_loc);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: IM: EKF OK reset altitude in flight");
+            GCS_MAVLINK::send_home_all(best_est_home_loc);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: EKF OK: set home loc to best est");
         }
         break;
         

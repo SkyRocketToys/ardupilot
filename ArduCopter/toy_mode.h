@@ -126,8 +126,8 @@ private:
     uint32_t reset_turtle_start_ms;
 
     //for storing location in indoor mode
-    Location indoor_loc;
-    bool indoor_loc_set = false;
+    Location best_est_home_loc;
+    bool best_est_home_loc_stored = false;
 
     // time when we were last told we are recording video
     uint32_t last_video_ms;
