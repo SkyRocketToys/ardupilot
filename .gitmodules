@@ -21,4 +21,4 @@
 	url = git://github.com/ArduPilot/googletest
 [submodule "modules/ChibiOS"]
 	path = modules/ChibiOS
-	url = https://github.com/bugobliterator/chibios
+	url = https://github.com/ArduPilot/ChibiOS
