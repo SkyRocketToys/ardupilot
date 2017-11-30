@@ -121,6 +121,9 @@ CFLAGS    = $(MCFLAGS) $(OPT) $(COPT) $(CWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:
 CPPFLAGS  = $(MCFLAGS) $(OPT) $(CPPOPT) $(CPPWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.cpp=.lst)) $(DEFS)
 LDFLAGS   = $(MCFLAGS) $(OPT) -nostartfiles $(LLIBDIR) -Wl,-Map=$(BUILDDIR)/$(PROJECT).map,--cref,--no-warn-mismatch,--library-path=$(RULESPATH)/ld,--script=$(LDSCRIPT)$(LDOPT)
 
+# provide a marker for ArduPilot build options in ChibiOS
+CFLAGS    += -D_ARDUPILOT_
+
 # Thumb interwork enabled only if needed because it kills performance.
 ifneq ($(strip $(TSRC)),)
   CFLAGS   += -DTHUMB_PRESENT
