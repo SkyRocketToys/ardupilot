@@ -32,6 +32,16 @@ void Copter::set_home_to_current_location_inflight() {
         const struct Location &ekf_origin = inertial_nav.get_origin();
         temp_loc.alt = ekf_origin.alt;
         set_home(temp_loc, false);
+    
+    // get current location from toy mode
+    } else if (g2.toy_mode.get_home_estimate(temp_loc)) {
+        temp_loc.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
+        ahrs.set_home(temp_loc);
+        set_home_state(HOME_SET_NOT_LOCKED);
+        
+        //send home location to GCS
+        GCS_MAVLINK::send_home_all(temp_loc);
+        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode:IF: home set by TMODE");
     }
 }
 

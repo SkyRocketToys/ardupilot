@@ -455,83 +455,68 @@ void ToyMode::update()
     }
 
     /*
-    * attempt to improve the setting of home location sooner
+    * attempt to improve the setting of home location sooner when disarmed
     */
-    switch (copter.ap.home_state) {
-    case HOME_UNSET:
-    
-        if (best_est_home_loc_stored) {
-            // if the best estimate of the home location was already stored then break
-             break;
-        }
-
-        if (!copter.motors->armed()) { 
-            // we only reset home at takeoff/while flying
-            break;
-        }
-
-        if (copter.ekf_position_ok()) {
-            // assume EKF has already set home
-            break;
-        }
-
-        if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) {
-            // GPS fix is not currently good enough
-            break;
-        }
-
-        // acquire horizontal accuracy
-        float toy_horizontal_acc;
-        if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
-             // not getting hacc is a serious issue....
-             break;
-        } 
-
-        if (toy_horizontal_acc > 15.0f) {
-            // need to know position to within 15m before we can use it as home
-            break;
-        }
-        
-        if (!best_est_home_loc_stored) {
-            // store current location as best estimate of home location
-            best_est_home_loc = copter.gps.location();
-            best_est_home_loc_stored = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: home loc stored with hacc: %.2f", toy_horizontal_acc);
-        }
-        
-        break;
-    case HOME_SET_NOT_LOCKED:
-        // as soon as EKF is happy and best_est_home_loc_stored was set to true then set the altitude based on origin and the lat lng on best_est_home_loc
-        if (!copter.motors->armed()) {
-            // we only reset home at takeoff/while flying
-            break;
-        }
-        
-        if (!copter.ekf_position_ok()) {
-            // we still don't know where we are
-            break;
-        }
-
-        if (!best_est_home_loc_stored) {
-            // we weren't the one that moved home into this state - so we can't 
-            
-            // if best_home_est_loc_stored was not set to true it assumes that home loc was set before arm by EKF
-            break;
-        } else {
-            // reset home altitude
-            const struct Location &ekf_origin = copter.inertial_nav.get_origin();
-            best_est_home_loc.alt = ekf_origin.alt;
-            // set home state to HOME_SET_AND_LOCKED
-            copter.set_home(best_est_home_loc,true);
-            // send home location to GCS
-            GCS_MAVLINK::send_home_all(best_est_home_loc);
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: EKF OK: set home loc to best est");
-        }
-        break;
-        
-    default:
-        break;
-    }
+    //switch (copter.ap.home_state) {
+    //case HOME_UNSET:
+    //    if (copter.motors->armed()) { 
+    //        // try to set best est home loc only when copter is disarmed
+    //        break;
+    //    }
+    //
+    //    if (tmode_best_est_home_set) {
+    //        // if the best estimate of the home location was already set then exit
+    //        break;
+    //    }
+    //
+    //    if (copter.ekf_position_ok()) {
+    //        // assume EKF has already set home
+    //        break;
+    //    }
+    //
+    //    if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) {
+    //        // GPS fix is not currently good enough
+    //        break;
+    //    }
+    //
+    //    // acquire horizontal accuracy
+    //    float toy_horizontal_acc;
+    //    if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
+    //         // not getting hacc is a serious issue....
+    //         break;
+    //    } 
+    //
+    //    if (toy_horizontal_acc > 15.0f) {
+    //        // need to know position to within 15m before we can use it as home
+    //        break;
+    //    }
+    //    
+    //    // set best estimated home loc once after power up
+    //    if (!tmode_best_est_home_set) {
+    //        // set current location as best estimate of home location and set home location
+    //        tmode_best_est_home = copter.gps.location();
+    //        // set hight above arming
+    //        tmode_best_est_home.alt = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
+    //        copter.ahrs.set_home(tmode_best_est_home);
+    //        copter.set_home_state(HOME_SET_NOT_LOCKED);
+    //        tmode_best_est_home_set = true;
+    //        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: home loc set with hacc: %.2f", toy_horizontal_acc);
+    //        
+    //        // send home location to GCS
+    //        GCS_MAVLINK::send_home_all(tmode_best_est_home);
+    //    }        
+    //    break;
+    //    
+    //case HOME_SET_NOT_LOCKED:
+    //
+    //    // if home was set when it was disarmed
+    //    
+    //
+    //break;
+    //
+    //default:
+    //    break;
+    //}
 
     if (upgrade_to_loiter) {
         if (!copter.motors->armed() || copter.control_mode != get_non_gps_mode()) {
@@ -798,7 +783,6 @@ void ToyMode::trim_update(void)
         return;
     }
 
-    
     for (uint8_t i=0; i<4; i++) {
         if (abs(trim.chan[i] - chan[i]) > noise_limit) {
             // detected stick movement
@@ -988,15 +972,15 @@ void ToyMode::blink_update(void)
     if (copter.motors->armed() && AP_Notify::flags.failsafe_battery) {
         pattern = BLINK_8;
     } else if (!copter.motors->armed() && (blink_disarm > 0)) {
-		pattern = BLINK_8;
-		blink_disarm--;
-	} else {
+        pattern = BLINK_8;
+        blink_disarm--;
+    } else {
         pattern = BLINK_FULL;
     }
     
     if (copter.motors->armed()) {
-		blink_disarm = 4;
-	}
+        blink_disarm = 4;
+    }
     
     if (red_blink_count == 0) {
         red_blink_pattern = pattern;
@@ -1198,6 +1182,46 @@ void ToyMode::check_mag_field_takeoff(void)
     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: mag field OK");
     copter.compass.set_learn_type(Compass::LEARN_EKF, false);    
 }
+
+bool ToyMode::get_home_estimate(Location &best_est_home_loc)
+{
+    /*
+    * attempt to improve the setting of home location sooner in flight
+    */
+    if (copter.ekf_position_ok()) {
+        // assume EKF has already set home
+        return false;
+    }
+
+    if (copter.gps.status() < AP_GPS::GPS_OK_FIX_3D) {
+        // GPS fix is not currently good enough
+        return false;;
+    }
+
+    // acquire horizontal accuracy
+    float toy_horizontal_acc;
+    if (!copter.gps.horizontal_accuracy(toy_horizontal_acc)) {
+        // not getting hacc is a serious issue....
+        return false;
+    } 
+
+    if (toy_horizontal_acc > 15.0f) {
+        // need to know position to within 15m before we can use it as home
+        return false;
+    }
+    
+    // return current location as best estimate of home location
+    best_est_home_loc = copter.gps.location();
+    //GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode:IF: home loc set with hacc: %.2f", toy_horizontal_acc);
+
+    // check location is valid
+    if (best_est_home_loc.lat == 0 && best_est_home_loc.lng == 0) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
 
 #endif // TOY_MODE_ENABLED
 

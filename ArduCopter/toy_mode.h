@@ -29,6 +29,8 @@ public:
     void handle_message(mavlink_message_t *msg);
 
     void load_test_run(void);
+    
+    bool get_home_estimate(Location &best_est_home_loc);
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -126,8 +128,8 @@ private:
     uint32_t reset_turtle_start_ms;
 
     //for storing location in indoor mode
-    Location best_est_home_loc;
-    bool best_est_home_loc_stored = false;
+    Location tmode_best_est_home;
+    bool tmode_best_est_home_set = false;
 
     // time when we were last told we are recording video
     uint32_t last_video_ms;
