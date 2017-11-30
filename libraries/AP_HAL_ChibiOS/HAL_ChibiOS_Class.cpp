@@ -81,8 +81,11 @@ thread_t* get_main_thread()
  */
 static void loop_overtime(void *)
 {
+#if 0
+    // disabled due to locking issue. When this fires we get an assert. 
     hal_chibios_set_priority(APM_OVERTIME_PRIORITY);
     chibios_ran_overtime = true;
+#endif
 }
 
 static AP_HAL::HAL::Callbacks* g_callbacks;
