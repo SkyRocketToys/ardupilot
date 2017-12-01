@@ -29,7 +29,7 @@ public:
     void handle_message(mavlink_message_t *msg);
 
     void load_test_run(void);
-    
+
     bool get_home_estimate(Location &best_est_home_loc);
 
     static const struct AP_Param::GroupInfo var_info[];
@@ -127,7 +127,7 @@ private:
     uint32_t last_action_ms;
     uint32_t reset_turtle_start_ms;
 
-    //for storing location in indoor mode
+    // for storing best home esitmate in toymode
     Location tmode_best_est_home;
     bool tmode_best_est_home_set = false;
 
