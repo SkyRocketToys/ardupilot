@@ -93,7 +93,6 @@
 # define MOUNT         				DISABLED
 # define POSHOLD_ENABLED               DISABLED
 //# define LOGGING_ENABLED               DISABLED
-# define AC_FENCE 						DISABLED
 # define AC_RALLY   					DISABLED
 # define AC_TERRAIN 					DISABLED
 # define AC_AVOID_ENABLED   			DISABLED
