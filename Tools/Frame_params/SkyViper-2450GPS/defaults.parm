@@ -85,11 +85,10 @@ SERVO4_FUNCTION  36
 FRAME_CLASS 1
 FRAME_TYPE 1
 
-# disable EK2
+# enable EK2
 EK2_ENABLE 1
-EK2_CHECK_SCALE 150
 
-# EK3 enabled for flight
+# EK3 disabled for flight
 AHRS_EKF_TYPE 2
 EK3_ENABLE 0
 #EK3_CHECK_SCALE 120
