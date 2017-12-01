@@ -10,34 +10,53 @@ extern const AP_HAL::HAL& hal;
 using namespace ChibiOS;
 
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK1 || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
 #define HAVE_USB_SERIAL
 #endif
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SD2, false, 
+    {(BaseSequentialStream*) &SD2, false,
+#ifdef STM32_UART_USART2_RX_DMA_STREAM
       true, //RX DMA
       STM32_UART_USART2_RX_DMA_STREAM, 
       STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM, STM32_USART2_RX_DMA_CHN),
+#else
+     false, 0, 0,
+#endif
+#ifdef STM32_UART_USART2_TX_DMA_STREAM
       true, //TX DMA
       STM32_UART_USART2_TX_DMA_STREAM,
       STM32_DMA_GETCHANNEL(STM32_UART_USART2_TX_DMA_STREAM, STM32_USART2_TX_DMA_CHN)
+#else
+     false, 0, 0,
+#endif
     },   //Serial 0
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK1 || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
     {(BaseSequentialStream*) &SD4, false, false, 0, 0, false, 0, 0},   //Serial 1, GPS
     {(BaseSequentialStream*) &SDU1, true, false, 0, 0, false, 0, 0},   //Serial 2, USB
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
-    {(BaseSequentialStream*) &SD6, false, 
+    {(BaseSequentialStream*) &SD6, false,
+#ifdef STM32_UART_USART6_RX_DMA_STREAM
      true, //RX DMA
      STM32_UART_USART6_RX_DMA_STREAM, 
      STM32_DMA_GETCHANNEL(STM32_UART_USART6_RX_DMA_STREAM, STM32_USART6_RX_DMA_CHN),
-     false, 0, 0
+#else
+     false, 0, 0,
+#endif
+     false, 0, 0,
     },   //Serial 1, GPS
-    {(BaseSequentialStream*) &SD3, false, false,
-     //STM32_UART_USART3_RX_DMA_STREAM, 
-     //STM32_DMA_GETCHANNEL(STM32_UART_USART3_RX_DMA_STREAM, STM32_USART3_RX_DMA_CHN),
-     false, 0, 0
+    {(BaseSequentialStream*) &SD3, false,
+#ifdef STM32_UART_USART3_RX_DMA_STREAM
+     true,
+     STM32_UART_USART3_RX_DMA_STREAM, 
+     STM32_DMA_GETCHANNEL(STM32_UART_USART3_RX_DMA_STREAM, STM32_USART3_RX_DMA_CHN),
+#else
+     false, 0, 0,
+#endif
+     false, 0, 0,
     },   //Serial 2, Sonix
 #endif
 };
