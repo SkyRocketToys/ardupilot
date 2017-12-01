@@ -284,13 +284,13 @@ SPIDeviceManager::get_device(const char *name)
 {
     /* Find the bus description in the table */
     uint8_t i;
-    for (i = 0; device_table[i].name; i++) {
+    for (i = 0; i<ARRAY_SIZE(device_table); i++) {
         if (strcmp(device_table[i].name, name) == 0) {
             break;
         }
     }
-    if (device_table[i].name == nullptr) {
-        //printf("SPI: Invalid device name: %s\n", name);
+    if (i == ARRAY_SIZE(device_table)) {
+        printf("SPI: Invalid device name: %s\n", name);
         return AP_HAL::OwnPtr<AP_HAL::SPIDevice>(nullptr);
     }
 
