@@ -145,6 +145,7 @@ bool AP_Baro_ICM20789::init()
     }
 
     dev_icm->get_semaphore()->give();
+    dev_icm = nullptr;
 #endif // HAL_INS_MPU60x0_NAME
     
     if (!send_cmd16(CMD_SOFT_RESET)) {
@@ -180,7 +181,9 @@ bool AP_Baro_ICM20789::init()
     return true;
 
  failed:
-    dev_icm->get_semaphore()->give();
+    if (dev_icm) {
+        dev_icm->get_semaphore()->give();
+    }
     dev->get_semaphore()->give();
     return false;
 }
