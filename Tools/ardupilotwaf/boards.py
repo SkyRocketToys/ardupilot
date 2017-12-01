@@ -376,6 +376,21 @@ class pixhawk_cube(chibios):
                     % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
         ]
 
+class pixhawk1(chibios):
+    name = 'pixhawk1'
+    def configure_env(self, cfg, env):
+        super(pixhawk1, self).configure_env(cfg, env)
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK1',
+        )
+        env.BOARD = 'pixhawk1'
+        env.LINKFLAGS += [
+                    '-L%s'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/').abspath(),
+                    '-Wl,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=%s,--defsym=__process_stack_size__=0x400,--defsym=__main_stack_size__=0x400'\
+                    % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/%s/ldscript.ld' % env.BOARD).abspath(),
+        ]
+
 class skyviper_v2450(chibios):
     name = 'skyviper-v2450'
     def configure_env(self, cfg, env):
