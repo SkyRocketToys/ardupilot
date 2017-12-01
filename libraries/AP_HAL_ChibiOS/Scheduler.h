@@ -16,7 +16,6 @@
 #define APM_STORAGE_PRIORITY     59
 #define APM_IO_PRIORITY          58
 #define APM_SHELL_PRIORITY       57
-#define APM_OVERTIME_PRIORITY    10
 #define APM_STARTUP_PRIORITY     10
 
 /* how long to boost priority of the main thread for each main

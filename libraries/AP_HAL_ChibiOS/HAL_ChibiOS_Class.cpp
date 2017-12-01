@@ -50,7 +50,6 @@ HAL_ChibiOS::HAL_ChibiOS() :
 
 static bool thread_running = false;        /**< Daemon status flag */
 static thread_t* daemon_task;              /**< Handle of daemon task / thread */
-bool chibios_ran_overtime;
 
 extern const AP_HAL::HAL& hal;
 
@@ -72,20 +71,6 @@ void hal_chibios_set_priority(uint8_t priority)
 thread_t* get_main_thread()
 {
     return daemon_task;
-}
-/*
-  this is called when loop() takes more than 1 second to run. If that
-  happens then something is blocking for a long time in the main
-  sketch - probably waiting on a low priority driver. Set the priority
-  of the APM task low to let the driver run.
- */
-static void loop_overtime(void *)
-{
-#if 0
-    // disabled due to locking issue. When this fires we get an assert. 
-    hal_chibios_set_priority(APM_OVERTIME_PRIORITY);
-    chibios_ran_overtime = true;
-#endif
 }
 
 static AP_HAL::HAL::Callbacks* g_callbacks;
@@ -116,31 +101,13 @@ static THD_FUNCTION(main_loop,arg)
 
     thread_running = true;
     daemon_task->name = SKETCHNAME;
-    virtual_timer_t loop_overtime_call;
     /*
       switch to high priority for main loop
      */
     chThdSetPriority(APM_MAIN_PRIORITY);
 
     while (true) {
-        /*
-          this ensures a tight loop waiting on a lower priority driver
-          will eventually give up some time for the driver to run. It
-          will only ever be called if a loop() call runs for more than
-          0.1 second
-         */
-        chVTSet(&loop_overtime_call, US2ST(100000), loop_overtime, nullptr);
-
         g_callbacks->loop();
-
-        if (chibios_ran_overtime) {
-            /*
-              we ran over 1s in loop(), and our priority was lowered
-              to let a driver run. Set it back to high priority now.
-             */
-            hal_chibios_set_priority(APM_MAIN_PRIORITY);
-            chibios_ran_overtime = false;
-        }
 
         /*
           give up 250 microseconds of time, to ensure drivers get a
