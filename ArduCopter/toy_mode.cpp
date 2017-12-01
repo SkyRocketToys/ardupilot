@@ -455,7 +455,7 @@ void ToyMode::update()
     }
 
     /*
-    * attempt to improve the setting of home location sooner when disarmed
+    * attempt to improve the setting of home location sooner
     */
     switch (copter.ap.home_state) {
     case HOME_UNSET:
@@ -505,7 +505,10 @@ void ToyMode::update()
         break;
     case HOME_SET_NOT_LOCKED:
     case HOME_SET_AND_LOCKED:
-        tmode_best_est_home_set = false;
+        // reset best home estimation only when home state is not HOME_UNSET and disarmed
+        if (!copter.motors->armed()) {
+            tmode_best_est_home_set = false;
+        }
     break;
     default:
         break;
