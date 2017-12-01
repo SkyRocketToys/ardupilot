@@ -825,6 +825,14 @@ AP_InertialSensor::detect_backends(void)
                                                   ROTATION_ROLL_180_YAW_90,
                                                   ROTATION_ROLL_180_YAW_90));
     _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME), ROTATION_YAW_270));
+#elif HAL_INS_DEFAULT == HAL_INS_PIXHAWK1
+    _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU60x0_NAME), ROTATION_ROLL_180));
+    _add_backend(AP_InertialSensor_LSM9DS0::probe(*this,
+                                                  hal.spi->get_device(HAL_INS_LSM9DS0_G_NAME),
+                                                  hal.spi->get_device(HAL_INS_LSM9DS0_A_NAME),
+                                                  ROTATION_ROLL_180,
+                                                  ROTATION_ROLL_180_YAW_270,
+                                                  ROTATION_PITCH_180));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif
