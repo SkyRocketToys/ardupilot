@@ -164,4 +164,10 @@ void ChibiRCOutput::read_last_sent(uint16_t* period_us, uint8_t len)
 void ChibiRCOutput::set_output_mode(enum output_mode mode)
 {
     _output_mode = mode;
+    if (_output_mode == MODE_PWM_BRUSHED) {
+        // force zero output initially
+        for (uint8_t i=0; i<16; i++) {
+            write(i, 0);
+        }
+    }
 }
