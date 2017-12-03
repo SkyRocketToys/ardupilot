@@ -574,10 +574,10 @@
                                      PIN_OSPEED_HIGH(8U) |       \
                                      PIN_OSPEED_HIGH(9U) |      \
                                      PIN_OSPEED_HIGH(10U) |        \
-                                     PIN_OSPEED_MEDIUM(11U) |        \
+                                     PIN_OSPEED_HIGH(11U) |        \
                                      PIN_OSPEED_HIGH(12U) |        \
-                                     PIN_OSPEED_MEDIUM(13U) |         \
-                                     PIN_OSPEED_MEDIUM(14U) |         \
+                                     PIN_OSPEED_HIGH(13U) |         \
+                                     PIN_OSPEED_HIGH(14U) |         \
                                      PIN_OSPEED_HIGH(15U))
 #define VAL_GPIOE_PUPDR             (PIN_PUPDR_FLOATING(0U) |      \
                                      PIN_PUPDR_FLOATING(1U) |         \
@@ -588,12 +588,12 @@
                                      PIN_PUPDR_FLOATING(6U) |      \
                                      PIN_PUPDR_PULLUP(7U) |      \
                                      PIN_PUPDR_PULLUP(8U) |    \
-                                     PIN_PUPDR_FLOATING(9U) |   \
+                                     PIN_PUPDR_PULLDOWN(9U) |   \
                                      PIN_PUPDR_FLOATING(10U) |     \
-                                     PIN_PUPDR_FLOATING(11U) |     \
+                                     PIN_PUPDR_PULLDOWN(11U) |     \
                                      PIN_PUPDR_FLOATING(12U) |     \
-                                     PIN_PUPDR_FLOATING(13U) |      \
-                                     PIN_PUPDR_FLOATING(14U) |      \
+                                     PIN_PUPDR_PULLDOWN(13U) |      \
+                                     PIN_PUPDR_PULLDOWN(14U) |      \
                                      PIN_PUPDR_FLOATING(15U))
 #define VAL_GPIOE_ODR               (PIN_ODR_HIGH(0U) |          \
                                      PIN_ODR_HIGH(1U) |             \
