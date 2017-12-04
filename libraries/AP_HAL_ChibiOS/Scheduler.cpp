@@ -181,6 +181,11 @@ void ChibiScheduler::reboot(bool hold_in_bootloader)
 
     // delay to ensure the async force_saftey operation completes
     delay(500);
+
+    // disable interrupts during reboot
+    chSysDisable();
+
+    // reboot
     NVIC_SystemReset();
 }
 
