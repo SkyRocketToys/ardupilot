@@ -192,6 +192,7 @@ void AP_Baro::calibrate(bool save)
                 AP_HAL::panic("PANIC: AP_Baro::read unsuccessful "
                         "for more than 500ms in AP_Baro::calibrate [3]\r\n");
             }
+            hal.scheduler->delay(10);
         } while (!healthy());
         for (uint8_t i=0; i<_num_sensors; i++) {
             if (healthy(i)) {
