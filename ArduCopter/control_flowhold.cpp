@@ -534,3 +534,4 @@ void FlowHold::update_height_estimate(void)
     last_ins_height = ins_height;
 }
 
+#endif // OPTFLOW
