@@ -58,6 +58,7 @@ namespace ChibiOS {
 
 #define SPIDEV_CS_MPU              GPIOC, 2
 #define SPIDEV_CS_CYRF             GPIOD, 10
+#define SPIDEV_CS_FLOW             GPIOE, 4
 #endif
 
 #define SPI1_CLOCK  STM32_PCLK2
@@ -100,6 +101,7 @@ SPIDesc SPIDeviceManager::device_table[] = {
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
     SPIDesc("mpu6000",  SPI_BUS_SENSORS, SPIDEV_MPU, SPIDEV_CS_MPU, SPIDEV_MODE3, 500*KHZ, 8*MHZ),
     SPIDesc("cypress",  SPI_BUS_SENSORS2, SPIDEV_CYRF, SPIDEV_CS_CYRF, SPIDEV_MODE0, 2*MHZ, 2*MHZ),
+    SPIDesc("pixartflow", SPI_BUS_EXT, SPIDEV_FLOW, SPIDEV_CS_FLOW, SPIDEV_MODE3, 2*MHZ, 2*MHZ),
 #endif
 };
 
