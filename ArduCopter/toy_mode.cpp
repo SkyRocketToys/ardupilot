@@ -326,6 +326,7 @@ void ToyMode::update()
     case ACTION_TOGGLE_SSIMPLE:
     case ACTION_ARM_LAND_RTL:
     case ACTION_LOAD_TEST:
+    case ACTION_MODE_FLOW:
         if (last_action == action ||
             now - last_action_ms < TOY_ACTION_DELAY_MS) {
             // for the above actions, button must be released before
