@@ -4,6 +4,7 @@
 #include "UARTDriver.h"
 #include "GPIO.h"
 #include <usbcfg.h>
+#include "shared_dma.h"
 
 extern const AP_HAL::HAL& hal;
 
@@ -62,7 +63,7 @@ static ChibiUARTDriver::SerialDef _serial_tab[] = {
 };
 
 ChibiUARTDriver::ChibiUARTDriver(uint8_t serial_num) :
-tx_bounce_buf_ready(false),
+tx_bounce_buf_ready(true),
 _serial_num(serial_num),
 _baudrate(57600),
 _is_usb(false),
@@ -158,13 +159,7 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
                     dmaStreamSetPeripheral(rxdma, &((SerialDriver*)_serial)->usart->DR);
                 }
                 if(_dma_tx) {
-                    txdma = STM32_DMA_STREAM(_serial_tab[_serial_num].dma_tx_stream_id);
-                    bool dma_allocated = dmaStreamAllocate(txdma,
-                                               12,  //IRQ Priority
-                                               NULL,
-                                               (void *)this);
-                    osalDbgAssert(!dma_allocated, "stream already allocated");
-                    dmaStreamSetPeripheral(txdma, &((SerialDriver*)_serial)->usart->DR);
+                    Shared_DMA::register_dma(_serial_tab[_serial_num].dma_tx_stream_id);
                 }
             }
             sercfg.speed = _baudrate;
@@ -210,6 +205,32 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
     _uart_owner_thd = chThdGetSelfX();
 }
 
+void ChibiUARTDriver::tx_dma_alloc()
+{
+    Shared_DMA::lock_dma(_serial_tab[_serial_num].dma_tx_stream_id, this);
+    txdma = STM32_DMA_STREAM(_serial_tab[_serial_num].dma_tx_stream_id);
+    bool dma_allocated = dmaStreamAllocate(txdma,
+                               12,  //IRQ Priority
+                               (stm32_dmaisr_t)tx_complete,
+                               (void *)this);
+    osalDbgAssert(!dma_allocated, "stream already allocated");
+    dmaStreamSetPeripheral(txdma, &((SerialDriver*)_serial)->usart->DR);
+}
+
+void ChibiUARTDriver::tx_complete(void* self, uint32_t flags)
+{
+    ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
+    if (!uart_drv->_dma_tx) {
+        return;
+    }
+    chSysLockFromISR();
+    Shared_DMA::unlock_dma_from_irq(_serial_tab[uart_drv->_serial_num].dma_tx_stream_id, uart_drv);
+    dmaStreamRelease(uart_drv->txdma);
+    uart_drv->tx_bounce_buf_ready = true;
+    chSysUnlockFromISR();
+}
+
+
 void ChibiUARTDriver::rx_irq_cb(void* self)
 {
     ChibiUARTDriver* uart_drv = (ChibiUARTDriver*)self;
@@ -231,7 +252,7 @@ void ChibiUARTDriver::rxbuff_full_irq(void* self, uint32_t flags)
     if (uart_drv->_lock_rx_in_timer_tick) {
         return;
     }
-   if (!uart_drv->_dma_rx) {
+    if (!uart_drv->_dma_rx) {
         return;
     }
     uint8_t len = RX_BOUNCE_BUFSIZE - uart_drv->rxdma->stream->NDTR;
@@ -397,7 +418,7 @@ void ChibiUARTDriver::_timer_tick(void)
 
     if (!_initialised) return;
 
-    if (_dma_rx) {
+    if (_dma_rx && rxdma) {
         _lock_rx_in_timer_tick = true;
         //Check if DMA is enabled
         //if not, it might be because the DMA interrupt was silenced
@@ -414,14 +435,6 @@ void ChibiUARTDriver::_timer_tick(void)
             dmaStreamEnable(rxdma);
         }
         _lock_rx_in_timer_tick = false;
-    }
-
-    if (_dma_tx) {
-        //check if last transaction was complete
-        if ((!(txdma->stream->CR & STM32_DMA_CR_EN)) || (txdma->stream->NDTR == 0)) {
-            tx_bounce_buf_ready = true;
-            dmaStreamDisable(txdma);
-        }
     }
 
     // don't try IO on a disconnected USB port
@@ -497,9 +510,14 @@ void ChibiUARTDriver::_timer_tick(void)
         } else {
             if(tx_bounce_buf_ready) {
                 /* TX DMA channel preparation.*/
-                ret = _writebuf.read(tx_bounce_buf, TX_BOUNCE_BUFSIZE);
+                _writebuf.advance(tx_len);
+                tx_len = _writebuf.peekbytes(tx_bounce_buf, TX_BOUNCE_BUFSIZE);
+                if (tx_len == 0) {
+                    goto end;
+                }
+                tx_dma_alloc();
                 dmaStreamSetMemory0(txdma, tx_bounce_buf);
-                dmaStreamSetTransactionSize(txdma, ret);
+                dmaStreamSetTransactionSize(txdma, tx_len);
                 uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
                                        STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_tx_channel_id) |
                                        STM32_DMA_CR_PL(0);
@@ -507,12 +525,19 @@ void ChibiUARTDriver::_timer_tick(void)
                                      STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
                 dmaStreamEnable(txdma);
                 tx_bounce_buf_ready = false;
-            } 
+            } else {
+                //we have been at it long enough check how much we transmitted
+                if (Shared_DMA::get_ctx(_serial_tab[_serial_num].dma_tx_channel_id) == this) {
+                    tx_len -= dmaStreamGetTransactionSize(txdma);
+                    dmaStreamDisable(txdma);
+                    dmaStreamRelease(txdma);
+                    Shared_DMA::unlock_dma(_serial_tab[_serial_num].dma_tx_channel_id, this);
+                    tx_bounce_buf_ready = true;
+                }
+            }
         }
     }
-
-
-
+end:
     _in_timer = false;
 }
 #endif //CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS

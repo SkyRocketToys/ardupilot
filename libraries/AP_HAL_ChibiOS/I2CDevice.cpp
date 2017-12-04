@@ -15,7 +15,7 @@
 #include "I2CDevice.h"
 
 #include <AP_HAL/AP_HAL.h>
-
+#include "shared_dma.h"
 #include "Util.h"
 #include "Scheduler.h"
 
@@ -26,6 +26,17 @@ static I2CDriver* I2CD[] = {
     &I2CD2,
     &I2CD1
 };
+
+static uint32_t tx_dma_stream[] = {
+    STM32_I2C_I2C2_TX_DMA_STREAM,
+    STM32_I2C_I2C1_TX_DMA_STREAM
+};
+
+static uint32_t dma_shared_list[] = {
+    false,
+    true
+};
+
 namespace ChibiOS {
 
 DeviceBus I2CDevice::businfo[I2CDevice::num_buses];
@@ -55,8 +66,17 @@ bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
         i2ccfg.op_mode = OPMODE_I2C;
         i2ccfg.clock_speed = 400000;
         i2ccfg.duty_cycle = FAST_DUTY_CYCLE_2;
-        i2cStart(I2CD[_busnum], &i2ccfg);
+        dma_shared = dma_shared_list[_busnum];
+        if (dma_shared) {
+            Shared_DMA::register_dma(tx_dma_stream[_busnum]);
+        } else {
+            i2cStart(I2CD[_busnum], &i2ccfg);
+        }
         init_done = true;
+    }
+    if (dma_shared) {
+        Shared_DMA::lock_dma(tx_dma_stream[_busnum], this);
+        i2cStart(I2CD[_busnum], &i2ccfg);
     }
     if (_split_transfers) {
         /*
@@ -66,19 +86,36 @@ bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
         */
         if (send && send_len) {
             if (!_transfer(send, send_len, nullptr, 0)) {
+                if (dma_shared) {
+                    i2cStop(I2CD[_busnum]);
+                    Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
+                }
                 return false;
             }
         }
         if (recv && recv_len) {
             if (!_transfer(nullptr, 0, recv, recv_len)) {
+                if (dma_shared) {
+                    i2cStop(I2CD[_busnum]);
+                    Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
+                }
                 return false;
             }
         }
     } else {
         // combined transfer
         if (!_transfer(send, send_len, recv, recv_len)) {
+            if (dma_shared) {
+                i2cStop(I2CD[_busnum]);
+                Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
+            }
             return false;
         }
+    }
+    
+    if (dma_shared) {
+        i2cStop(I2CD[_busnum]);
+        Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
     }
     return true;
 }
@@ -91,7 +128,6 @@ bool I2CDevice::_transfer(const uint8_t *send, uint32_t send_len,
         i2cAcquireBus(I2CD[_busnum]);
         if(send_len == 0) {
             ret = i2cMasterReceiveTimeout(I2CD[_busnum], _address,recv, recv_len, MS2ST(4));
-        
         } else {
             ret = i2cMasterTransmitTimeout(I2CD[_busnum], _address, send, send_len,
                                      recv, recv_len, MS2ST(4));

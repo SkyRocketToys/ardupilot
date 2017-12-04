@@ -82,6 +82,7 @@ private:
     char *pname;
     bool _split_transfers;
     i2cflags_t _errors;
+    bool dma_shared;
 };
 
 class I2CDeviceManager : public AP_HAL::I2CDeviceManager {

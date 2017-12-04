@@ -270,7 +270,7 @@ class chibios(Board):
             '-Wno-error=float-equal',
             '-Wno-error=undef',
             '-Wno-error=cpp',
-            '-Wno-error=cast-align',
+            '-Wno-cast-align',
             '-fno-exceptions',
             '-fno-rtti',
             '-std=gnu++0x',

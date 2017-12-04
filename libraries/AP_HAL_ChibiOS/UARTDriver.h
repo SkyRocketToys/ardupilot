@@ -5,7 +5,7 @@
 #include "AP_HAL_ChibiOS.h"
 
 #define RX_BOUNCE_BUFSIZE 128
-#define TX_BOUNCE_BUFSIZE 128
+#define TX_BOUNCE_BUFSIZE 256
 
 class ChibiOS::ChibiUARTDriver : public AP_HAL::UARTDriver {
 public:
@@ -44,6 +44,7 @@ private:
     bool tx_bounce_buf_ready;
     uint8_t _serial_num;
     uint32_t _baudrate;
+    uint16_t tx_len;
     BaseSequentialStream* _serial;
     SerialConfig sercfg;
     bool _is_usb;
@@ -63,4 +64,6 @@ private:
     bool _lock_rx_in_timer_tick = false;
     static void rx_irq_cb(void* sd);
     static void rxbuff_full_irq(void* self, uint32_t flags);
+    static void tx_complete(void* self, uint32_t flags);
+    void tx_dma_alloc();
 };
