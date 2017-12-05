@@ -7,6 +7,7 @@
 #include "HAL_ChibiOS_Class.h"
 #include <AP_HAL_Empty/AP_HAL_Empty_Private.h>
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS_Private.h>
+#include "shared_dma.h"
 
 
 static ChibiOS::ChibiUARTDriver uartADriver(0);
@@ -79,6 +80,8 @@ static THD_FUNCTION(main_loop,arg)
 {
     daemon_task = chThdGetSelfX();
 
+    Shared_DMA::init();
+    
     hal.uartA->begin(115200);
     hal.uartB->begin(38400);
     hal.uartC->begin(57600);
