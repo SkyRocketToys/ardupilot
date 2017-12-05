@@ -460,7 +460,7 @@ void ToyMode::update()
     switch (copter.ap.home_state) {
     case HOME_UNSET:
         if (tmode_best_est_home_set) {
-            // if the best estimate of the home location was already set then exit
+            // no need to set the home loc again from toy mode
             break;
         }
 
@@ -486,21 +486,22 @@ void ToyMode::update()
             break;
         }
         
-        // set best estimated home loc once after power up only once
+        // set best estimated home loc once after power
         if (!tmode_best_est_home_set) {
             const struct Location &ekf_origin = copter.inertial_nav.get_origin();
             // set current location as best estimate of home location and set home location
             tmode_best_est_home = copter.gps.location();
             // reset the altitude based on origin
             tmode_best_est_home.alt = ekf_origin.alt;
-            // set home but dont set the state to HOME_SET_NOT_LOCKED
+            // set home but dont update the home state to HOME_SET_NOT_LOCKED
             copter.ahrs.set_home(tmode_best_est_home);
             tmode_best_est_home_set = true;
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Tmode: home loc set with hacc: %.2f", toy_horizontal_acc);
             // send home location to GCS
             GCS_MAVLINK::send_home_all(tmode_best_est_home);
             
-            // NOTE: when copter is disarmed set_home_to_current_location() will also set home if it finds a better home loc
+            // NOTE: when copter is disarmed the method set_home_to_current_location() will also set home if it finds a better home loc 
+            // and it will set home state to HOME_SET_NOT_LOCKED
         }
         break;
     case HOME_SET_NOT_LOCKED:
@@ -692,7 +693,7 @@ void ToyMode::update()
     
     if (new_mode != copter.control_mode) {
         load_test.running = false;
-        
+
         if (copter.mode_requires_GPS(new_mode)) {
             copter.fence.enable(true);
         } else {
@@ -1182,15 +1183,11 @@ void ToyMode::check_mag_field_takeoff(void)
 bool ToyMode::get_home_estimate(Location &best_est_home_loc)
 {
     if (!tmode_best_est_home_set) {
+        // assume that EKF set home loc
         return false;
     } else {
-        // check if the location is valid
-        if (tmode_best_est_home.lat == 0 && tmode_best_est_home.lng == 0) {
-            best_est_home_loc = tmode_best_est_home;
-            return true;
-        } else {
-            return false;
-        }
+        best_est_home_loc = tmode_best_est_home;
+        return true;
     }
 }
 
