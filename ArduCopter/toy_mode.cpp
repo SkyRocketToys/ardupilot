@@ -915,11 +915,7 @@ void ToyMode::handle_message(mavlink_message_t *msg)
  */
 void ToyMode::send_named_int(const char *name, int32_t value)
 {
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
-    mavlink_msg_named_value_int_send(MAVLINK_COMM_0, AP_HAL::millis(), name, value);
-#else
     mavlink_msg_named_value_int_send(MAVLINK_COMM_1, AP_HAL::millis(), name, value);
-#endif
 }
 
 #if TOY_MODE_ENABLED == ENABLED
