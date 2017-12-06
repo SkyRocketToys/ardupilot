@@ -203,9 +203,9 @@ elif opts.board == 'F412':
         PERIPHONDMA_LIST = ["ADC1"]
         PERIPHONDMA_LIST += ["SPI1_RX","SPI1_TX","SPI2_RX","SPI2_TX","SPI5_RX","SPI5_TX"]
         PERIPHONDMA_LIST += ["I2C1_RX","I2C1_TX","I2C2_RX", "I2C2_TX"]
-        PERIPHONDMA_LIST += ["USART2_TX","USART2_RX"]
         PERIPHONDMA_LIST += ["USART3_TX","USART3_RX"]
         PERIPHONDMA_LIST += ["USART6_TX","USART6_RX"]
+        PERIPHONDMA_LIST += ["USART2_TX","USART2_RX"]
 
 
 def check_possibility(periph, dma_stream, curr_dict, dma_map, check_list):
