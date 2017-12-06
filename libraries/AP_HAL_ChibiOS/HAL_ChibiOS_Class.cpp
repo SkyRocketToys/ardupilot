@@ -13,8 +13,13 @@
 static ChibiOS::ChibiUARTDriver uartADriver(0);
 static ChibiOS::ChibiUARTDriver uartBDriver(1);
 static ChibiOS::ChibiUARTDriver uartCDriver(2);
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
+static Empty::UARTDriver uartDDriver;
+static Empty::UARTDriver uartEDriver;
+#else
 static ChibiOS::ChibiUARTDriver uartDDriver(3);
 static ChibiOS::ChibiUARTDriver uartEDriver(4);
+#endif
 static ChibiOS::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static ChibiOS::ChibiAnalogIn analogIn;
