@@ -20,7 +20,7 @@
 #include "Semaphores.h"
 #include <stdio.h>
 
-namespace ChibiOS {
+using namespace ChibiOS;
 
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 #define SPI_BUS_SENSORS 1
@@ -66,16 +66,19 @@ namespace ChibiOS {
 #define SPI3_CLOCK  STM32_PCLK1
 #define SPI4_CLOCK  STM32_PCLK2
 
-
-static SPIDriver* spi_devices[] = {
-    &SPID1,
-    &SPID2,
+static struct SPIDriverInfo {    
+    SPIDriver *driver;
+    uint8_t dma_channel_rx;
+    uint8_t dma_channel_tx;
+} spi_devices[] = {
+    { &SPID1, STM32_SPI_SPI1_RX_DMA_STREAM, STM32_SPI_SPI1_TX_DMA_STREAM },
+    { &SPID2, STM32_SPI_SPI2_RX_DMA_STREAM, STM32_SPI_SPI2_TX_DMA_STREAM },
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK1 || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450 
-    &SPID4,
+    { &SPID4, STM32_SPI_SPI4_RX_DMA_STREAM, STM32_SPI_SPI4_TX_DMA_STREAM },
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
-    &SPID5,
+    { &SPID5, STM32_SPI_SPI5_RX_DMA_STREAM, STM32_SPI_SPI5_TX_DMA_STREAM },
 #endif
 };
 
@@ -104,6 +107,35 @@ SPIDesc SPIDeviceManager::device_table[] = {
     SPIDesc("pixartflow", SPI_BUS_EXT, SPIDEV_FLOW, SPIDEV_CS_FLOW, SPIDEV_MODE3, 2*MHZ, 2*MHZ),
 #endif
 };
+
+SPIBus::SPIBus(void) :
+    DeviceBus(APM_SPI_PRIORITY)
+{
+    // allow for sharing of DMA channels with other peripherals
+    dma_handle = new Shared_DMA(spi_devices[bus].dma_channel_rx,
+                                spi_devices[bus].dma_channel_tx,
+                                FUNCTOR_BIND_MEMBER(&SPIBus::dma_allocate, void),
+                                FUNCTOR_BIND_MEMBER(&SPIBus::dma_deallocate, void));
+        
+}
+
+/*
+  allocate DMA channel
+ */
+void SPIBus::dma_allocate(void)
+{
+    // nothing to do as we call spiStart() on each transaction
+}
+
+/*
+  deallocate DMA channel
+ */
+void SPIBus::dma_deallocate(void)
+{
+    // another non-SPI peripheral wants one of our DMA channels
+    spiStop(spi_devices[bus].driver);
+}
+
 
 SPIDevice::SPIDevice(SPIBus &_bus, SPIDesc &_device_desc)
     : bus(_bus)
@@ -155,14 +187,7 @@ void SPIDevice::do_transfer(const uint8_t *send, uint8_t *recv, uint32_t len)
     if (!set_chip_select(true)) {
         return;
     }
-
-    osalSysLock();
-    spiStartExchangeI(spi_devices[device_desc.bus], len,
-                send, recv); 
-    (void) osalThreadSuspendS(&spi_devices[device_desc.bus]->thread);
-                               /* Atomic transfer operations.      */
-    osalSysUnlock();
-
+    spiExchange(spi_devices[device_desc.bus].driver, len, send, recv); 
     set_chip_select(old_cs_forced);
 }
 
@@ -275,23 +300,24 @@ bool SPIDevice::set_chip_select(bool set)
         return false;
     }
     if (!set && cs_forced) {
-        spiUnselectI(spi_devices[device_desc.bus]);          /* Slave Select de-assertion.       */
-        spiReleaseBus(spi_devices[device_desc.bus]);              /* Ownership release.               */
+        spiUnselectI(spi_devices[device_desc.bus].driver);          /* Slave Select de-assertion.       */
+        spiReleaseBus(spi_devices[device_desc.bus].driver);              /* Ownership release.               */
         cs_forced = false;
+        bus.dma_handle->unlock();
     } else {
-        spiAcquireBus(spi_devices[device_desc.bus]);              /* Acquire ownership of the bus.    */
+        bus.dma_handle->lock();
+        spiAcquireBus(spi_devices[device_desc.bus].driver);              /* Acquire ownership of the bus.    */
         bus.spicfg.end_cb = nullptr;
         bus.spicfg.ssport = device_desc.port;
         bus.spicfg.sspad = device_desc.pin;
         bus.spicfg.cr1 = (uint16_t)(freq_flag | device_desc.mode);
         bus.spicfg.cr2 = 0;
-        spiStart(spi_devices[device_desc.bus], &bus.spicfg);        /* Setup transfer parameters.       */
-        spiSelectI(spi_devices[device_desc.bus]);                /* Slave Select assertion.          */
+        spiStart(spi_devices[device_desc.bus].driver, &bus.spicfg);        /* Setup transfer parameters.       */
+        spiSelectI(spi_devices[device_desc.bus].driver);                /* Slave Select assertion.          */
         cs_forced = true;
     }
     return true;
 }
-
 
 /*
   return a SPIDevice given a string device name
@@ -333,6 +359,4 @@ SPIDeviceManager::get_device(const char *name)
     }
 
     return AP_HAL::OwnPtr<AP_HAL::SPIDevice>(new SPIDevice(*busp, desc));
-}
-
 }
