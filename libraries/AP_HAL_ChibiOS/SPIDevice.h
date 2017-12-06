@@ -46,7 +46,7 @@ class SPIDesc;
 
 class SPIBus : public DeviceBus {
 public:
-    SPIBus(void);
+    SPIBus(uint8_t bus);
     struct spi_dev_s *dev;
     uint8_t bus;
     SPIConfig spicfg;

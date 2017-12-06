@@ -108,8 +108,9 @@ SPIDesc SPIDeviceManager::device_table[] = {
 #endif
 };
 
-SPIBus::SPIBus(void) :
-    DeviceBus(APM_SPI_PRIORITY)
+SPIBus::SPIBus(uint8_t _bus) :
+    DeviceBus(APM_SPI_PRIORITY),
+    bus(_bus)
 {
     // allow for sharing of DMA channels with other peripherals
     dma_handle = new Shared_DMA(spi_devices[bus].dma_channel_rx,
@@ -348,7 +349,7 @@ SPIDeviceManager::get_device(const char *name)
     }
     if (busp == nullptr) {
         // create a new one
-        busp = new SPIBus;
+        busp = new SPIBus(desc.bus);
         if (busp == nullptr) {
             return nullptr;
         }
