@@ -23,6 +23,7 @@
 #include <AP_HAL/utility/OwnPtr.h>
 #include "Semaphores.h"
 #include "Device.h"
+#include "shared_dma.h"
 
 namespace ChibiOS {
 
@@ -73,6 +74,10 @@ private:
     static DeviceBus businfo[num_buses];
     bool _transfer(const uint8_t *send, uint32_t send_len,
                          uint8_t *recv, uint32_t recv_len);
+
+    void dma_allocate(void);
+    void dma_deallocate(void);
+    
     /* I2C interface #2 */
     I2CConfig i2ccfg;
     bool init_done = false;
@@ -82,7 +87,7 @@ private:
     char *pname;
     bool _split_transfers;
     i2cflags_t _errors;
-    bool dma_shared;
+    Shared_DMA *dma_handle;
 };
 
 class I2CDeviceManager : public AP_HAL::I2CDeviceManager {

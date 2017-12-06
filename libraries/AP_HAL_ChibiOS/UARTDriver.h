@@ -3,9 +3,10 @@
 #include <AP_HAL/utility/RingBuffer.h>
 
 #include "AP_HAL_ChibiOS.h"
+#include "shared_dma.h"
 
 #define RX_BOUNCE_BUFSIZE 128
-#define TX_BOUNCE_BUFSIZE 256
+#define TX_BOUNCE_BUFSIZE 512
 
 class ChibiOS::ChibiUARTDriver : public AP_HAL::UARTDriver {
 public:
@@ -62,8 +63,11 @@ private:
     bool _nonblocking_writes;
     bool _initialised;
     bool _lock_rx_in_timer_tick = false;
+    Shared_DMA *dma_handle;
     static void rx_irq_cb(void* sd);
     static void rxbuff_full_irq(void* self, uint32_t flags);
     static void tx_complete(void* self, uint32_t flags);
-    void tx_dma_alloc();
+
+    void dma_tx_allocate(void);
+    void dma_tx_deallocate(void);
 };

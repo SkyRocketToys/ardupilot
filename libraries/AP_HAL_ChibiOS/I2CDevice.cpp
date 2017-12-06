@@ -15,7 +15,6 @@
 #include "I2CDevice.h"
 
 #include <AP_HAL/AP_HAL.h>
-#include "shared_dma.h"
 #include "Util.h"
 #include "Scheduler.h"
 
@@ -27,17 +26,17 @@ static I2CDriver* I2CD[] = {
     &I2CD1
 };
 
-static uint32_t tx_dma_stream[] = {
+static uint8_t tx_dma_stream[] = {
     STM32_I2C_I2C2_TX_DMA_STREAM,
     STM32_I2C_I2C1_TX_DMA_STREAM
 };
 
-static uint32_t dma_shared_list[] = {
-    false,
-    true
+static uint8_t rx_dma_stream[] = {
+    STM32_I2C_I2C2_RX_DMA_STREAM,
+    STM32_I2C_I2C1_RX_DMA_STREAM
 };
 
-namespace ChibiOS {
+using namespace ChibiOS;
 
 DeviceBus I2CDevice::businfo[I2CDevice::num_buses];
 
@@ -50,13 +49,32 @@ I2CDevice::I2CDevice(uint8_t bus, uint8_t address) :
     set_device_address(address);
     asprintf(&pname, "I2C:%u:%02x",
              (unsigned)bus, (unsigned)address);
+    dma_handle = new Shared_DMA(tx_dma_stream[_busnum], rx_dma_stream[_busnum],
+                                FUNCTOR_BIND_MEMBER(&I2CDevice::dma_allocate, void),
+                                FUNCTOR_BIND_MEMBER(&I2CDevice::dma_deallocate, void));
 }
-    
+
 I2CDevice::~I2CDevice()
 {
     printf("I2C device bus %u address 0x%02x closed\n", 
            (unsigned)_busnum, (unsigned)_address);
     free(pname);
+}
+
+/*
+  allocate DMA channel
+ */
+void I2CDevice::dma_allocate(void)
+{
+    i2cStart(I2CD[_busnum], &i2ccfg);
+}
+
+/*
+  deallocate DMA channel
+ */
+void I2CDevice::dma_deallocate(void)
+{
+    i2cStop(I2CD[_busnum]);
 }
 
 bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
@@ -66,18 +84,11 @@ bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
         i2ccfg.op_mode = OPMODE_I2C;
         i2ccfg.clock_speed = 400000;
         i2ccfg.duty_cycle = FAST_DUTY_CYCLE_2;
-        dma_shared = dma_shared_list[_busnum];
-        if (dma_shared) {
-            Shared_DMA::register_dma(tx_dma_stream[_busnum]);
-        } else {
-            i2cStart(I2CD[_busnum], &i2ccfg);
-        }
         init_done = true;
     }
-    if (dma_shared) {
-        Shared_DMA::lock_dma(tx_dma_stream[_busnum], this);
-        i2cStart(I2CD[_busnum], &i2ccfg);
-    }
+
+    dma_handle->lock();
+
     if (_split_transfers) {
         /*
           splitting the transfer() into two pieces avoids a stop condition
@@ -86,37 +97,25 @@ bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
         */
         if (send && send_len) {
             if (!_transfer(send, send_len, nullptr, 0)) {
-                if (dma_shared) {
-                    i2cStop(I2CD[_busnum]);
-                    Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
-                }
+                dma_handle->unlock();
                 return false;
             }
         }
         if (recv && recv_len) {
             if (!_transfer(nullptr, 0, recv, recv_len)) {
-                if (dma_shared) {
-                    i2cStop(I2CD[_busnum]);
-                    Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
-                }
+                dma_handle->unlock();
                 return false;
             }
         }
     } else {
         // combined transfer
         if (!_transfer(send, send_len, recv, recv_len)) {
-            if (dma_shared) {
-                i2cStop(I2CD[_busnum]);
-                Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
-            }
+            dma_handle->unlock();
             return false;
         }
     }
-    
-    if (dma_shared) {
-        i2cStop(I2CD[_busnum]);
-        Shared_DMA::unlock_dma(tx_dma_stream[_busnum], this);
-    }
+
+    dma_handle->unlock();
     return true;
 }
 
@@ -184,6 +183,4 @@ I2CDeviceManager::get_device(uint8_t bus, uint8_t address)
 {
     auto dev = AP_HAL::OwnPtr<AP_HAL::I2CDevice>(new I2CDevice(bus, address));
     return dev;
-}
-
 }

@@ -1,86 +1,86 @@
 #include "shared_dma.h"
 
-Shared_DMA::dma_locks *Shared_DMA::lock_head;
-mutex_t Shared_DMA::list_mutex;
+/*
+  code to handle sharing of DMA channels between peripherals
+ */
+
+Shared_DMA::dma_lock Shared_DMA::locks[SHARED_DMA_MAX_STREAM_ID];
 
 void Shared_DMA::init(void)
 {
-    chMtxObjectInit(&list_mutex);
-}
-
-void Shared_DMA::lock_dma(uint32_t dma_stream, void* ctx)
-{
-    dma_locks* lock = get_lock(dma_stream);
-    if (lock != nullptr) {
-        chBSemWait(&lock->sem);
-        lock->last_ctx = ctx;
+    for (uint8_t i=0; i<SHARED_DMA_MAX_STREAM_ID; i++) {
+        chBSemObjectInit(&locks[i].semaphore, false);
     }
 }
 
-void Shared_DMA::unlock_dma(uint32_t dma_stream, void* ctx)
+// constructor
+Shared_DMA::Shared_DMA(uint8_t _stream_id1,
+                       uint8_t _stream_id2,
+                       dma_allocate_fn_t _allocate,
+                       dma_deallocate_fn_t _deallocate)
 {
-    dma_locks* lock = get_lock(dma_stream);
-    if (lock != nullptr) {
-        if (lock->last_ctx == ctx) {
-            lock->last_ctx = nullptr;
-            chBSemSignal(&lock->sem);
-        } else {
-            //panic??
+    stream_id1 = _stream_id1;
+    stream_id2 = _stream_id2;
+    allocate = _allocate;
+    deallocate = _deallocate;
+}
+
+// lock the DMA channels
+void Shared_DMA::lock(void)
+{
+    if (stream_id1 != SHARED_DMA_NONE) {
+        chBSemWait(&locks[stream_id1].semaphore);
+    }
+    if (stream_id2 != SHARED_DMA_NONE) {
+        chBSemWait(&locks[stream_id2].semaphore);
+    }
+    // see if another driver has DMA allocated. If so, call their
+    // deallocation function
+    if (stream_id1 != SHARED_DMA_NONE &&
+        locks[stream_id1].obj && locks[stream_id1].obj != this) {
+        locks[stream_id1].deallocate();
+        locks[stream_id1].obj = nullptr;
+    }
+    if (stream_id2 != SHARED_DMA_NONE &&
+        locks[stream_id2].obj && locks[stream_id2].obj != this) {
+        locks[stream_id2].deallocate();
+        locks[stream_id2].obj = nullptr;
+    }
+    if ((stream_id1 != SHARED_DMA_NONE && locks[stream_id1].obj == nullptr) ||
+        (stream_id2 != SHARED_DMA_NONE && locks[stream_id2].obj == nullptr)) {
+        // allocate the DMA channels and put our deallocation function in place
+        allocate();
+        if (stream_id1 != SHARED_DMA_NONE) {
+            locks[stream_id1].deallocate = deallocate;
+            locks[stream_id1].obj = this;
+        }
+        if (stream_id2 != SHARED_DMA_NONE) {
+            locks[stream_id2].deallocate = deallocate;
+            locks[stream_id2].obj = this;
         }
     }
 }
 
-void Shared_DMA::unlock_dma_from_irq(uint32_t dma_stream, void* ctx)
+// unlock the DMA channels
+void Shared_DMA::unlock(void)
 {
-    dma_locks* lock = get_lock(dma_stream);
-    if (lock != nullptr) {
-        if (lock->last_ctx == ctx) {
-            lock->last_ctx = nullptr;
-            chBSemSignalI(&lock->sem);
-        }
+    if (stream_id2 != SHARED_DMA_NONE) {
+        chBSemSignal(&locks[stream_id2].semaphore);        
+    }
+    if (stream_id1 != SHARED_DMA_NONE) {
+        chBSemSignal(&locks[stream_id1].semaphore);
     }
 }
 
-void Shared_DMA::register_dma(uint32_t dma_stream)
+// unlock the DMA channels from an IRQ
+void Shared_DMA::unlock_from_IRQ(void)
 {
-    dma_locks* temp;
-    chMtxLock(&list_mutex);
-    for (temp = lock_head; temp; temp = temp->next) {
-        if (temp->dma_stream == dma_stream) {
-            chMtxUnlock(&list_mutex);
-            return;
-        }
+    chSysLockFromISR();
+    if (stream_id2 != SHARED_DMA_NONE) {
+        chBSemSignalI(&locks[stream_id2].semaphore);        
     }
-    temp = new dma_locks;
-    if (temp == nullptr) {
-        //Do Panic Here
-        return;
+    if (stream_id1 != SHARED_DMA_NONE) {
+        chBSemSignalI(&locks[stream_id1].semaphore);
     }
-    temp->dma_stream = dma_stream;
-    chBSemObjectInit(&temp->sem, false);
-    temp->next = lock_head;
-    temp->last_ctx = nullptr;
-    lock_head = temp;
-    chMtxUnlock(&list_mutex);
-}
-
-void* Shared_DMA::get_ctx(uint32_t dma_stream)
-{
-    dma_locks* lock = get_lock(dma_stream);
-    if (lock == nullptr) {
-        return nullptr;
-    } else {
-        return lock->last_ctx;
-    }
-}
-
-Shared_DMA::dma_locks* Shared_DMA::get_lock(uint32_t dma_stream)
-{
-    dma_locks *temp;
-    for (temp = lock_head; temp; temp = temp->next) {
-        if (temp->dma_stream == dma_stream) {
-            return temp;
-        }
-    }
-    return nullptr;
+    chSysUnlockFromISR();
 }
