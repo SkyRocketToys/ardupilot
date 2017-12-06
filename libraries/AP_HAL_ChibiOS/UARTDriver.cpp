@@ -17,48 +17,19 @@ using namespace ChibiOS;
 #endif
 
 static ChibiUARTDriver::SerialDef _serial_tab[] = {
-    {(BaseSequentialStream*) &SD2, false,
-#ifdef STM32_UART_USART2_RX_DMA_STREAM
-      true, //RX DMA
-      STM32_UART_USART2_RX_DMA_STREAM, 
-      STM32_DMA_GETCHANNEL(STM32_UART_USART2_RX_DMA_STREAM, STM32_USART2_RX_DMA_CHN),
-#else
-     false, 0, 0,
-#endif
-#ifdef STM32_UART_USART2_TX_DMA_STREAM
-      true, //TX DMA
-      STM32_UART_USART2_TX_DMA_STREAM,
-      STM32_DMA_GETCHANNEL(STM32_UART_USART2_TX_DMA_STREAM, STM32_USART2_TX_DMA_CHN)
-#else
-     false, 0, 0,
-#endif
-    },   //Serial 0
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK_CUBE || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_PIXHAWK1 || \
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_V2450
-    {(BaseSequentialStream*) &SD4, false, false, 0, 0, false, 0, 0},   //Serial 1, GPS
-    {(BaseSequentialStream*) &SDU1, true, false, 0, 0, false, 0, 0},   //Serial 2, USB
+    {(BaseSequentialStream*) &SDU1, true, false, 0, 0, false, 0, 0},   //Serial 0, USB
+    UART4_CONFIG, // Serial 1, GPS
+    USART2_CONFIG, // Serial 2, telem1
+    USART3_CONFIG, // Serial 3, telem2
+    UART8_CONFIG, // Serial 4, GPS2
+    //UART7_CONFIG, // Serial 5, debug console
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
-    {(BaseSequentialStream*) &SD6, false,
-#ifdef STM32_UART_USART6_RX_DMA_STREAM
-     true, //RX DMA
-     STM32_UART_USART6_RX_DMA_STREAM, 
-     STM32_DMA_GETCHANNEL(STM32_UART_USART6_RX_DMA_STREAM, STM32_USART6_RX_DMA_CHN),
-#else
-     false, 0, 0,
-#endif
-     false, 0, 0,
-    },   //Serial 1, GPS
-    {(BaseSequentialStream*) &SD3, false,
-#ifdef STM32_UART_USART3_RX_DMA_STREAM
-     true,
-     STM32_UART_USART3_RX_DMA_STREAM, 
-     STM32_DMA_GETCHANNEL(STM32_UART_USART3_RX_DMA_STREAM, STM32_USART3_RX_DMA_CHN),
-#else
-     false, 0, 0,
-#endif
-     false, 0, 0,
-    },   //Serial 2, Sonix
+    USART2_CONFIG, // Serial 0, debug console
+    USART6_CONFIG, // Serial 1, GPS
+    USART3_CONFIG, // Serial 2, sonix
 #endif
 };
 
@@ -194,9 +165,10 @@ void ChibiUARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
                 ((SerialDriver*)_serial)->usart->CR1 &= ~USART_CR1_RXNEIE;
                 //Start DMA
                 if(!was_initialised) {
-                    uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
-                                       STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_rx_channel_id) |
-                                       STM32_DMA_CR_PL(0);
+                    uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE;
+                    dmamode |= STM32_DMA_CR_CHSEL(STM32_DMA_GETCHANNEL(_serial_tab[_serial_num].dma_rx_stream_id,
+                                                                       _serial_tab[_serial_num].dma_rx_channel_id));
+                    dmamode |= STM32_DMA_CR_PL(0);
                     dmaStreamSetMemory0(rxdma, rx_bounce_buf);
                     dmaStreamSetTransactionSize(rxdma, RX_BOUNCE_BUFSIZE);
                     dmaStreamSetMode(rxdma, dmamode    | STM32_DMA_CR_DIR_P2M |
@@ -535,11 +507,12 @@ void ChibiUARTDriver::_timer_tick(void)
                 osalDbgAssert(txdma != nullptr, "UART TX DMA allocation failed");
                 dmaStreamSetMemory0(txdma, tx_bounce_buf);
                 dmaStreamSetTransactionSize(txdma, tx_len);
-                uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE | 
-                                       STM32_DMA_CR_CHSEL(_serial_tab[_serial_num].dma_tx_channel_id) |
-                                       STM32_DMA_CR_PL(0);
+                uint32_t dmamode = STM32_DMA_CR_DMEIE | STM32_DMA_CR_TEIE;
+                dmamode |= STM32_DMA_CR_CHSEL(STM32_DMA_GETCHANNEL(_serial_tab[_serial_num].dma_tx_stream_id,
+                                                                   _serial_tab[_serial_num].dma_tx_channel_id));
+                dmamode |= STM32_DMA_CR_PL(0);
                 dmaStreamSetMode(txdma, dmamode | STM32_DMA_CR_DIR_M2P |
-                                     STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
+                                 STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
                 dmaStreamEnable(txdma);
             }
         }

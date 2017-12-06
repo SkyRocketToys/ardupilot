@@ -34,10 +34,10 @@ public:
         bool is_usb;
         bool dma_rx;
         uint8_t dma_rx_stream_id;
-        uint8_t dma_rx_channel_id; 
+        uint32_t dma_rx_channel_id; 
         bool dma_tx;
         uint8_t dma_tx_stream_id;
-        uint8_t dma_tx_channel_id; 
+        uint32_t dma_tx_channel_id; 
     };
 private:
     bool _dma_rx;
