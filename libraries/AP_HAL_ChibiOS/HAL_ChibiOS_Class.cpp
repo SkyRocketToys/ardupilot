@@ -13,6 +13,8 @@
 static ChibiOS::ChibiUARTDriver uartADriver(0);
 static ChibiOS::ChibiUARTDriver uartBDriver(1);
 static ChibiOS::ChibiUARTDriver uartCDriver(2);
+static ChibiOS::ChibiUARTDriver uartDDriver(3);
+static ChibiOS::ChibiUARTDriver uartEDriver(4);
 static ChibiOS::I2CDeviceManager i2cDeviceManager;
 static ChibiOS::SPIDeviceManager spiDeviceManager;
 static ChibiOS::ChibiAnalogIn analogIn;
@@ -31,8 +33,8 @@ HAL_ChibiOS::HAL_ChibiOS() :
         &uartADriver,
         &uartBDriver,
         &uartCDriver,
-        nullptr,            /* no uartD */
-        nullptr,            /* no uartE */
+        &uartDDriver,
+        &uartEDriver,
         nullptr,            /* no uartF */
         &i2cDeviceManager,
         &spiDeviceManager,
