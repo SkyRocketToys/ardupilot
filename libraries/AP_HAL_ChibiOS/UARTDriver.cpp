@@ -352,13 +352,11 @@ size_t ChibiUARTDriver::write(uint8_t c)
     while (_writebuf.space() == 0) {
         if (_nonblocking_writes) {
             chMtxUnlock(&_write_mutex);
-            hal.gpio->write(3, 1);
             return 0;
         }
         hal.scheduler->delay(1);
     }
     size_t ret = _writebuf.write(&c, 1);
-    hal.gpio->write(3, 0);
     chMtxUnlock(&_write_mutex);
     return ret;
 }
@@ -388,7 +386,6 @@ size_t ChibiUARTDriver::write(const uint8_t *buffer, size_t size)
 
     size_t ret = _writebuf.write(buffer, size);
     chMtxUnlock(&_write_mutex);
-    hal.gpio->write(3, ret!=size);
     return ret;
 }
 
