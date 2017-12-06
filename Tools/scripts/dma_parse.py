@@ -47,7 +47,7 @@ sys.stdout.write('\t# extracted from %s and %s\n' % (
 for k in sorted(table.iterkeys()):
     sys.stdout.write('\t"%s"\t:\t[' % k)
     for i in range(len(table[k])):
-        sys.stdout.write("[%u,%u]" % (table[k][i][0], table[k][i][1]))
+        sys.stdout.write("(%u,%u)" % (table[k][i][0], table[k][i][1]))
         if i < len(table[k])-1:
             sys.stdout.write(",")
     sys.stdout.write("],\n")
