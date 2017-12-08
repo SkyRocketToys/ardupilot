@@ -6,7 +6,7 @@
 #include "shared_dma.h"
 
 #define RX_BOUNCE_BUFSIZE 128
-#define TX_BOUNCE_BUFSIZE 512
+#define TX_BOUNCE_BUFSIZE 64
 
 class ChibiOS::ChibiUARTDriver : public AP_HAL::UARTDriver {
 public:
