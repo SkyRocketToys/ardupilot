@@ -24,14 +24,14 @@
    https://github.com/esden/superbitrf-firmware
  */
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-THD_WORKING_AREA(_irq_handler_wa, 512);
+static THD_WORKING_AREA(_irq_handler_wa, 512);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
 #endif
 
 #ifndef CYRF_SPI_DEVICE
-# define CYRF_SPI_DEVICE "cypress"
+# define CYRF_SPI_DEVICE "radio"
 #endif
 
 #ifndef CYRF_IRQ_INPUT
@@ -303,9 +303,9 @@ bool AP_Radio_cypress::reset(void)
     // use AUX5 as radio IRQ pin
     stm32_configgpio(CYRF_IRQ_INPUT);
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-    hal.gpio->write(HAL_GPIO_CYRF_RESET, 1);
+    hal.gpio->write(HAL_GPIO_RADIO_RESET, 1);
     hal.scheduler->delay(500);
-    hal.gpio->write(HAL_GPIO_CYRF_RESET, 0);
+    hal.gpio->write(HAL_GPIO_RADIO_RESET, 0);
     hal.scheduler->delay(500);
 #endif
     radio_init();
@@ -648,7 +648,7 @@ void AP_Radio_cypress::radio_init(void)
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-    hal.gpio->attach_interrupt(HAL_GPIO_CYRF_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_RISING);
+    hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_RISING);
 #endif
 }
 
