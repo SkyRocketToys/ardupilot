@@ -615,7 +615,10 @@ bool AP_Radio_cc2500::getBind1(uint8_t ccLen, uint8_t *packet)
         bindTxId[0] = packet[3];
         bindTxId[1] = packet[4];
         for (uint8_t n = 0; n < 5; n++) {
-            bindHopData[packet[5] + n] = packet[6 + n];
+            uint8_t c = packet[5] + n;
+            if (c < sizeof(bindHopData)) {
+                bindHopData[c] = packet[6 + n];
+            }
         }
         return true;
     }
@@ -642,7 +645,10 @@ bool AP_Radio_cc2500::getBind2(uint8_t ccLen, uint8_t *packet)
                     return true;
                 }
             }
-            bindHopData[packet[5] + n] = packet[6 + n];
+            uint8_t c = packet[5] + n;
+            if (c < sizeof(bindHopData)) {
+                bindHopData[c] = packet[6 + n];
+            }
         }
         bindIdx = bindIdx + 5;
         return false;
