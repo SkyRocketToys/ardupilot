@@ -113,6 +113,8 @@ private:
     static uint32_t irq_time_us;
     const uint32_t sync_time_us = 9000;
     uint8_t chan_count;
+    uint32_t lost;
+    bool have_bind_info;
 
     uint32_t timeTunedMs;
 
@@ -131,6 +133,19 @@ private:
     void irq_handler(void);
     void irq_timeout(void);
 
+    // bind structure saved to storage
+    static const uint16_t bind_magic = 0x120a;
+    struct PACKED bind_info {
+        uint16_t magic;
+        uint8_t bindTxId[2];
+        int8_t  bindOffset;
+        uint8_t listLength;
+        uint8_t bindHopData[50];
+    };
+    
+    void save_bind_info(void);
+    bool load_bind_info(void);
+    
     enum {
         STATE_INIT = 0,
         STATE_BIND,

@@ -151,6 +151,10 @@ uint8_t AP_Radio_cc2500::num_channels(void)
         last_pps_ms = now;
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
         last_stats = stats;
+        if (lost != 0) {
+            Debug(3,"lost=%u\n", lost);
+        }
+        lost=0;
     }
     return chan_count;
 }
@@ -284,9 +288,13 @@ void AP_Radio_cc2500::radio_init(void)
     hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_RISING);
 #endif
 
-    protocolState = STATE_BIND_TUNING;
+    if (load_bind_info()) {
+        protocolState = STATE_DATA;
+    } else {
+        protocolState = STATE_BIND_TUNING;
+    }
 
-    chVTSet(&timeout_vt, US2ST(12000), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, US2ST(10000), trigger_timeout_event, nullptr);
 }
 
 void AP_Radio_cc2500::trigger_irq_radio_event()
@@ -304,12 +312,15 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     //we are called from ISR context
     chSysLockFromISR();
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
-    chVTSetI(&timeout_vt, US2ST(12000), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, US2ST(10000), trigger_timeout_event, nullptr);
     chSysUnlockFromISR();
 }
 
 void AP_Radio_cc2500::start_recv_bind(void)
 {
+    protocolState = STATE_BIND_TUNING;
+    initTuneRx();
+    Debug(1,"Starting bind\n");
 }
 
 // handle a data96 mavlink packet for fw upload
@@ -337,7 +348,6 @@ void AP_Radio_cc2500::irq_handler(void)
         return;
     }
 
-    uint32_t now = irq_time_us;
     uint8_t packet[ccLen];
     cc2500.ReadFifo(packet, ccLen);
 
@@ -380,16 +390,12 @@ void AP_Radio_cc2500::irq_handler(void)
         if (getBind2(ccLen, packet)) {
             Debug(2,"got BIND2\n");
             protocolState = STATE_BIND_COMPLETE;
-            Debug(3,"listLength=%u\n", listLength);
-            for (uint8_t i=0; i<listLength; i++) {
-                Debug(3,"%2u ", bindHopData[i]);
-            }
-            Debug(3,"\n");
         }
         break;
 
     case STATE_BIND_COMPLETE:
         protocolState = STATE_STARTING;
+        save_bind_info();
         break;
 
     case STATE_STARTING:
@@ -442,7 +448,7 @@ void AP_Radio_cc2500::irq_handler(void)
             }
             chanskip = skip;
             nextChannel(chanskip);
-            packet_timer = now;
+            packet_timer = irq_time_us;
         } else {
             Debug(3, "p7=%02x\n", packet[7]);
         }
@@ -452,11 +458,6 @@ void AP_Radio_cc2500::irq_handler(void)
     default:
         Debug(2,"state %u\n", (unsigned)protocolState);
         break;
-    }
-
-    if (protocolState == STATE_DATA && now - packet_timer > sync_time_us) {
-        nextChannel(chanskip);
-        packet_timer = now;
     }
 }
 
@@ -492,6 +493,9 @@ void AP_Radio_cc2500::irq_timeout(void)
             nextChannel(1);
             cc2500.Strobe(CC2500_SRX);
             packet_timer = now;
+        } else if (protocolState == STATE_DATA && now - packet_timer > sync_time_us) {
+            nextChannel(chanskip);
+            lost++;
         }
         break;
     }
@@ -572,7 +576,6 @@ bool AP_Radio_cc2500::tuneRx(uint8_t ccLen, uint8_t *packet)
     }
     if ((packet[ccLen - 1] & 0x80) && packet[2] == 0x01) {
         uint8_t Lqi = packet[ccLen - 1] & 0x7F;
-        Debug(3,"Lqi=%u\n", Lqi);
         if (Lqi < 50) {
             return true;
         }
@@ -686,6 +689,46 @@ bool AP_Radio_cc2500::check_crc(uint8_t ccLen, uint8_t *packet)
 {
     uint16_t lcrc = calc_crc(&packet[3],(ccLen-7));
     return ((lcrc >>8)==packet[ccLen-4] && (lcrc&0x00FF)==packet[ccLen-3]);
+}
+
+/*
+  save bind info
+ */
+void AP_Radio_cc2500::save_bind_info(void)
+{
+    // access to storage for bind information
+    StorageAccess bind_storage(StorageManager::StorageBindInfo);
+    struct bind_info info;
+    
+    info.magic = bind_magic;
+    info.bindTxId[0] = bindTxId[0];
+    info.bindTxId[1] = bindTxId[1];
+    info.bindOffset = bindOffset;
+    info.listLength = listLength;
+    memcpy(info.bindHopData, bindHopData, sizeof(info.bindHopData));
+    bind_storage.write_block(0, &info, sizeof(info));
+}
+
+/*
+  load bind info
+ */
+bool AP_Radio_cc2500::load_bind_info(void)
+{
+    // access to storage for bind information
+    StorageAccess bind_storage(StorageManager::StorageBindInfo);
+    struct bind_info info;
+
+    if (!bind_storage.read_block(&info, 0, sizeof(info)) || info.magic != bind_magic) {
+        return false;
+    }
+    
+    bindTxId[0] = info.bindTxId[0];
+    bindTxId[1] = info.bindTxId[1];
+    bindOffset = info.bindOffset;
+    listLength = info.listLength;
+    memcpy(bindHopData, info.bindHopData, sizeof(bindHopData));
+
+    return true;
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
