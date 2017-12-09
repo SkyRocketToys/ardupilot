@@ -114,6 +114,7 @@ private:
     const uint32_t sync_time_us = 9000;
     uint8_t chan_count;
     uint32_t lost;
+    uint32_t timeouts;
     bool have_bind_info;
 
     uint32_t timeTunedMs;

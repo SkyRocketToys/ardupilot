@@ -25,6 +25,7 @@ static THD_WORKING_AREA(_irq_handler_wa, 512);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
+#define EVT_BIND EVENT_MASK(2)
 #endif
 
 extern const AP_HAL::HAL& hal;
@@ -151,10 +152,11 @@ uint8_t AP_Radio_cc2500::num_channels(void)
         last_pps_ms = now;
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
         last_stats = stats;
-        if (lost != 0) {
-            Debug(3,"lost=%u\n", lost);
+        if (lost != 0 || timeouts != 0) {
+            Debug(3,"lost=%u timeouts=%u\n", lost, timeouts);
         }
         lost=0;
+        timeouts=0;
     }
     return chan_count;
 }
@@ -279,7 +281,6 @@ void AP_Radio_cc2500::radio_init(void)
     }
 
     hal.scheduler->delay_microseconds(10*1000);
-    initTuneRx();
     
     // setup handler for rising edge of IRQ pin
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
@@ -289,12 +290,18 @@ void AP_Radio_cc2500::radio_init(void)
 #endif
 
     if (load_bind_info()) {
-        protocolState = STATE_DATA;
+        Debug(3,"Loaded bind info\n");
+        listLength = 47;
+        initialiseData(0);
+        protocolState = STATE_UPDATE;
+        chanskip = 1;
+        nextChannel(1);
     } else {
+        initTuneRx();
         protocolState = STATE_BIND_TUNING;
     }
 
-    chVTSet(&timeout_vt, US2ST(10000), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
 }
 
 void AP_Radio_cc2500::trigger_irq_radio_event()
@@ -312,14 +319,16 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     //we are called from ISR context
     chSysLockFromISR();
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
-    chVTSetI(&timeout_vt, US2ST(10000), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
     chSysUnlockFromISR();
 }
 
 void AP_Radio_cc2500::start_recv_bind(void)
 {
     protocolState = STATE_BIND_TUNING;
-    initTuneRx();
+    chan_count = 0;
+    packet_timer = AP_HAL::micros();
+    chEvtSignal(_irq_handler_ctx, EVT_BIND);
     Debug(1,"Starting bind\n");
 }
 
@@ -396,6 +405,8 @@ void AP_Radio_cc2500::irq_handler(void)
     case STATE_BIND_COMPLETE:
         protocolState = STATE_STARTING;
         save_bind_info();
+        Debug(3,"listLength=%u\n", listLength);
+        Debug(3,"Saved bind info\n");
         break;
 
     case STATE_STARTING:
@@ -449,6 +460,7 @@ void AP_Radio_cc2500::irq_handler(void)
             chanskip = skip;
             nextChannel(chanskip);
             packet_timer = irq_time_us;
+            chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
         } else {
             Debug(3, "p7=%02x\n", packet[7]);
         }
@@ -493,7 +505,8 @@ void AP_Radio_cc2500::irq_timeout(void)
             nextChannel(1);
             cc2500.Strobe(CC2500_SRX);
             packet_timer = now;
-        } else if (protocolState == STATE_DATA && now - packet_timer > sync_time_us) {
+            timeouts++;
+        } else {
             nextChannel(chanskip);
             lost++;
         }
@@ -510,18 +523,22 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
     while(true) {
         eventmask_t evt = chEvtWaitAny(ALL_EVENTS);
         switch(evt) {
-            case EVT_IRQ:
+        case EVT_IRQ:
+            radio_instance->irq_handler();
+            break;
+        case EVT_TIMEOUT:
+            if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST)) {
+                irq_time_us = AP_HAL::micros();
                 radio_instance->irq_handler();
-                break;
-            case EVT_TIMEOUT:
-                if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST)) {
-                    irq_time_us = AP_HAL::micros();
-                    radio_instance->irq_handler();
-                } else {
-                    radio_instance->irq_timeout();
-                }
-                break;
-            default: break;
+            } else {
+                radio_instance->irq_timeout();
+            }
+            break;
+        case EVT_BIND:
+            radio_instance->initTuneRx();
+            break;
+        default:
+            break;
         }
     }
 }
@@ -569,6 +586,9 @@ void AP_Radio_cc2500::initGetBind(void)
     bindIdx = 0x05;
 }
 
+/*
+  check if we have received a packet with sufficiently good link quality
+ */
 bool AP_Radio_cc2500::tuneRx(uint8_t ccLen, uint8_t *packet)
 {
     if (bindOffset >= 126) {
@@ -583,7 +603,9 @@ bool AP_Radio_cc2500::tuneRx(uint8_t ccLen, uint8_t *packet)
     return false;
 }
 
-
+/*
+  get a block of hopping data
+ */
 bool AP_Radio_cc2500::getBind1(uint8_t ccLen, uint8_t *packet)
 {
     // len|bind |tx
@@ -600,6 +622,9 @@ bool AP_Radio_cc2500::getBind1(uint8_t ccLen, uint8_t *packet)
     return false;
 }
 
+/*
+  get a 2nd stage of hopping data
+ */
 bool AP_Radio_cc2500::getBind2(uint8_t ccLen, uint8_t *packet)
 {
     if (bindIdx > 120) {
