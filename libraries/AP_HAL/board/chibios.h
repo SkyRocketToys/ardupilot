@@ -17,8 +17,8 @@
 #define HAL_INS_DEFAULT HAL_INS_MPU60XX_SPI
 
 #define HAL_INS_MPU60x0_NAME "mpu6000"
-#define HAL_GPIO_CYRF_RESET       1
-#define HAL_GPIO_CYRF_IRQ         2
+#define HAL_GPIO_RADIO_RESET       1
+#define HAL_GPIO_RADIO_IRQ         2
 
 #define HAL_RCINPUT_WITH_AP_RADIO 1
 #define STORAGE_FLASH_PAGE		1
@@ -58,8 +58,8 @@
 
 #define HAL_RCINPUT_WITH_AP_RADIO 1
 
-#define HAL_GPIO_CYRF_RESET       1
-#define HAL_GPIO_CYRF_IRQ         15
+#define HAL_GPIO_RADIO_RESET       1
+#define HAL_GPIO_RADIO_IRQ         15
 #define HAL_OS_FATFS_IO 1
 
 #define STORAGE_FLASH_PAGE		22
