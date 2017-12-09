@@ -108,6 +108,7 @@ private:
     uint8_t listLength;
     uint8_t bindIdx;
     uint8_t channr;
+    uint8_t chanskip;
     uint32_t packet_timer;
     static uint32_t irq_time_us;
     const uint32_t sync_time_us = 9000;
@@ -121,7 +122,7 @@ private:
     bool tuneRx(uint8_t ccLen, uint8_t *packet);
     bool getBind1(uint8_t ccLen, uint8_t *packet);
     bool getBind2(uint8_t ccLen, uint8_t *packet);
-    void nextChannel(uint8_t skip, bool sendStrobe);
+    void nextChannel(uint8_t skip);
 
     void parse_frSkyX(const uint8_t *packet);
     uint16_t calc_crc(uint8_t *data, uint8_t len);

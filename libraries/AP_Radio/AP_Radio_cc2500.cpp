@@ -286,7 +286,7 @@ void AP_Radio_cc2500::radio_init(void)
 
     protocolState = STATE_BIND_TUNING;
 
-    chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, US2ST(12000), trigger_timeout_event, nullptr);
 }
 
 void AP_Radio_cc2500::trigger_irq_radio_event()
@@ -304,7 +304,7 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     //we are called from ISR context
     chSysLockFromISR();
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
-    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, US2ST(12000), trigger_timeout_event, nullptr);
     chSysUnlockFromISR();
 }
 
@@ -396,47 +396,67 @@ void AP_Radio_cc2500::irq_handler(void)
         listLength = 47;
         initialiseData(0);
         protocolState = STATE_UPDATE;
-        nextChannel(1, false); //
-        cc2500.Strobe(CC2500_SRX);
+        chanskip = 1;
+        nextChannel(1);
         break;
 
     case STATE_UPDATE:
         protocolState = STATE_DATA;
         // fallthrough
 
-    case STATE_DATA:
+    case STATE_DATA: {
         if (packet[0] != 0x1D || ccLen != 32) {
-            Debug(3, "bad ID %02x len=%u\n", packet[0], ccLen);
             break;
         }
         if (!check_crc(ccLen, packet)) {
             Debug(3, "bad CRC\n");
-            //break;
+            break;
         }
         if (packet[1] != bindTxId[0] ||
             packet[2] != bindTxId[1]) {
             Debug(3, "p1=%02x p2=%02x p6=%02x\n", packet[1], packet[2], packet[6]);
             // not for us
-            //break;
+            break;
         }
-        if (packet[7] == 0x00 || packet[7] == 0x20) {
+        if (packet[7] == 0x00 ||
+            packet[7] == 0x20 ||
+            packet[7] == 0x10 ||
+            packet[7] == 0x12 ||
+            packet[7] == 0x14 ||
+            packet[7] == 0x16 ||
+            packet[7] == 0x18 ||
+            packet[7] == 0x1A ||
+            packet[7] == 0x1C ||
+            packet[7] == 0x1E) {
             // channel packet or range check packet
             parse_frSkyX(packet);
             stats.recv_packets++;
+            uint8_t hop_chan = packet[4] & 0x3F;
+            uint8_t skip = (packet[4]>>6) | (packet[5]<<2);
+            if (channr != hop_chan) {
+                Debug(4, "channr=%u hop_chan=%u\n", channr, hop_chan);
+            }
+            channr = hop_chan;
+            if (chanskip != skip) {
+                Debug(4, "chanskip=%u skip=%u\n", chanskip, skip);
+            }
+            chanskip = skip;
+            nextChannel(chanskip);
+            packet_timer = now;
         } else {
             Debug(3, "p7=%02x\n", packet[7]);
         }
-        if (now - packet_timer > sync_time_us) {
-            protocolState = STATE_UPDATE;
-            nextChannel(1, false);
-            cc2500.Strobe(CC2500_SRX);            
-            packet_timer = now;
-        }
         break;
+    }
         
     default:
         Debug(2,"state %u\n", (unsigned)protocolState);
         break;
+    }
+
+    if (protocolState == STATE_DATA && now - packet_timer > sync_time_us) {
+        nextChannel(chanskip);
+        packet_timer = now;
     }
 }
 
@@ -467,9 +487,9 @@ void AP_Radio_cc2500::irq_timeout(void)
         if (now - packet_timer > 50*sync_time_us) {
             Debug(3,"resync %u\n", now - packet_timer);
             protocolState = STATE_UPDATE;
-            nextChannel(1, false);
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);
+            nextChannel(1);
             cc2500.Strobe(CC2500_SRX);
             packet_timer = now;
         }
@@ -490,11 +510,12 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
                 radio_instance->irq_handler();
                 break;
             case EVT_TIMEOUT:
-                if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x80) {
+                if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST)) {
                     irq_time_us = AP_HAL::micros();
                     radio_instance->irq_handler();
+                } else {
+                    radio_instance->irq_timeout();
                 }
-                radio_instance->irq_timeout();
                 break;
             default: break;
         }
@@ -601,20 +622,15 @@ bool AP_Radio_cc2500::getBind2(uint8_t ccLen, uint8_t *packet)
     return false;
 }
 
-void AP_Radio_cc2500::nextChannel(uint8_t skip, bool sendStrobe)
+void AP_Radio_cc2500::nextChannel(uint8_t skip)
 {
-    channr += skip;
-    while (channr >= listLength) {
-        channr -= listLength;
-    }
+    channr = (channr + skip) % listLength;
     cc2500.Strobe(CC2500_SIDLE);
     cc2500.WriteReg(CC2500_23_FSCAL3, calData[bindHopData[channr]][0]);
     cc2500.WriteReg(CC2500_24_FSCAL2, calData[bindHopData[channr]][1]);
     cc2500.WriteReg(CC2500_25_FSCAL1, calData[bindHopData[channr]][2]);
     cc2500.WriteReg(CC2500_0A_CHANNR, bindHopData[channr]);
-    if (sendStrobe) {
-        cc2500.Strobe(CC2500_SFRX);
-    }
+    cc2500.Strobe(CC2500_SRX);
 }
 
 void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
@@ -637,6 +653,9 @@ void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
             c[i] = c[i] - 2048;
         } else {
             j = 0;
+        }
+        if (c[i] == 0) {
+            continue;
         }
         uint16_t word_temp = (((c[i]-64)<<1)/3+860);
         if ((word_temp > 800) && (word_temp < 2200)) {
