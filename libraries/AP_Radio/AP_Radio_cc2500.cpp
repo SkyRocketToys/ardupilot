@@ -293,7 +293,7 @@ void AP_Radio_cc2500::radio_init(void)
         Debug(3,"Loaded bind info\n");
         listLength = 47;
         initialiseData(0);
-        protocolState = STATE_UPDATE;
+        protocolState = STATE_SEARCH;
         chanskip = 1;
         nextChannel(1);
     } else {
@@ -424,12 +424,12 @@ void AP_Radio_cc2500::irq_handler(void)
     case STATE_STARTING:
         listLength = 47;
         initialiseData(0);
-        protocolState = STATE_UPDATE;
+        protocolState = STATE_SEARCH;
         chanskip = 1;
         nextChannel(1);
         break;
 
-    case STATE_UPDATE:
+    case STATE_SEARCH:
         protocolState = STATE_DATA;
         // fallthrough
 
@@ -543,26 +543,26 @@ void AP_Radio_cc2500::irq_timeout(void)
         break;
     }
         
-    case STATE_UPDATE:
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
         
         if (now - packet_timer > 50*sync_time_us) {
-            Debug(3,"resync %u\n", now - packet_timer);
-            protocolState = STATE_UPDATE;
+            Debug(3,"searching %u\n", now - packet_timer);
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);
             nextChannel(1);
             cc2500.Strobe(CC2500_SRX);
-            packet_timer = now;
             timeouts++;
-        } else {
-            nextChannel(chanskip);
-            lost++;
+            protocolState = STATE_SEARCH;
         }
         break;
     }
 
+    case STATE_SEARCH:
+        // shift by one channel at a time when searching
+        nextChannel(1);
+        break;
+            
     case STATE_FCCTEST: {
         if (get_fcc_test() == 0) {
             protocolState = STATE_DATA;

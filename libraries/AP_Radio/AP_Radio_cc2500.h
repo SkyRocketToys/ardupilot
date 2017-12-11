@@ -161,11 +161,11 @@ private:
         STATE_BIND_BINDING2,
         STATE_BIND_COMPLETE,
         STATE_STARTING,
-        STATE_UPDATE,
         STATE_DATA,
         STATE_TELEMETRY,
         STATE_RESUME,
         STATE_FCCTEST,
+        STATE_SEARCH,
     } protocolState;
 
     struct config {
