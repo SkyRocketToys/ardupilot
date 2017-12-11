@@ -27,7 +27,11 @@ static const struct {
     uint8_t channel;
     float scaling;
 } pin_scaling[] = {
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
+    { 4,   0.007734  },    // VCC 5V rail sense
+#else
     { 4,   6.6f/4096  },    // VCC 5V rail sense
+#endif
     { 2,   3.3f/4096  },    // 3DR Brick voltage, usually 10.1:1
                             // scaled from battery voltage
     { 3,   3.3f/4096  },    // 3DR Brick current, usually 17:1 scaled
@@ -224,7 +228,7 @@ void ChibiAnalogIn::_timer_tick(void)
         if (pin_scaling[i].channel == 4) {
             // record the Vcc value for later use in
             // voltage_average_ratiometric()
-            _board_voltage = buf_adc[i] * 6.6f / 4096;
+            _board_voltage = buf_adc[i] * pin_scaling[i].scaling;
         }
     }
     for (uint8_t i=0; i<ADC_GRP1_NUM_CHANNELS; i++) {
