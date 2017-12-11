@@ -116,6 +116,9 @@ private:
     uint32_t lost;
     uint32_t timeouts;
     bool have_bind_info;
+    uint8_t packet3;
+    bool telem_send_rssi;
+    float rssi_filtered;
 
     uint32_t timeTunedMs;
 
@@ -125,11 +128,14 @@ private:
     bool tuneRx(uint8_t ccLen, uint8_t *packet);
     bool getBind1(uint8_t ccLen, uint8_t *packet);
     bool getBind2(uint8_t ccLen, uint8_t *packet);
+    void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
 
     void parse_frSkyX(const uint8_t *packet);
     uint16_t calc_crc(uint8_t *data, uint8_t len);
     bool check_crc(uint8_t ccLen, uint8_t *packet);
+
+    void send_telemetry(void);
 
     void irq_handler(void);
     void irq_timeout(void);
@@ -159,6 +165,7 @@ private:
         STATE_DATA,
         STATE_TELEMETRY,
         STATE_RESUME,
+        STATE_FCCTEST,
     } protocolState;
 
     struct config {

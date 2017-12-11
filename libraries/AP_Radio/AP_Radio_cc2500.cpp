@@ -179,41 +179,41 @@ bool AP_Radio_cc2500::send(const uint8_t *pkt, uint16_t len)
 }
 
 const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
-    {CC2500_02_IOCFG0,   0x01},
-    {CC2500_17_MCSM1,    0x0C},
-    {CC2500_18_MCSM0,    0x18},
-    {CC2500_06_PKTLEN,   0x1E},
-    {CC2500_07_PKTCTRL1, 0x04},
-    {CC2500_08_PKTCTRL0, 0x01},
-    {CC2500_3E_PATABLE,  0xFF},
-    {CC2500_0B_FSCTRL1,  0x0A},
-    {CC2500_0C_FSCTRL0,  0x00},
-    {CC2500_0D_FREQ2,    0x5C},
-    {CC2500_0E_FREQ1,    0x76},
-    {CC2500_0F_FREQ0,    0x27},
-    {CC2500_10_MDMCFG4,  0x7B},
-    {CC2500_11_MDMCFG3,  0x61},
-    {CC2500_12_MDMCFG2,  0x13},
-    {CC2500_13_MDMCFG1,  0x23},
-    {CC2500_14_MDMCFG0,  0x7A},
-    {CC2500_15_DEVIATN,  0x51},
-    {CC2500_19_FOCCFG,   0x16},
-    {CC2500_1A_BSCFG,    0x6C},
-    {CC2500_1B_AGCCTRL2, 0x03},
-    {CC2500_1C_AGCCTRL1, 0x40},
-    {CC2500_1D_AGCCTRL0, 0x91},
-    {CC2500_21_FREND1,   0x56},
-    {CC2500_22_FREND0,   0x10},
-    {CC2500_23_FSCAL3,   0xA9},
-    {CC2500_24_FSCAL2,   0x0A},
-    {CC2500_25_FSCAL1,   0x00},
-    {CC2500_26_FSCAL0,   0x11},
-    {CC2500_29_FSTEST,   0x59},
-    {CC2500_2C_TEST2,    0x88},
-    {CC2500_2D_TEST1,    0x31},
-    {CC2500_2E_TEST0,    0x0B},
-    {CC2500_03_FIFOTHR,  0x07},
-    {CC2500_09_ADDR,     0x00},
+    {CC2500_02_IOCFG0,   0x01}, // GD0 high on RXFIFO filled or end of packet
+    {CC2500_17_MCSM1,    0x0C}, // stay in RX on packet receive, CCA always, TX -> IDLE
+    {CC2500_18_MCSM0,    0x18}, // XOSC expire 64, cal on IDLE -> TX or RX
+    {CC2500_06_PKTLEN,   0x1E}, // packet length 30
+    {CC2500_07_PKTCTRL1, 0x04}, // enable RSSI+LQI, no addr check, no autoflush, PQT=0
+    {CC2500_08_PKTCTRL0, 0x01}, // var length mode, no CRC, FIFO enable, no whitening
+    {CC2500_3E_PATABLE,  0xFF}, // ?? what are we doing to PA table here?
+    {CC2500_0B_FSCTRL1,  0x0A}, // IF=253.90625kHz assuming 26MHz crystal
+    {CC2500_0C_FSCTRL0,  0x00}, // freqoffs = 0
+    {CC2500_0D_FREQ2,    0x5C}, // freq control high
+    {CC2500_0E_FREQ1,    0x76}, // freq control middle
+    {CC2500_0F_FREQ0,    0x27}, // freq control low
+    {CC2500_10_MDMCFG4,  0x7B}, // data rate control
+    {CC2500_11_MDMCFG3,  0x61}, // data rate control
+    {CC2500_12_MDMCFG2,  0x13}, // 30/32 sync word bits, no manchester, GFSK, DC filter enabled
+    {CC2500_13_MDMCFG1,  0x23}, // chan spacing exponent 3, preamble 4 bytes, FEC disabled
+    {CC2500_14_MDMCFG0,  0x7A}, // chan spacing 299.926757kHz for 26MHz crystal
+    {CC2500_15_DEVIATN,  0x51}, // modem deviation 25.128906kHz for 26MHz crystal
+    {CC2500_19_FOCCFG,   0x16}, // frequency offset compensation
+    {CC2500_1A_BSCFG,    0x6C}, // bit sync config
+    {CC2500_1B_AGCCTRL2, 0x03}, // target amplitude 33dB
+    {CC2500_1C_AGCCTRL1, 0x40}, // AGC control 2
+    {CC2500_1D_AGCCTRL0, 0x91}, // AGC control 0
+    {CC2500_21_FREND1,   0x56}, // frontend config1
+    {CC2500_22_FREND0,   0x10}, // frontend config0
+    {CC2500_23_FSCAL3,   0xA9}, // frequency synth cal3
+    {CC2500_24_FSCAL2,   0x0A}, // frequency synth cal2
+    {CC2500_25_FSCAL1,   0x00}, // frequency synth cal1
+    {CC2500_26_FSCAL0,   0x11}, // frequency synth cal0
+    //{CC2500_29_FSTEST,   0x59}, disabled FSTEST write
+    {CC2500_2C_TEST2,    0x88}, // test settings
+    {CC2500_2D_TEST1,    0x31}, // test settings
+    {CC2500_2E_TEST0,    0x0B}, // test settings
+    {CC2500_03_FIFOTHR,  0x07}, // TX fifo threashold 33, RX fifo threshold 32
+    {CC2500_09_ADDR,     0x00}, // device address 0 (broadcast)
 };
 
 const uint16_t CRCTable[] = {
@@ -318,8 +318,8 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     (void)arg;
     //we are called from ISR context
     chSysLockFromISR();
-    chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
 
@@ -360,6 +360,13 @@ void AP_Radio_cc2500::irq_handler(void)
     uint8_t packet[ccLen];
     cc2500.ReadFifo(packet, ccLen);
 
+#if 0
+    if ((packet[ccLen-1] & 0x80) == 0) {
+        // bad radio CRC
+        return;
+    }
+#endif
+    
 #if 0
     static uint8_t counter;
     if (counter++ == 50) {
@@ -447,6 +454,10 @@ void AP_Radio_cc2500::irq_handler(void)
             packet[7] == 0x1E) {
             // channel packet or range check packet
             parse_frSkyX(packet);
+
+            rssi_filtered = 0.95 * rssi_filtered + 0.05 * packet[ccLen-2];
+            t_status.rssi = uint8_t(rssi_filtered);
+            
             stats.recv_packets++;
             uint8_t hop_chan = packet[4] & 0x3F;
             uint8_t skip = (packet[4]>>6) | (packet[5]<<2);
@@ -458,15 +469,33 @@ void AP_Radio_cc2500::irq_handler(void)
                 Debug(4, "chanskip=%u skip=%u\n", chanskip, skip);
             }
             chanskip = skip;
-            nextChannel(chanskip);
             packet_timer = irq_time_us;
             chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+            
+            packet3 = packet[3];
+
+            cc2500.Strobe(CC2500_SIDLE);
+            cc2500.SetPower(get_transmit_power());
+            send_telemetry();
+
+            // we can safely sleep here as we have a dedicated thread for radio processing.
+            cc2500.unlock_bus();
+            hal.scheduler->delay_microseconds(2700);
+            cc2500.lock_bus();
+
+            nextChannel(chanskip);
+            
         } else {
             Debug(3, "p7=%02x\n", packet[7]);
         }
         break;
     }
-        
+
+    case STATE_FCCTEST:
+        // nothing to do, all done in timeout code
+        Debug(3,"IRQ in FCCTEST state\n");
+        break;
+
     default:
         Debug(2,"state %u\n", (unsigned)protocolState);
         break;
@@ -476,6 +505,13 @@ void AP_Radio_cc2500::irq_handler(void)
 // handle timeout IRQ
 void AP_Radio_cc2500::irq_timeout(void)
 {
+    if (get_fcc_test() != 0 && protocolState != STATE_FCCTEST) {
+        protocolState = STATE_FCCTEST;
+        Debug(1,"Starting FCCTEST %u\n", get_fcc_test());
+        setChannel(get_fcc_test() * 10);
+        send_telemetry();
+    }
+    
     switch (protocolState) {
     case STATE_BIND_TUNING: {
         if (bindOffset >= 126) {
@@ -493,6 +529,7 @@ void AP_Radio_cc2500::irq_timeout(void)
         }
         break;
     }
+        
     case STATE_UPDATE:
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
@@ -512,6 +549,20 @@ void AP_Radio_cc2500::irq_timeout(void)
         }
         break;
     }
+
+    case STATE_FCCTEST: {
+        if (get_fcc_test() == 0) {
+            protocolState = STATE_DATA;
+            Debug(1,"Ending FCCTEST\n");
+        }
+        //uint8_t status = cc2500.Strobe(CC2500_SNOP);
+        setChannel(get_fcc_test() * 10);
+        send_telemetry();
+        //Debug(5,"FCC chan %u status=0x%02x\n", get_fcc_test(), status);
+        chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+        break;
+    }
+
     default:
         break;
     }
@@ -522,8 +573,14 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
     (void)arg;
     while(true) {
         eventmask_t evt = chEvtWaitAny(ALL_EVENTS);
+
+        radio_instance->cc2500.lock_bus();
+        
         switch(evt) {
         case EVT_IRQ:
+            if (radio_instance->protocolState == STATE_FCCTEST) {
+                hal.console->printf("IRQ FCC\n");
+            }
             radio_instance->irq_handler();
             break;
         case EVT_TIMEOUT:
@@ -540,6 +597,8 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
         default:
             break;
         }
+
+        radio_instance->cc2500.unlock_bus();
     }
 }
 
@@ -566,7 +625,7 @@ void AP_Radio_cc2500::initialiseData(uint8_t adr)
     cc2500.WriteReg(CC2500_0C_FSCTRL0, bindOffset);
     cc2500.WriteReg(CC2500_18_MCSM0, 0x8);
     cc2500.WriteReg(CC2500_09_ADDR, adr ? 0x03 : bindTxId[0]);
-    cc2500.WriteReg(CC2500_07_PKTCTRL1, 0x0D);
+    cc2500.WriteReg(CC2500_07_PKTCTRL1, 0x0D); // address check, no broadcast, autoflush, status enable
     cc2500.WriteReg(CC2500_19_FOCCFG, 0x16);
     hal.scheduler->delay_microseconds(10*1000);
 }
@@ -596,6 +655,7 @@ bool AP_Radio_cc2500::tuneRx(uint8_t ccLen, uint8_t *packet)
     }
     if ((packet[ccLen - 1] & 0x80) && packet[2] == 0x01) {
         uint8_t Lqi = packet[ccLen - 1] & 0x7F;
+        //bool crc_ok = (packet[ccLen - 1] & 0x80) != 0;
         if (Lqi < 50) {
             return true;
         }
@@ -656,15 +716,20 @@ bool AP_Radio_cc2500::getBind2(uint8_t ccLen, uint8_t *packet)
     return false;
 }
 
+void AP_Radio_cc2500::setChannel(uint8_t channel)
+{
+    cc2500.Strobe(CC2500_SIDLE);
+    cc2500.WriteReg(CC2500_23_FSCAL3, calData[channel][0]);
+    cc2500.WriteReg(CC2500_24_FSCAL2, calData[channel][1]);
+    cc2500.WriteReg(CC2500_25_FSCAL1, calData[channel][2]);
+    cc2500.WriteReg(CC2500_0A_CHANNR, channel);
+    cc2500.Strobe(CC2500_SRX);
+}
+
 void AP_Radio_cc2500::nextChannel(uint8_t skip)
 {
     channr = (channr + skip) % listLength;
-    cc2500.Strobe(CC2500_SIDLE);
-    cc2500.WriteReg(CC2500_23_FSCAL3, calData[bindHopData[channr]][0]);
-    cc2500.WriteReg(CC2500_24_FSCAL2, calData[bindHopData[channr]][1]);
-    cc2500.WriteReg(CC2500_25_FSCAL1, calData[bindHopData[channr]][2]);
-    cc2500.WriteReg(CC2500_0A_CHANNR, bindHopData[channr]);
-    cc2500.Strobe(CC2500_SRX);
+    setChannel(bindHopData[channr]);
 }
 
 void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
@@ -702,9 +767,6 @@ void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
             }
         }
     }
-
-    uint8_t rssi = packet[32-2];
-    t_status.rssi = 0.95 * t_status.rssi + 0.05 * rssi;
 }
 
 uint16_t AP_Radio_cc2500::calc_crc(uint8_t *data, uint8_t len)
@@ -760,6 +822,36 @@ bool AP_Radio_cc2500::load_bind_info(void)
     memcpy(bindHopData, info.bindHopData, sizeof(bindHopData));
 
     return true;
+}
+
+/*
+  send a telemetry packet
+ */
+void AP_Radio_cc2500::send_telemetry(void)
+{
+    uint8_t frame[15];
+
+    memset(frame, 0, sizeof(frame));
+    
+    frame[0] = sizeof(frame)-1;
+    frame[1] = bindTxId[0];
+    frame[2] = bindTxId[1];
+    frame[3] = packet3;
+    if (telem_send_rssi) {
+        frame[4] = t_status.rssi | 0x80;
+    } else {
+        frame[4] = uint8_t(hal.analogin->board_voltage() * 10) & 0x7F;
+    }
+    telem_send_rssi = !telem_send_rssi;
+    
+    uint16_t lcrc = calc_crc(&frame[3], 10);
+    frame[13] = lcrc>>8;
+    frame[14] = lcrc;
+
+    cc2500.Strobe(CC2500_SIDLE);
+    cc2500.Strobe(CC2500_SFTX);
+    cc2500.WriteFifo(frame, sizeof(frame));
+    cc2500.Strobe(CC2500_STX);
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
