@@ -360,6 +360,11 @@ void AP_Radio_cc2500::irq_handler(void)
     uint8_t packet[ccLen];
     cc2500.ReadFifo(packet, ccLen);
 
+    if (get_fcc_test() != 0) {
+        // don't process interrupts in FCCTEST mode
+        return;
+    }
+    
 #if 0
     if ((packet[ccLen-1] & 0x80) == 0) {
         // bad radio CRC
@@ -455,7 +460,15 @@ void AP_Radio_cc2500::irq_handler(void)
             // channel packet or range check packet
             parse_frSkyX(packet);
 
-            rssi_filtered = 0.95 * rssi_filtered + 0.05 * packet[ccLen-2];
+            // get RSSI value from status byte
+            uint8_t rssi_raw = packet[ccLen-2];
+            float rssi_dbm;
+            if (rssi_raw >= 128) {
+                rssi_dbm = (rssi_raw - 256.0)/2;
+            } else {
+                rssi_dbm = rssi_raw*0.5;
+            }
+            rssi_filtered = 0.95 * rssi_filtered + 0.05 * rssi_dbm;
             t_status.rssi = uint8_t(rssi_filtered);
             
             stats.recv_packets++;
@@ -480,7 +493,7 @@ void AP_Radio_cc2500::irq_handler(void)
 
             // we can safely sleep here as we have a dedicated thread for radio processing.
             cc2500.unlock_bus();
-            hal.scheduler->delay_microseconds(2700);
+            hal.scheduler->delay_microseconds(2800);
             cc2500.lock_bus();
 
             nextChannel(chanskip);
@@ -508,7 +521,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     if (get_fcc_test() != 0 && protocolState != STATE_FCCTEST) {
         protocolState = STATE_FCCTEST;
         Debug(1,"Starting FCCTEST %u\n", get_fcc_test());
-        setChannel(get_fcc_test() * 10);
+        setChannel(labs(get_fcc_test()) * 10);
         send_telemetry();
     }
     
@@ -555,10 +568,8 @@ void AP_Radio_cc2500::irq_timeout(void)
             protocolState = STATE_DATA;
             Debug(1,"Ending FCCTEST\n");
         }
-        //uint8_t status = cc2500.Strobe(CC2500_SNOP);
-        setChannel(get_fcc_test() * 10);
+        setChannel(labs(get_fcc_test()) * 10);
         send_telemetry();
-        //Debug(5,"FCC chan %u status=0x%02x\n", get_fcc_test(), status);
         chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
         break;
     }
@@ -838,7 +849,7 @@ void AP_Radio_cc2500::send_telemetry(void)
     frame[2] = bindTxId[1];
     frame[3] = packet3;
     if (telem_send_rssi) {
-        frame[4] = t_status.rssi | 0x80;
+        frame[4] = (t_status.rssi*2) | 0x80;
     } else {
         frame[4] = uint8_t(hal.analogin->board_voltage() * 10) & 0x7F;
     }
@@ -850,7 +861,11 @@ void AP_Radio_cc2500::send_telemetry(void)
 
     cc2500.Strobe(CC2500_SIDLE);
     cc2500.Strobe(CC2500_SFTX);
-    cc2500.WriteFifo(frame, sizeof(frame));
+    if (get_fcc_test() >= 0) {
+        // in negative FCC test modes we don't write to the FIFO, which gives
+        // continuous transmission
+        cc2500.WriteFifo(frame, sizeof(frame));
+    }
     cc2500.Strobe(CC2500_STX);
 }
 

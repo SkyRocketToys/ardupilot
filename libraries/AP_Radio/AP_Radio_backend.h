@@ -109,7 +109,7 @@ protected:
         return radio.tx_max_power.set_default(v);
     }
     
-    uint8_t get_fcc_test(void) const {
+    int8_t get_fcc_test(void) const {
         return radio.fcc_test.get();
     }
 
