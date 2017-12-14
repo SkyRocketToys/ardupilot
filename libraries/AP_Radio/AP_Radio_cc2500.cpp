@@ -258,6 +258,7 @@ void AP_Radio_cc2500::radio_init(void)
 {
     if (cc2500.ReadReg(CC2500_30_PARTNUM | CC2500_READ_BURST) != 0x80 ||
         cc2500.ReadReg(CC2500_31_VERSION | CC2500_READ_BURST) != 0x03) {
+        Debug(1, "cc2500: radio not found\n");
         return;
     }
 
@@ -365,51 +366,40 @@ void AP_Radio_cc2500::irq_handler(void)
         return;
     }
     
-#if 0
-    if ((packet[ccLen-1] & 0x80) == 0) {
-        // bad radio CRC
+    if (ccLen != 32) {
+        cc2500.Strobe(CC2500_SFRX);
+        cc2500.Strobe(CC2500_SRX);
+        Debug(3, "bad len %u\n", ccLen);
         return;
     }
-#endif
     
-#if 0
-    static uint8_t counter;
-    if (counter++ == 50) {
-        Debug(2, "CC2500 IRQ state=%u\n", unsigned(protocolState));
-        Debug(3,"len=%u\n", ccLen);
+    if (!check_crc(ccLen, packet)) {
+        Debug(3, "bad CRC\n");
+        return;
+    }
+    
+    if (get_debug_level() > 6) {
+        Debug(6, "CC2500 IRQ state=%u\n", unsigned(protocolState));
+        Debug(6,"len=%u\n", ccLen);
         for (uint8_t i=0; i<ccLen; i++) {
-            Debug(4, "%02x:%02x ", i, packet[i]);
+            Debug(6, "%02x:%02x ", i, packet[i]);
             if ((i+1) % 16 == 0) {
-                Debug(4, "\n");
+                Debug(6, "\n");
             }
         }
         if (ccLen % 16 != 0) {
-            Debug(4, "\n");
+            Debug(6, "\n");
         }
-        counter = 0;
     }
-#endif
 
     switch (protocolState) {
     case STATE_BIND_TUNING:
-        if (tuneRx(ccLen, packet)) {
-            Debug(2,"got BIND_TUNING\n");
-            initGetBind();
-            initialiseData(1);
-            protocolState = STATE_BIND_BINDING1;
-        }
+        tuneRx(ccLen, packet);
         break;
 
-    case STATE_BIND_BINDING1:
-        if (getBind1(ccLen, packet)) {
-            Debug(2,"got BIND1\n");
-            protocolState = STATE_BIND_BINDING2;            
-        }
-        break;
-
-    case STATE_BIND_BINDING2:
-        if (getBind2(ccLen, packet)) {
-            Debug(2,"got BIND2\n");
+    case STATE_BIND_BINDING:
+        if (getBindData(ccLen, packet)) {
+            Debug(2,"Bind complete\n");
             protocolState = STATE_BIND_COMPLETE;
         }
         break;
@@ -435,10 +425,6 @@ void AP_Radio_cc2500::irq_handler(void)
 
     case STATE_DATA: {
         if (packet[0] != 0x1D || ccLen != 32) {
-            break;
-        }
-        if (!check_crc(ccLen, packet)) {
-            Debug(3, "bad CRC\n");
             break;
         }
         if (packet[1] != bindTxId[0] ||
@@ -520,7 +506,7 @@ void AP_Radio_cc2500::irq_timeout(void)
 {
     if (get_fcc_test() != 0 && protocolState != STATE_FCCTEST) {
         protocolState = STATE_FCCTEST;
-        Debug(1,"Starting FCCTEST %u\n", get_fcc_test());
+        Debug(1,"Starting FCCTEST %d\n", get_fcc_test());
         setChannel(labs(get_fcc_test()) * 10);
         send_telemetry();
     }
@@ -528,10 +514,13 @@ void AP_Radio_cc2500::irq_timeout(void)
     switch (protocolState) {
     case STATE_BIND_TUNING: {
         if (bindOffset >= 126) {
+            if (check_best_LQI()) {
+                return;
+            }
             bindOffset = -126;
         }
         uint32_t now = AP_HAL::millis();    
-        if (now - timeTunedMs > 50) {
+        if (now - timeTunedMs > 20) {
             timeTunedMs = now;
             bindOffset += 5;
             Debug(6,"bindOffset=%d\n", int(bindOffset));
@@ -569,8 +558,8 @@ void AP_Radio_cc2500::irq_timeout(void)
             Debug(1,"Ending FCCTEST\n");
         }
         setChannel(labs(get_fcc_test()) * 10);
+        cc2500.SetPower(get_transmit_power());
         send_telemetry();
-        chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
         break;
     }
 
@@ -595,7 +584,7 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
             radio_instance->irq_handler();
             break;
         case EVT_TIMEOUT:
-            if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST)) {
+            if (radio_instance->cc2500.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x80) {
                 irq_time_us = AP_HAL::micros();
                 radio_instance->irq_handler();
             } else {
@@ -618,6 +607,8 @@ void AP_Radio_cc2500::initTuneRx(void)
     cc2500.WriteReg(CC2500_19_FOCCFG, 0x14);
     timeTunedMs = AP_HAL::millis();
     bindOffset = -126;
+    best_lqi = 255;
+    best_bindOffset = bindOffset;
     cc2500.WriteReg(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
     cc2500.WriteReg(CC2500_07_PKTCTRL1, 0x0C);
     cc2500.WriteReg(CC2500_18_MCSM0, 0x8);
@@ -653,76 +644,78 @@ void AP_Radio_cc2500::initGetBind(void)
 
     cc2500.Strobe(CC2500_SRX);
     listLength = 0;
-    bindIdx = 0x05;
 }
 
 /*
-  check if we have received a packet with sufficiently good link quality
+  we've wrapped in the search for the best bind offset. Accept the
+  best so far if its good enough
+ */
+bool AP_Radio_cc2500::check_best_LQI(void)
+{
+    if (best_lqi >= 50) {
+        return false;
+    }
+    bindOffset = best_bindOffset;
+    initGetBind();
+    initialiseData(1);
+    protocolState = STATE_BIND_BINDING;
+    bind_mask = 0;
+    listLength = 0;
+    Debug(2,"Bind tuning %d with Lqi %u\n", best_bindOffset, best_lqi);
+    return true;
+}
+
+/*
+  check if we have received a packet with sufficiently good link
+  quality to start binding
  */
 bool AP_Radio_cc2500::tuneRx(uint8_t ccLen, uint8_t *packet)
 {
     if (bindOffset >= 126) {
+        // we've scanned the whole range, if any were below 50 then
+        // accept it
+        if (check_best_LQI()) {
+            return true;
+        }
         bindOffset = -126;
     }
     if ((packet[ccLen - 1] & 0x80) && packet[2] == 0x01) {
         uint8_t Lqi = packet[ccLen - 1] & 0x7F;
-        //bool crc_ok = (packet[ccLen - 1] & 0x80) != 0;
-        if (Lqi < 50) {
-            return true;
+        if (Lqi < best_lqi) {
+            best_lqi = Lqi;
+            best_bindOffset = bindOffset;
         }
     }
     return false;
 }
 
 /*
-  get a block of hopping data
+  get a block of hopping data from a bind packet
  */
-bool AP_Radio_cc2500::getBind1(uint8_t ccLen, uint8_t *packet)
+bool AP_Radio_cc2500::getBindData(uint8_t ccLen, uint8_t *packet)
 {
-    // len|bind |tx
-    // id|03|01|idx|h0|h1|h2|h3|h4|00|00|00|00|00|00|00|00|00|00|00|00|00|00|00|CHK1|CHK2|RSSI|LQI/CRC|
-    // Start by getting bind packet 0 and the txid
-    if ((packet[ccLen - 1] & 0x80) && packet[2] == 0x01 && packet[5] == 0x00) {
-        bindTxId[0] = packet[3];
-        bindTxId[1] = packet[4];
-        for (uint8_t n = 0; n < 5; n++) {
-            uint8_t c = packet[5] + n;
-            if (c < sizeof(bindHopData)) {
-                bindHopData[c] = packet[6 + n];
-            }
+    // parse a bind data packet */
+    if ((packet[ccLen - 1] & 0x80) && packet[2] == 0x01) {
+        if (bind_mask == 0) {
+            bindTxId[0] = packet[3];
+            bindTxId[1] = packet[4];
+        } else if (bindTxId[0] != packet[3] ||
+                   bindTxId[1] != packet[4]) {
+            Debug(2,"Bind restart\n");
+            bind_mask = 0;
+            listLength = 0;
         }
-        return true;
-    }
-    return false;
-}
 
-/*
-  get a 2nd stage of hopping data
- */
-bool AP_Radio_cc2500::getBind2(uint8_t ccLen, uint8_t *packet)
-{
-    if (bindIdx > 120) {
-        return true;
-    }
-    if ((packet[ccLen - 1] & 0x80) &&
-        packet[2] == 0x01 &&
-        packet[3] == bindTxId[0] &&
-        packet[4] == bindTxId[1] &&
-        packet[5] == bindIdx) {
         for (uint8_t n = 0; n < 5; n++) {
-            if (packet[6 + n] == packet[ccLen - 3] || (packet[6 + n] == 0)) {
-                if (bindIdx >= 0x2D) {
-                    listLength = packet[5] + n;
-                    return true;
-                }
-            }
             uint8_t c = packet[5] + n;
             if (c < sizeof(bindHopData)) {
                 bindHopData[c] = packet[6 + n];
+                bind_mask |= (uint64_t(1)<<c);
+                listLength = MAX(listLength, c+1);
             }
         }
-        bindIdx = bindIdx + 5;
-        return false;
+        // bind has finished when we have hopping data for all channels
+        return (listLength == 47 && bind_mask == ((uint64_t(1)<<47)-1));
     }
     return false;
 }

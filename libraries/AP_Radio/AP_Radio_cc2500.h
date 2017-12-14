@@ -103,12 +103,12 @@ private:
     uint8_t calData[255][3];
     uint8_t bindTxId[2];
     int8_t  bindOffset;
-    uint8_t bindHopData[50];
+    uint8_t bindHopData[47];
     uint8_t rxNum;
     uint8_t listLength;
-    uint8_t bindIdx;
     uint8_t channr;
     uint8_t chanskip;
+    int8_t fcc_chan;
     uint32_t packet_timer;
     static uint32_t irq_time_us;
     const uint32_t sync_time_us = 9000;
@@ -119,6 +119,9 @@ private:
     uint8_t packet3;
     bool telem_send_rssi;
     float rssi_filtered;
+    uint64_t bind_mask;
+    uint8_t best_lqi;
+    int8_t best_bindOffset;
 
     uint32_t timeTunedMs;
 
@@ -126,8 +129,8 @@ private:
     void initialiseData(uint8_t adr);
     void initGetBind(void);
     bool tuneRx(uint8_t ccLen, uint8_t *packet);
-    bool getBind1(uint8_t ccLen, uint8_t *packet);
-    bool getBind2(uint8_t ccLen, uint8_t *packet);
+    bool getBindData(uint8_t ccLen, uint8_t *packet);
+    bool check_best_LQI(void);
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
 
@@ -147,7 +150,7 @@ private:
         uint8_t bindTxId[2];
         int8_t  bindOffset;
         uint8_t listLength;
-        uint8_t bindHopData[50];
+        uint8_t bindHopData[47];
     };
     
     void save_bind_info(void);
@@ -157,8 +160,7 @@ private:
         STATE_INIT = 0,
         STATE_BIND,
         STATE_BIND_TUNING,
-        STATE_BIND_BINDING1,
-        STATE_BIND_BINDING2,
+        STATE_BIND_BINDING,
         STATE_BIND_COMPLETE,
         STATE_STARTING,
         STATE_DATA,
