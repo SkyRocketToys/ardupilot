@@ -543,6 +543,9 @@ void AP_Radio_cc2500::irq_timeout(void)
             cc2500.Strobe(CC2500_SRX);
             timeouts++;
             protocolState = STATE_SEARCH;
+        } else {
+            nextChannel(chanskip);
+            lost++;
         }
         break;
     }
