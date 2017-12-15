@@ -199,7 +199,7 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_15_DEVIATN,  0x51}, // modem deviation 25.128906kHz for 26MHz crystal
     {CC2500_19_FOCCFG,   0x16}, // frequency offset compensation
     {CC2500_1A_BSCFG,    0x6C}, // bit sync config
-    {CC2500_1B_AGCCTRL2, 0x03}, // target amplitude 33dB
+    {CC2500_1B_AGCCTRL2, 0x43}, // target amplitude 33dB
     {CC2500_1C_AGCCTRL1, 0x40}, // AGC control 2
     {CC2500_1D_AGCCTRL0, 0x91}, // AGC control 0
     {CC2500_21_FREND1,   0x56}, // frontend config1
@@ -208,7 +208,7 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_24_FSCAL2,   0x0A}, // frequency synth cal2
     {CC2500_25_FSCAL1,   0x00}, // frequency synth cal1
     {CC2500_26_FSCAL0,   0x11}, // frequency synth cal0
-    //{CC2500_29_FSTEST,   0x59}, disabled FSTEST write
+    {CC2500_29_FSTEST,   0x59}, // test bits
     {CC2500_2C_TEST2,    0x88}, // test settings
     {CC2500_2D_TEST1,    0x31}, // test settings
     {CC2500_2E_TEST0,    0x0B}, // test settings
@@ -265,7 +265,10 @@ void AP_Radio_cc2500::radio_init(void)
     Debug(1, "cc2500: radio_init starting\n");
 
     cc2500.Reset();
+    hal.scheduler->delay_microseconds(100);
     for (uint8_t i=0; i<ARRAY_SIZE(radio_config); i++) {
+        // write twice to cope with possible SPI errors
+        cc2500.WriteReg(radio_config[i].reg, radio_config[i].value);
         cc2500.WriteReg(radio_config[i].reg, radio_config[i].value);
     }
     cc2500.Strobe(CC2500_SIDLE);	// Go to idle...
@@ -450,12 +453,12 @@ void AP_Radio_cc2500::irq_handler(void)
             uint8_t rssi_raw = packet[ccLen-2];
             float rssi_dbm;
             if (rssi_raw >= 128) {
-                rssi_dbm = (rssi_raw - 256.0)/2;
+                rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) - 82;
             } else {
-                rssi_dbm = rssi_raw*0.5;
+                rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) + 65;
             }
             rssi_filtered = 0.95 * rssi_filtered + 0.05 * rssi_dbm;
-            t_status.rssi = uint8_t(rssi_filtered);
+            t_status.rssi = uint8_t(MAX(rssi_filtered, 1));
             
             stats.recv_packets++;
             uint8_t hop_chan = packet[4] & 0x3F;
@@ -845,7 +848,7 @@ void AP_Radio_cc2500::send_telemetry(void)
     frame[2] = bindTxId[1];
     frame[3] = packet3;
     if (telem_send_rssi) {
-        frame[4] = (t_status.rssi*2) | 0x80;
+        frame[4] = MAX(MIN(t_status.rssi, 0x7f),1) | 0x80;
     } else {
         frame[4] = uint8_t(hal.analogin->board_voltage() * 10) & 0x7F;
     }
