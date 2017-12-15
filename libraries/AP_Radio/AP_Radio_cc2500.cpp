@@ -268,15 +268,14 @@ void AP_Radio_cc2500::radio_init(void)
     hal.scheduler->delay_microseconds(100);
     for (uint8_t i=0; i<ARRAY_SIZE(radio_config); i++) {
         // write twice to cope with possible SPI errors
-        cc2500.WriteReg(radio_config[i].reg, radio_config[i].value);
-        cc2500.WriteReg(radio_config[i].reg, radio_config[i].value);
+        cc2500.WriteRegCheck(radio_config[i].reg, radio_config[i].value);
     }
     cc2500.Strobe(CC2500_SIDLE);	// Go to idle...
 
     for (uint8_t c=0;c<0xFF;c++) {
         //calibrate all channels
         cc2500.Strobe(CC2500_SIDLE);
-        cc2500.WriteReg(CC2500_0A_CHANNR, c);
+        cc2500.WriteRegCheck(CC2500_0A_CHANNR, c);
         cc2500.Strobe(CC2500_SCAL);
         hal.scheduler->delay_microseconds(900);
         calData[c][0] = cc2500.ReadReg(CC2500_23_FSCAL3);
@@ -528,7 +527,7 @@ void AP_Radio_cc2500::irq_timeout(void)
             bindOffset += 5;
             Debug(6,"bindOffset=%d\n", int(bindOffset));
             cc2500.Strobe(CC2500_SIDLE);
-            cc2500.WriteReg(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
+            cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
             cc2500.Strobe(CC2500_SFRX);
             cc2500.Strobe(CC2500_SRX);
         }
@@ -548,6 +547,9 @@ void AP_Radio_cc2500::irq_timeout(void)
             protocolState = STATE_SEARCH;
         } else {
             nextChannel(chanskip);
+            // to keep the timeouts 1ms behind the expected time we
+            // need to set the timeout to 9ms
+            chVTSet(&timeout_vt, MS2ST(9), trigger_timeout_event, nullptr);
             lost++;
         }
         break;
@@ -630,11 +632,11 @@ void AP_Radio_cc2500::initTuneRx(void)
 
 void AP_Radio_cc2500::initialiseData(uint8_t adr)
 {
-    cc2500.WriteReg(CC2500_0C_FSCTRL0, bindOffset);
-    cc2500.WriteReg(CC2500_18_MCSM0, 0x8);
-    cc2500.WriteReg(CC2500_09_ADDR, adr ? 0x03 : bindTxId[0]);
-    cc2500.WriteReg(CC2500_07_PKTCTRL1, 0x0D); // address check, no broadcast, autoflush, status enable
-    cc2500.WriteReg(CC2500_19_FOCCFG, 0x16);
+    cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, bindOffset);
+    cc2500.WriteRegCheck(CC2500_18_MCSM0, 0x8);
+    cc2500.WriteRegCheck(CC2500_09_ADDR, adr ? 0x03 : bindTxId[0]);
+    cc2500.WriteRegCheck(CC2500_07_PKTCTRL1, 0x0D); // address check, no broadcast, autoflush, status enable
+    cc2500.WriteRegCheck(CC2500_19_FOCCFG, 0x16);
     hal.scheduler->delay_microseconds(10*1000);
 }
 

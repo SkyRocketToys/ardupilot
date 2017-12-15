@@ -150,6 +150,7 @@ public:
     uint8_t ReadReg(uint8_t reg);
     uint8_t Strobe(uint8_t address);
     void WriteReg(uint8_t address, uint8_t data);
+    void WriteRegCheck(uint8_t address, uint8_t data);
     void SetPower(uint8_t power);
     bool Reset(void);
 

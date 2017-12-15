@@ -85,3 +85,16 @@ bool Radio_CC2500::Reset(void)
     // TX_EN_off;//off rx
     return ReadReg(CC2500_0E_FREQ1) == 0xC4; // check if reset
 }
+
+/*
+  write register with up to 5 retries
+ */
+void Radio_CC2500::WriteRegCheck(uint8_t address, uint8_t data)
+{
+    uint8_t tries=5;
+    while (--tries) {
+        dev->write_register(address, data);
+        uint8_t v = ReadReg(address);
+        if (v == data) break;
+    }
+}
