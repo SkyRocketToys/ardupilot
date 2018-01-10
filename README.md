@@ -34,6 +34,8 @@
 
 - Developer email group: drones-discuss@googlegroups.com
 
+- SkyViper Developer Information:  <http://ardupilot.org/dev/docs/skyviper.html>
+
 ## Contributors ##
 
 - [Github statistics](https://github.com/ArduPilot/ardupilot/graphs/contributors)
