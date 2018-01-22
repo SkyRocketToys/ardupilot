@@ -50,7 +50,7 @@ static const uint8_t Bank0_Reg[][2]={
     
     {BK_CONFIG,     BK_CONFIG_EN_CRC | BK_CONFIG_CRCO | BK_CONFIG_PWR_UP | BK_CONFIG_PRIM_RX }, // (0) 0x0F=Rx, PowerUp, crc16, all interrupts enabled
     {BK_EN_AA,      0x00}, // (1) 0x00=No auto acknowledge packets on all 6 data pipes (0..5)
-    {BK_EN_RXADDR,  0x01}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
+    {BK_EN_RXADDR,  0x03}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
     {BK_SETUP_AW,   0x03}, // (3) 0x03=5 byte address width
     {BK_SETUP_RETR, 0x00}, // (4) 0x00=No retransmissions
     {BK_RF_CH,      0x17}, // (5) 0x17=2423Mhz default frequency
@@ -92,7 +92,20 @@ extern const AP_HAL::HAL& hal;
 // constructor
 Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
     dev(std::move(_dev))
-{}
+{
+	// Set the default address
+	beken.TX_Address[0] = 0x33;
+	beken.TX_Address[1] = beken.RX0_Address[1] = 0x00;
+	beken.TX_Address[2] = beken.RX0_Address[2] = 0x59;
+	beken.TX_Address[3] = beken.RX0_Address[3] = 0x00;
+	beken.TX_Address[4] = beken.RX0_Address[4] = 0x00;
+	beken.RX0_Address[0] = 0x31;
+	beken.RX1_Address[0] = 0x32;
+	beken.RX1_Address[1] = 0x99;
+	beken.RX1_Address[2] = 0x59;
+	beken.RX1_Address[3] = 0xC6;
+	beken.RX1_Address[4] = 0x2D;
+}
 
 void Radio_Beken::ReadFifo(uint8_t *dpbuffer, uint8_t len)
 {
@@ -209,17 +222,7 @@ void Radio_Beken::SetPower(uint8_t power)
 
 bool Radio_Beken::Reset(void)
 {
-    // we commented this out
-    //Strobe(CC2500_SRES);
-    
     hal.scheduler->delay_microseconds(1000);
-    // Tridge commented this out
-    // CC2500_SetTxRxMode(TXRX_OFF);
-    // RX_EN_off;//off tx
-    // TX_EN_off;//off rx
-    
-    // we commented this out
-    //return ReadReg(CC2500_0E_FREQ1) == 0xC4; // check if reset
     return 0;
 }
 
