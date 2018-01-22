@@ -221,7 +221,7 @@ void AP_Radio_beken::radio_init(void)
 {
     beken.SetRBank(1);
     uint8_t id = beken.ReadReg(BK2425_R1_WHOAMI); // id is now 99
-    beken.SetRBank(0); // carl - why do we access bank 0 after accessing bank 1?
+    beken.SetRBank(0); // Reset to default register bank.
 
     if (id != BK_CHIP_ID_BK2425) {
         
