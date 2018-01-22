@@ -177,8 +177,14 @@ typedef enum ITX_SPEED_e {
 	ITX_MAX
 } ITX_SPEED;
 
-
-
+enum {
+	PACKET_LENGTH_RX_CTRL = 12,
+	PACKET_LENGTH_RX_BIND = 10,
+	PACKET_LENGTH_RX_MAX = 12,
+	PACKET_LENGTH_TX_TELEMETRY = 9,
+	PACKET_LENGTH_TX_DFU = 20,
+	PACKET_LENGTH_TX_MAX = 20,
+};
 
 #if RADIO_BEKEN
 #define PLL_SPEED { BK2425_R1_12, 0x00,0x12,0x73,0x05 } // 0x00127305ul, // PLL locking time 130us compatible with nRF24L01;
@@ -192,87 +198,7 @@ enum {
 	IREG1_4A,
 	IREG_MAX
 };
-
-const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
-	// (TX_SPEED == 250u)
-	{
-		{ BK2425_R1_4,  0xf9,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // REG5 250kbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
-	},
-	// (TX_SPEED == 1000u)
-	{
-		{ BK2425_R1_4,  0xf9,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xa6 }, // 0xA60F0624ul, // REG5 1Mbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
-	},
-	// (TX_SPEED == 2000u)
-	{
-		{ BK2425_R1_4,  0xf9,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xb60f0624ul, // REG5 2Mbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
-	}
-};
 #endif
-
-static const uint8_t Bank0_Reg6[ITX_MAX][2] = {
-	{BK_RF_SETUP,   0x27}, //  250kbps (6) 0x27=250kbps
-	{BK_RF_SETUP,   0x07}, // 1000kbps (6) 0x07=1Mbps, high gain, high txpower
-	{BK_RF_SETUP,   0x2F}, // 2000kbps (6) 0x2F=2Mbps, high gain, high txpower
-};
-
-static const uint8_t Bank1_Reg14[]=
-{
-0x41,0x20,0x08,0x04,0x81,0x20,0xcf,0xF7,0xfe,0xff,0xff
-};
-
-// Bank0 register initialization value
-static const uint8_t Bank0_Reg[][2]={
-    
-    {BK_CONFIG,     BK_CONFIG_EN_CRC | BK_CONFIG_CRCO | BK_CONFIG_PWR_UP | BK_CONFIG_PRIM_RX }, // (0) 0x0F=Rx, PowerUp, crc16, all interrupts enabled
-    {BK_EN_AA,      0x00}, // (1) 0x00=No auto acknowledge packets on all 6 data pipes (0..5)
-    {BK_EN_RXADDR,  0x01}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
-    {BK_SETUP_AW,   0x03}, // (3) 0x03=5 byte address width
-    {BK_SETUP_RETR, 0x00}, // (4) 0x00=No retransmissions
-    {BK_RF_CH,      0x17}, // (5) 0x17=2423Mhz default frequency
-    
-    // Comment in Beken code says that 0x0F or 0x2F=2Mbps; 0x07=1Mbps; 0x27=250Kbps
-    #if (TX_SPEED == 2000)
-        {BK_RF_SETUP,   0x2F},      // (6) 0x2F=2Mbps, high gain, high txpower
-    #elif (TX_SPEED == 1000)
-        {BK_RF_SETUP,   0x07},      // (6) 0x07=1Mbps, high gain, high txpower
-    #elif (TX_SPEED == 250)
-        {BK_RF_SETUP,   0x27},       // (6) 0x27=250kbps
-        //{BK_RF_SETUP,   0x21},    // (6) 0x27=250kbps, lowest txpower
-    #endif
-    
-    {BK_STATUS,     0x07},          // (7) 7=no effect
-    {BK_OBSERVE_TX, 0x00},          // (8) (no effect)
-    {BK_CD,         0x00},          // (9) Carrier detect (no effect)
-                                    // (10) = 5 byte register
-                                    // (11) = 5 byte register
-    {BK_RX_ADDR_P2, 0xc3},          // (12) rx address for data pipe 2
-    {BK_RX_ADDR_P3, 0xc4},          // (13) rx address for data pipe 3
-    {BK_RX_ADDR_P4, 0xc5},          // (14) rx address for data pipe 4
-    {BK_RX_ADDR_P5, 0xc6},          // (15) rx address for data pipe 5
-                                    // (16) = 5 byte register
-    {BK_RX_PW_P0,   0x20},          // (17) size of rx data pipe 0
-    {BK_RX_PW_P1,   0x20},          // (18) size of rx data pipe 1
-    {BK_RX_PW_P2,   0x20},          // (19) size of rx data pipe 2
-    {BK_RX_PW_P3,   0x20},          // (20) size of rx data pipe 3
-    {BK_RX_PW_P4,   0x20},          // (21) size of rx data pipe 4
-    {BK_RX_PW_P5,   0x20},          // (22) size of rx data pipe 5
-    {BK_FIFO_STATUS,0x00},          // (23) fifo status
-                                    // (24,25,26,27)
-    {BK_DYNPD,      0x3F},          // (28) 0x3f=enable dynamic payload length for all 6 data pipes
-    {BK_FEATURE,    BK_FEATURE_EN_DPL | BK_FEATURE_EN_ACK_PAY | BK_FEATURE_EN_DYN_ACK }  // (29) 7=enable ack, no ack, dynamic payload length
-};
 
 #define BK_MAX_PACKET_LEN 32 // max value is 32 bytes
 #define BK_RCV_TIMEOUT 30
@@ -335,7 +261,6 @@ static const uint8_t Bank0_Reg[][2]={
 
 
 
-
 //----------------------------------------------------------------------------------
 // BEKEN driver class
 class Radio_Beken {
@@ -360,6 +285,9 @@ public:
 	void SwitchToTxMode(void);
 	void SwitchToIdleMode(void);
 	void SwitchToSleepMode(void);
+
+	void InitBank0Registers(ITX_SPEED spd);
+	void InitBank1Registers(ITX_SPEED spd);
 	
     bool lock_bus(void) {
         return dev->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER);
@@ -381,6 +309,9 @@ public:
     ITX_SPEED gTxSpeed = ITX_2000;
     #endif
     
+	uint8_t TX_Address[5]; // For sending telemetry and DFU
+	uint8_t RX0_Address[5]; // The data address
+	uint8_t RX1_Address[5]; // The fixed binding address
 
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;

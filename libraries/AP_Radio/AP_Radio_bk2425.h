@@ -92,6 +92,7 @@ private:
     static void trigger_timeout_event(void *arg);
 
     void radio_init(void);
+	void ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
 
     // semaphore between ISR and main thread
     AP_HAL::Semaphore *sem;    
@@ -103,13 +104,7 @@ private:
 
     Radio_Beken beken;
 
-    uint8_t calData[255][3];
-    uint8_t bindTxId[2];
-    int8_t  bindOffset;
-    uint8_t bindHopData[50];
     uint8_t rxNum;
-    uint8_t listLength;
-    uint8_t bindIdx;
     uint8_t channr;
     uint8_t chanskip;
     uint32_t packet_timer;
@@ -125,12 +120,6 @@ private:
 
     uint32_t timeTunedMs;
 
-    void initTuneRx(void);
-    void initialiseData(uint8_t adr);
-    void initGetBind(void);
-    bool tuneRx(uint8_t ccLen, uint8_t *packet);
-    bool getBind1(uint8_t ccLen, uint8_t *packet);
-    bool getBind2(uint8_t ccLen, uint8_t *packet);
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
 
@@ -147,10 +136,7 @@ private:
     static const uint16_t bind_magic = 0x120a;
     struct PACKED bind_info {
         uint16_t magic;
-        uint8_t bindTxId[2];
-        int8_t  bindOffset;
-        uint8_t listLength;
-        uint8_t bindHopData[50];
+        uint8_t bindTxId[5];
     };
     
     void save_bind_info(void);
@@ -159,16 +145,9 @@ private:
     enum {
         STATE_INIT = 0,
         STATE_BIND,
-        STATE_BIND_TUNING,
-        STATE_BIND_BINDING1,
-        STATE_BIND_BINDING2,
-        STATE_BIND_COMPLETE,
-        STATE_STARTING,
         STATE_DATA,
-        STATE_TELEMETRY,
-        STATE_RESUME,
+        STATE_DFU,
         STATE_FCCTEST,
-        STATE_SEARCH,
     } protocolState;
 
     struct config {
@@ -180,8 +159,78 @@ private:
     struct telem_status t_status;
     uint32_t last_pps_ms;
     
-    // shoukdnt this have an initial value? - ask carl
     ITX_SPEED spd;
 };
 
+// ----------------------------------------------------------------------------
+// Packet format definition
+// ----------------------------------------------------------------------------
+
+/** The type of packets being sent between controller and drone */
+enum BK_PKT_TYPE_E {
+	BK_PKT_TYPE_INVALID      = 0,    ///< Invalid packet from empty packets or bad CRC
+	BK_PKT_TYPE_CTRL_FOUND   = 0x10, ///< (Tx->Drone) User control - known receiver
+	BK_PKT_TYPE_CTRL_LOST    = 0x11, ///< (Tx->Drone) User control - unknown receiver
+	BK_PKT_TYPE_BIND         = 0x12, ///< (Tx->Drone) Tell drones this tx is broadcasting
+	BK_PKT_TYPE_TELEMETRY    = 0x13, ///< (Drone->Tx) Send telemetry to tx
+	BK_PKT_TYPE_DFU          = 0x14, ///< (Drone->Tx) Send new firmware to tx
+};
+typedef uint8_t BK_PKT_TYPE;
+
+
+/** Data for packets that are not droneid packets
+	Onair order = little-endian */
+typedef struct packetDataDeviceCtrl_s {
+	uint8_t throttle; ///< High 8 bits of the throttle joystick
+	uint8_t roll; ///< High 8 bits of the roll joystick
+	uint8_t pitch; ///< High 8 bits of the pitch joystick
+	uint8_t yaw; ///< High 8 bits of the yaw joystick
+	uint8_t lsb; ///< Low 2 bits of throttle, roll, pitch, yaw
+	uint8_t buttons_held; ///< The buttons
+	uint8_t buttons_toggled; ///< The buttons
+	uint8_t data_type; ///< Type of extra data being sent
+	uint8_t data_value_lo; ///< Value of extra data being sent
+	uint8_t data_value_hi; ///< Value of extra data being sent
+} packetDataDeviceCtrl;
+
+enum { SZ_ADDRESS = 5 }; ///< Size of address for transmission packets (40 bits)
+enum { SZ_CRC_GUID = 4 }; ///< Size of UUID for drone (32 bits)
+enum { SZ_DFU = 16 }; ///< Size of DFU packets
+
+/** Data for packets that are binding packets
+	Onair order = little-endian */
+typedef struct packetDataDeviceBind_s {
+	uint8_t bind_address[SZ_ADDRESS]; ///< The address being used by control packets
+	uint8_t hopping; ///< The hopping table in use for this connection
+} packetDataDeviceBind;
+
+/** Data structure for data packet transmitted from device (controller) to host (drone) */
+typedef struct packetDataDevice_s {
+	BK_PKT_TYPE packetType; ///< The packet type
+	uint8_t channel; ///< Next channel I will broadcast on
+	union packetDataDevice_u ///< The variant part of the packets
+	{
+		packetDataDeviceCtrl ctrl; ///< Control packets
+		packetDataDeviceBind bind; ///< Binding packets
+	} u;
+} packetFormatTx;
+
+/** Data structure for data packet transmitted from host (drone) to device (controller) */
+typedef struct packetDataDrone_s {
+	BK_PKT_TYPE packetType; ///< 0: The packet type
+	uint8_t channel; ///< 1: Next channel I will broadcast on
+	uint8_t wifi; ///< 2:
+	uint8_t rssi; ///< 3:
+	uint8_t droneid[SZ_CRC_GUID]; ///< 4...7:
+	uint8_t mode; ///< 8:
+	// Telemetry data (unspecified so far)
+} packetFormatRx;
+
+typedef struct packetDataDfu_s {
+	BK_PKT_TYPE packetType; ///< 0: The packet type
+	uint8_t channel; ///< 1: Next channel I will broadcast on
+	uint8_t address_lo; ///< 2:
+	uint8_t address_hi; ///< 3:
+	uint8_t data[SZ_DFU]; ///< 4...19:
+} packetFormatDfu;
 

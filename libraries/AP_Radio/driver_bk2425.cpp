@@ -7,6 +7,86 @@
 
 #pragma GCC optimize("O0")
 
+const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
+	// (TX_SPEED == 250u)
+	{
+		{ BK2425_R1_4,  0xf9,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // REG5 250kbps
+		PLL_SPEED,                                              // REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
+		{ BK2425_R1_4,  0xff,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
+	},
+	// (TX_SPEED == 1000u)
+	{
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xa6 }, // 0xA60F0624ul, // REG5 1Mbps
+		PLL_SPEED,                                              // REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
+	},
+	// (TX_SPEED == 2000u)
+	{
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xb60f0624ul, // REG5 2Mbps
+		PLL_SPEED,                                              // REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
+	}
+};
+
+static const uint8_t Bank0_Reg6[ITX_MAX][2] = {
+	{BK_RF_SETUP,   0x27}, //  250kbps (6) 0x27=250kbps
+	{BK_RF_SETUP,   0x07}, // 1000kbps (6) 0x07=1Mbps, high gain, high txpower
+	{BK_RF_SETUP,   0x2F}, // 2000kbps (6) 0x2F=2Mbps, high gain, high txpower
+};
+
+static const uint8_t Bank1_Reg14[]=
+{
+0x41,0x20,0x08,0x04,0x81,0x20,0xcf,0xF7,0xfe,0xff,0xff
+};
+
+// Bank0 register initialization value
+static const uint8_t Bank0_Reg[][2]={
+    
+    {BK_CONFIG,     BK_CONFIG_EN_CRC | BK_CONFIG_CRCO | BK_CONFIG_PWR_UP | BK_CONFIG_PRIM_RX }, // (0) 0x0F=Rx, PowerUp, crc16, all interrupts enabled
+    {BK_EN_AA,      0x00}, // (1) 0x00=No auto acknowledge packets on all 6 data pipes (0..5)
+    {BK_EN_RXADDR,  0x01}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
+    {BK_SETUP_AW,   0x03}, // (3) 0x03=5 byte address width
+    {BK_SETUP_RETR, 0x00}, // (4) 0x00=No retransmissions
+    {BK_RF_CH,      0x17}, // (5) 0x17=2423Mhz default frequency
+    
+    // Comment in Beken code says that 0x0F or 0x2F=2Mbps; 0x07=1Mbps; 0x27=250Kbps
+    #if (TX_SPEED == 2000)
+        {BK_RF_SETUP,   0x2F},      // (6) 0x2F=2Mbps, high gain, high txpower
+    #elif (TX_SPEED == 1000)
+        {BK_RF_SETUP,   0x07},      // (6) 0x07=1Mbps, high gain, high txpower
+    #elif (TX_SPEED == 250)
+        {BK_RF_SETUP,   0x27},       // (6) 0x27=250kbps
+        //{BK_RF_SETUP,   0x21},    // (6) 0x27=250kbps, lowest txpower
+    #endif
+    
+    {BK_STATUS,     0x07},          // (7) 7=no effect
+    {BK_OBSERVE_TX, 0x00},          // (8) (no effect)
+    {BK_CD,         0x00},          // (9) Carrier detect (no effect)
+                                    // (10) = 5 byte register
+                                    // (11) = 5 byte register
+    {BK_RX_ADDR_P2, 0xc3},          // (12) rx address for data pipe 2
+    {BK_RX_ADDR_P3, 0xc4},          // (13) rx address for data pipe 3
+    {BK_RX_ADDR_P4, 0xc5},          // (14) rx address for data pipe 4
+    {BK_RX_ADDR_P5, 0xc6},          // (15) rx address for data pipe 5
+                                    // (16) = 5 byte register
+    {BK_RX_PW_P0,   0x20},          // (17) size of rx data pipe 0
+    {BK_RX_PW_P1,   0x20},          // (18) size of rx data pipe 1
+    {BK_RX_PW_P2,   0x20},          // (19) size of rx data pipe 2
+    {BK_RX_PW_P3,   0x20},          // (20) size of rx data pipe 3
+    {BK_RX_PW_P4,   0x20},          // (21) size of rx data pipe 4
+    {BK_RX_PW_P5,   0x20},          // (22) size of rx data pipe 5
+    {BK_FIFO_STATUS,0x00},          // (23) fifo status
+                                    // (24,25,26,27)
+    {BK_DYNPD,      0x3F},          // (28) 0x3f=enable dynamic payload length for all 6 data pipes
+    {BK_FEATURE,    BK_FEATURE_EN_DPL | BK_FEATURE_EN_ACK_PAY | BK_FEATURE_EN_DYN_ACK }  // (29) 7=enable ack, no ack, dynamic payload length
+};
+
 extern const AP_HAL::HAL& hal;
 
 // constructor
@@ -66,7 +146,6 @@ void Radio_Beken::WriteReg(uint8_t address, uint8_t data)
 // Set which register bank we are accessing
 void Radio_Beken::SetRBank(uint8_t bank) // 1:Bank1 0:Bank0
 {
-#if RADIO_BEKEN
     uint8_t lastbank = ReadStatus() & BK_STATUS_RBANK; // carl - is this how you read the status register?
     if (!lastbank != !bank)
     {
@@ -75,7 +154,6 @@ void Radio_Beken::SetRBank(uint8_t bank) // 1:Bank1 0:Bank0
         buf[1] = 0x53;
         dev->transfer(buf, 2, nullptr, 0);
     }
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -90,14 +168,12 @@ const uint8_t RegPower[8][2] = {
     { OUTPUT_POWER_REG4_7, OUTPUT_POWER_REG6_7 },
 };
 
-#if RADIO_BEKEN
 void Radio_Beken::WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, uint8_t length)
 {
     SetRBank(1);
     WriteRegisterMulti(address, data, length);
     SetRBank(0);
 }
-#endif
 
 void Radio_Beken::SetPower(uint8_t power)
 {
@@ -106,7 +182,6 @@ void Radio_Beken::SetPower(uint8_t power)
     }
     uint8_t oldready = bkReady;
     bkReady = 0;
-#if RADIO_BEKEN
     hal.scheduler->delay(100); // delay more than 50ms.
     SetRBank(1);
     {
@@ -124,7 +199,6 @@ void Radio_Beken::SetPower(uint8_t power)
     hal.scheduler->delay(100); // delay more than 50ms.
     SetRBank(0);
     hal.scheduler->delay(100);
-#endif
 
     uint8_t setup = ReadReg(BK_RF_SETUP);
     setup &= ~(3 << 1);
@@ -221,4 +295,57 @@ void Radio_Beken::SwitchToSleepMode(void)
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Clear PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled..
     // Stay low
     BEKEN_CE_LOW();
+}
+
+// ----------------------------------------------------------------------------
+void Radio_Beken::InitBank0Registers(ITX_SPEED spd)
+{
+    int8_t i;
+    
+    //********************Write Bank0 register******************
+    for (i=20; i >= 0; i--) // From BK_FIFO_STATUS back to beginning of table
+    {
+        uint8_t idx = Bank0_Reg[i][0];
+        uint8_t value = Bank0_Reg[i][1];
+        if (idx == BK_RF_SETUP) // Adjust for speed
+            value = Bank0_Reg6[spd][1];
+        WriteReg((BK_WRITE_REG|idx), value);
+    }
+
+    // Set the various 5 byte addresses
+    WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0),RX0_Address,5); // reg 10 - Rx0 addr
+    WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P1),RX1_Address,5); // REG 11 - Rx1 addr
+    WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR),TX_Address,5); // REG 16 - TX addr
+
+    i = ReadReg(BK_FEATURE);
+    if (i == 0) // i!=0 showed that chip has been actived.so do not active again.
+        WriteReg(BK_ACTIVATE_CMD,0x73);// Active
+    for (i = 22; i >= 21; i--)
+        WriteReg((BK_WRITE_REG|Bank0_Reg[i][0]),Bank0_Reg[i][1]);
+}
+
+// ----------------------------------------------------------------------------
+void Radio_Beken::InitBank1Registers(ITX_SPEED spd)
+{
+    int8_t i;
+       
+	for (i = IREG1_4; i <= IREG1_13; i++)
+    {
+        const uint8_t* p = &Bank1_RegTable[spd][i][0];
+        uint8_t idx = *p++;
+        WriteRegisterMulti((BK_WRITE_REG|idx), p, 4);
+    }
+    WriteRegisterMulti((BK_WRITE_REG|BK2425_R1_14),&(Bank1_Reg14[0]),11);
+
+//toggle REG4<25,26>
+    {
+        const uint8_t* p = &Bank1_RegTable[spd][IREG1_4A][0];
+        uint8_t idx = *p++;
+        WriteRegisterMulti((BK_WRITE_REG|idx), p, 4);
+    }
+    {
+        const uint8_t* p = &Bank1_RegTable[spd][IREG1_4][0];
+        uint8_t idx = *p++;
+        WriteRegisterMulti((BK_WRITE_REG|idx), p, 4);
+    }
 }
