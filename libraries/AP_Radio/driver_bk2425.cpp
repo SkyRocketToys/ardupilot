@@ -94,17 +94,17 @@ Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
     dev(std::move(_dev))
 {
 	// Set the default address
-	beken.TX_Address[0] = 0x33;
-	beken.TX_Address[1] = beken.RX0_Address[1] = 0x00;
-	beken.TX_Address[2] = beken.RX0_Address[2] = 0x59;
-	beken.TX_Address[3] = beken.RX0_Address[3] = 0x00;
-	beken.TX_Address[4] = beken.RX0_Address[4] = 0x00;
-	beken.RX0_Address[0] = 0x31;
-	beken.RX1_Address[0] = 0x32;
-	beken.RX1_Address[1] = 0x99;
-	beken.RX1_Address[2] = 0x59;
-	beken.RX1_Address[3] = 0xC6;
-	beken.RX1_Address[4] = 0x2D;
+	TX_Address[0] = 0x33;
+	TX_Address[1] = RX0_Address[1] = 0x00;
+	TX_Address[2] = RX0_Address[2] = 0x59;
+	TX_Address[3] = RX0_Address[3] = 0x00;
+	TX_Address[4] = RX0_Address[4] = 0x00;
+	RX0_Address[0] = 0x31;
+	RX1_Address[0] = 0x32;
+	RX1_Address[1] = 0x99;
+	RX1_Address[2] = 0x59;
+	RX1_Address[3] = 0xC6;
+	RX1_Address[4] = 0x2D;
 }
 
 void Radio_Beken::ReadFifo(uint8_t *dpbuffer, uint8_t len)
