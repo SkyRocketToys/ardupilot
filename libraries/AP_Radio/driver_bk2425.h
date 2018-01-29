@@ -1,58 +1,101 @@
 //----------------------------------------------------------------------------------
 // low level driver for the Beken BK2425 radio on SPI
+// Note: Under ChiBios the knowledge of which pins are which is not in the driver.
+// But ultimately comes from hwdef.dat
 //----------------------------------------------------------------------------------
 
 #pragma once
 
 #include <AP_HAL/AP_HAL.h>
 
-// Choose between supporting the Nordic nrf24l01+ and the Beken BK2425 radio chips
-// The exact revision of the PCB matters, as pins change location
-#define PCB_BOARD_PRODUCT 1802
-#define PCB_BOARD_REVISION 2
-
-#define RADIO_NRF24 0
-#define RADIO_BEKEN 1 // We are using the Beken BK2425 chip
-#define SUPPORT_PA 1
 #define TX_SPEED 250u // Default transmit speed in kilobits per second.
 
-//----------------------------------------------------------------------------------
-// Under ChiBios the knowledge of which pins are which is not in the driver.
-//----------------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------------
-// Which pins are connected to which devices is stored in:
-// AP_HAL_ChibiOS/GPIO.cpp for the LEDs / Chip enable / power amplifier
-// This should really be in AP_HAL_ChibiOS/GPIO.h for this subboard
-// Reference to GPIO pins for this exact PCB revision
-enum {
-	HAL_CHIBIOS_GPIO_LEDR = 0,      // Meaning GPIOB, 7 (for 1802-02, 1802-05)
-	HAL_CHIBIOS_GPIO_LEDF,          // Meaning GPIOB, 6 (for 1802-02, 1802-05)
-    HAL_CHIBIOS_GPIO_RADIO_IRQ,	    // Meaning GPIOD, 2 (for 1802-02) or GPIOB, 0 (for 1802-05)
-	HAL_CHIBIOS_GPIO_RADIO_CE,      // Meaning GPIOC, 4 (for 1802-02, 1802-05)
-	HAL_CHIBIOS_GPIO_RADIO_PA_CTL	// Meaning GPIOC, 5 (for 1802-02, 1802-05)
+/** Channel hopping parameters. Values are in MHz from 2400Mhz. */
+enum CHANNEL_MHZ_e {
+	CHANNEL_MIN_PHYSICAL = 0, ///< Minimum physical channel that is possible
+	CHANNEL_MAX_PHYSICAL = 83, ///< Maximum physical channel that is possible
+	CHANNEL_FCC_LOW = 10, ///< Minimum physical channel that will pass the FCC tests
+	CHANNEL_FCC_HIGH = 72, ///< Maximum physical channel that will pass the FCC tests
+	CHANNEL_FCC_MID = 41, ///< A representative physical channel
 };
 
-//----------------------------------------------------------------------------------
-// AP_HAL_ChibiOS/SPIDevice.cpp for each chips
-// Chip Select (Motion, Radio, Optical flow), SCK, MOSI, MISO
-//    SPIDEV_CS_MPU  B12
-//    SPIDEV_CS_CYRF A15
-//    SPIDEV_CS_FLOW B1
+// ----------------------------------------------------------------------------
+// Packet format definition
+// ----------------------------------------------------------------------------
 
-//#if (PCB_BOARD_PRODUCT==1802) && (PCB_REVISION==2) // PCB 1802-02 dated 18 oct 2017
-//#define HAL_GPIO_SPI_SCK                 GPIOA,  5
-//#define HAL_GPIO_SPI_MOSI                GPIOA,  7
-//#define HAL_GPIO_SPI_MISO                GPIOB,  4
-//#define HAL_GPIO_RADIO_CS                GPIOA, 15                          Named SPIDEV_CS_CYRF
-//#endif
+/** The type of packets being sent between controller and drone */
+enum BK_PKT_TYPE_E {
+	BK_PKT_TYPE_INVALID      = 0,    ///< Invalid packet from empty packets or bad CRC
+	BK_PKT_TYPE_CTRL_FOUND   = 0x10, ///< (Tx->Drone) User control - known receiver
+	BK_PKT_TYPE_CTRL_LOST    = 0x11, ///< (Tx->Drone) User control - unknown receiver
+	BK_PKT_TYPE_BIND         = 0x12, ///< (Tx->Drone) Tell drones this tx is broadcasting
+	BK_PKT_TYPE_TELEMETRY    = 0x13, ///< (Drone->Tx) Send telemetry to tx
+	BK_PKT_TYPE_DFU          = 0x14, ///< (Drone->Tx) Send new firmware to tx
+};
+typedef uint8_t BK_PKT_TYPE;
 
-//#if (PCB_BOARD_PRODUCT==1802) && (PCB_REVISION==5) // PCB 1802-05 dated 7 dec 2017
-//#define HAL_GPIO_SPI_SCK	               GPIOA,  5
-//#define HAL_GPIO_SPI_MOSI	               GPIOA,  7
-//#define HAL_GPIO_SPI_MISO                GPIOA,  6 (Different from 1802-02)
-//#define HAL_GPIO_RADIO_CS                GPIOA,  4 (Different from 1802-02) Named SPIDEV_CS_CYRF
-//#endif
+
+/** Data for packets that are not droneid packets
+	Onair order = little-endian */
+typedef struct packetDataDeviceCtrl_s {
+	uint8_t throttle; ///< High 8 bits of the throttle joystick
+	uint8_t roll; ///< High 8 bits of the roll joystick
+	uint8_t pitch; ///< High 8 bits of the pitch joystick
+	uint8_t yaw; ///< High 8 bits of the yaw joystick
+	uint8_t lsb; ///< Low 2 bits of throttle, roll, pitch, yaw
+	uint8_t buttons_held; ///< The buttons
+	uint8_t buttons_toggled; ///< The buttons
+	uint8_t data_type; ///< Type of extra data being sent
+	uint8_t data_value_lo; ///< Value of extra data being sent
+	uint8_t data_value_hi; ///< Value of extra data being sent
+} packetDataDeviceCtrl;
+
+enum { SZ_ADDRESS = 5 }; ///< Size of address for transmission packets (40 bits)
+enum { SZ_CRC_GUID = 4 }; ///< Size of UUID for drone (32 bits)
+enum { SZ_DFU = 16 }; ///< Size of DFU packets
+
+/** Data for packets that are binding packets
+	Onair order = little-endian */
+typedef struct packetDataDeviceBind_s {
+	uint8_t bind_address[SZ_ADDRESS]; ///< The address being used by control packets
+	uint8_t hopping; ///< The hopping table in use for this connection
+} packetDataDeviceBind;
+
+/** Data structure for data packet transmitted from device (controller) to host (drone) */
+typedef struct packetDataDevice_s {
+	BK_PKT_TYPE packetType; ///< The packet type
+	uint8_t channel; ///< Next channel I will broadcast on
+	union packetDataDevice_u ///< The variant part of the packets
+	{
+		packetDataDeviceCtrl ctrl; ///< Control packets
+		packetDataDeviceBind bind; ///< Binding packets
+	} u;
+} packetFormatRx;
+
+/** Data structure for data packet transmitted from host (drone) to device (controller) */
+typedef struct packetDataDrone_s {
+	BK_PKT_TYPE packetType; ///< 0: The packet type
+	uint8_t channel; ///< 1: Next channel I will broadcast on
+	uint8_t wifi; ///< 2:
+	uint8_t rssi; ///< 3:
+	uint8_t droneid[SZ_CRC_GUID]; ///< 4...7:
+	uint8_t mode; ///< 8:
+	// Telemetry data (unspecified so far)
+} packetFormatTx;
+
+typedef struct packetDataDfu_s {
+	BK_PKT_TYPE packetType; ///< 0: The packet type
+	uint8_t channel; ///< 1: Next channel I will broadcast on
+	uint8_t address_lo; ///< 2:
+	uint8_t address_hi; ///< 3:
+	uint8_t data[SZ_DFU]; ///< 4...19:
+} packetFormatDfu;
+
+
+// ----------------------------------------------------------------------------
+// BK2425 chip definition
+// ----------------------------------------------------------------------------
+
 
 //----------------------------------------------------------------------------------
 /** SPI register commands for the BK2425 and nrf24L01+ chips */
@@ -61,9 +104,7 @@ typedef enum {
 	BK_REG_MASK        = 0x1F,  // The range of registers that can be read and written
 	BK_READ_REG        = 0x00,  // Define read command to register (0..1F)
 	BK_WRITE_REG       = 0x20,  // Define write command to register (0..1F)
-#if RADIO_BEKEN
 	BK_ACTIVATE_CMD	   = 0x50,
-#endif
 	BK_R_RX_PL_WID_CMD = 0x60,
 	BK_RD_RX_PLOAD     = 0x61,  // Define RX payload register address
 	BK_WR_TX_PLOAD     = 0xA0,  // Define TX payload register address
@@ -101,7 +142,6 @@ typedef enum {
 	BK_FIFO_STATUS     = 0x17,  // 'FIFO Status Register' register address
 	BK_DYNPD           = 0x1c,  // 'Enable dynamic payload length' register address
 	BK_FEATURE         = 0x1d,  // 'Feature' register address
-#if RADIO_BEKEN
 	BK_PAYLOAD_WIDTH   = 0x1f,  // 'payload length of 256 bytes modes register address
 
 // BK2425 bank 1 register addresses
@@ -111,7 +151,6 @@ typedef enum {
 	BK2425_R1_12     = 0x0C, // PLL speed 120 or 130us
 	BK2425_R1_13     = 0x0D,
 	BK2425_R1_14     = 0x0E,
-#endif
 } BK_SPI_CMD;
 
 //----------------------------------------------------------------------------------
@@ -124,9 +163,7 @@ enum {
 
 // Meanings of the BK_STATUS register
 enum {
-#if RADIO_BEKEN
 	BK_STATUS_RBANK = 0x80, // Register bank 1 is in use
-#endif
 	BK_STATUS_RX_DR = 0x40, // Data ready
 	BK_STATUS_TX_DS = 0x20, // Data sent
 	BK_STATUS_MAX_RT = 0x10, // Max retries failed
@@ -174,6 +211,7 @@ typedef enum ITX_SPEED_e {
 	ITX_250,  ///< 250kbps (slowest but furthest range)
 	ITX_1000, ///< 1000kbps (balanced)
 	ITX_2000, ///< 2000kbps (fastest hence least congested)
+	ITX_CARRIER, ///< 0kbps (constant carrier wave)
 	ITX_MAX
 } ITX_SPEED;
 
@@ -186,7 +224,6 @@ enum {
 	PACKET_LENGTH_TX_MAX = 20,
 };
 
-#if RADIO_BEKEN
 #define PLL_SPEED { BK2425_R1_12, 0x00,0x12,0x73,0x05 } // 0x00127305ul, // PLL locking time 130us compatible with nRF24L01;
 
 // In the array Bank1_Reg0_13[],all the register values are the byte reversed!
@@ -198,7 +235,6 @@ enum {
 	IREG1_4A,
 	IREG_MAX
 };
-#endif
 
 #define BK_MAX_PACKET_LEN 32 // max value is 32 bytes
 #define BK_RCV_TIMEOUT 30
@@ -206,7 +242,6 @@ enum {
 //----------------------------------------------------------------------------------
 // Translate output power into a number
 // must match up with the table RegPower[]
-#if RADIO_BEKEN
 #define OUTPUT_POWER_REG6_0 0 // -25dB
 #define OUTPUT_POWER_REG6_1 0 // -18dB
 #define OUTPUT_POWER_REG6_2 1 // -18dB
@@ -215,16 +250,6 @@ enum {
 #define OUTPUT_POWER_REG6_5 2 //  -7dB
 #define OUTPUT_POWER_REG6_6 3 //  -1dB
 #define OUTPUT_POWER_REG6_7 3 //  +4dB
-#else // Nrf24 chip
-#define OUTPUT_POWER_REG6_0 0 // -18dB
-#define OUTPUT_POWER_REG6_1 0 // -18dB
-#define OUTPUT_POWER_REG6_2 1 // -12dB
-#define OUTPUT_POWER_REG6_3 1 // -12dB
-#define OUTPUT_POWER_REG6_4 2 //  -6dB
-#define OUTPUT_POWER_REG6_5 2 //  -6dB
-#define OUTPUT_POWER_REG6_6 3 //  +0dB
-#define OUTPUT_POWER_REG6_7 3 //  +0dB
-#endif
 
 // Register 4 in bank 1 only applies to Beken chip
 #define OUTPUT_POWER_REG4_0 0 // -25dB
@@ -250,69 +275,97 @@ enum {
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 #define BEKEN_SELECT()      (dev->set_chip_select(true))
 #define BEKEN_DESELECT()    (dev->set_chip_select(false))
-#define BEKEN_CE_HIGH()     (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_CE, 1))
-#define BEKEN_CE_LOW()      (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_CE, 0))
-#define BEKEN_PA_HIGH()     (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 1))
-#define BEKEN_PA_LOW()      (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 0))
+#define BEKEN_CE_HIGH()     (palSetLine(HAL_GPIO_PIN_RADIO_CE)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_CE, 1))
+#define BEKEN_CE_LOW()      (palClearLine(HAL_GPIO_PIN_RADIO_CE)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_CE, 0))
+#define BEKEN_PA_HIGH()     (palSetLine(HAL_GPIO_PIN_RADIO_PA_CTL)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 1))
+#define BEKEN_PA_LOW()      (palClearLine(HAL_GPIO_PIN_RADIO_PA_CTL)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 0))
 #else
 #error This configuration is not supported.
 #endif
 #endif
 
+/* Statistics about the radio */
+typedef struct RadioStats_s {
+	uint8_t lastRxLen;
+	uint32_t numTxPackets;
+	uint32_t numRxPackets;
+	uint8_t badRxAddress;
+	uint32_t recvTimestampMs;
+	uint32_t numAckPackets;
+	uint32_t numSentPackets;
+	uint16_t lastTxPacketCount;
+	uint32_t lastTelemetryPktTime;
+} RadioStats;
+
+/** Parameters used by the fcc pretests */
+typedef struct FccParams_s {
+    bool test_mode; ///< true iff we are sending test signals
+    bool scan_mode; ///< true for scanning, false for fixed frequencies
+	bool CW_mode; ///< true for carrier wave, false for packets
+    uint8_t scan_count; ///< In scan mode, packet count before incrementing scan
+    uint8_t channel; ///< Current frequency 8..70
+    uint8_t power; ///< Current power 0..7
+} FccParams;
 
 
 //----------------------------------------------------------------------------------
 // BEKEN driver class
 class Radio_Beken {
 public:
+	// Generic functions	
     Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev);
-
-    void ReadFifo(uint8_t *dpbuffer, uint8_t len);
-    void WriteFifo(const uint8_t *dpbuffer, uint8_t len);
-
-    void ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t length);
-    void WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t length);
-    void WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, uint8_t length);
-
-	uint8_t ReadStatus(void);
-    uint8_t ReadReg(uint8_t reg);
-    uint8_t Strobe(uint8_t address);
-	void SetRBank(uint8_t bank);
-    void WriteReg(uint8_t address, uint8_t data);
-    void SetPower(uint8_t power);
-    bool Reset(void);
-	void SwitchToRxMode(void);
-	void SwitchToTxMode(void);
-	void SwitchToIdleMode(void);
-	void SwitchToSleepMode(void);
-
-	void InitBank0Registers(ITX_SPEED spd);
-	void InitBank1Registers(ITX_SPEED spd);
-	
     bool lock_bus(void) {
         return dev->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER);
     }
     void unlock_bus(void) {
         dev->get_semaphore()->give();
     }
-    
-    // MOTE: not sure if this is how it should be declared
 
+	// Raw SPI access functions
+    void ReadFifo(uint8_t *dpbuffer, uint8_t len);
+    void WriteFifo(const uint8_t *dpbuffer, uint8_t len);
+    void ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len);
+    void WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t len);
+
+    // Low-level Beken functions
+	uint8_t ReadStatus(void);
+    uint8_t ReadReg(uint8_t reg);
+    uint8_t Strobe(uint8_t address);
+	void SetRBank(uint8_t bank);
+    void WriteReg(uint8_t address, uint8_t data);
+    void WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, uint8_t len);
+    
+    // High-level Beken functions
+    void SetPower(uint8_t power);
+    void SetChannel(uint8_t channel);
+    void SetCwMode(uint8_t cw);
+    bool Reset(void);
+	void SwitchToRxMode(void);
+	void SwitchToTxMode(void);
+	void SwitchToIdleMode(void);
+	void SwitchToSleepMode(void);
+	void InitBank0Registers(ITX_SPEED spd);
+	void InitBank1Registers(ITX_SPEED spd);
+	void SetAddresses(const uint8_t* txaddr); // Set the rx and tx addresses
+	bool ClearAckOverflow(void);
+    bool SendPacket(uint8_t type, const uint8_t* pbuf, uint8_t len);
+
+    // Visible public variables (naughty)
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end
-    
-    // Note: this should be moved to be within the class
-    #if (TX_SPEED==250)
-    ITX_SPEED gTxSpeed = ITX_250;
-    #elif (TX_SPEED==100)
-    ITX_SPEED gTxSpeed = ITX_1000;
-    #elif (TX_SPEED==2000)
-    ITX_SPEED gTxSpeed = ITX_2000;
-    #endif
-    
+    static ITX_SPEED gTxSpeed;
+	RadioStats stats;
+	FccParams fcc;
+	packetFormatTx pktDataTx; // Packet data to send
+	bool lastTxCwMode; // 0=packet, 1=carrier wave
 	uint8_t TX_Address[5]; // For sending telemetry and DFU
-	uint8_t RX0_Address[5]; // The data address
-	uint8_t RX1_Address[5]; // The fixed binding address
-
+    
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
+	uint8_t bFreshData; // Have we received a packet since we last processed one
+	packetFormatRx pktDataRx; // Last valid packet that has been received
+	packetFormatRx pktDataRecv; // Packet data in process of being received
+	uint8_t lastTxChannel; // 0..CHANNEL_COUNT_LOGICAL
+	uint8_t lastTxPower; // 0..7
+	uint8_t RX0_Address[5]; // The data address
+	uint8_t RX1_Address[5]; // The fixed binding address
 };
