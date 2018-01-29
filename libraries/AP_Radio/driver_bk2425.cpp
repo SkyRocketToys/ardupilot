@@ -1,13 +1,33 @@
-/*
-  low level driver for the beken radio on SPI
-*/
+// --------------------------------------------------------------------
+//  low level driver for the beken radio on SPI
+// --------------------------------------------------------------------
 
 #include "driver_bk2425.h"
 #include <utility>
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#include <AP_HAL_ChibiOS/AP_HAL_ChibiOS.h>
+using namespace ChibiOS; 
+#endif
 
 #pragma GCC optimize("O0")
 
-const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
+extern const AP_HAL::HAL& hal;
+
+// --------------------------------------------------------------------
+// Radio initialisation tables
+// --------------------------------------------------------------------
+
+#if (TX_SPEED==250)
+    ITX_SPEED Radio_Beken::gTxSpeed = ITX_250;
+#elif (TX_SPEED==100)
+    ITX_SPEED Radio_Beken::gTxSpeed = ITX_1000;
+#elif (TX_SPEED==2000)
+    ITX_SPEED Radio_Beken::gTxSpeed = ITX_2000;
+#endif
+
+
+// --------------------------------------------------------------------
+static const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
 	// (TX_SPEED == 250u)
 	{
 		{ BK2425_R1_4,  0xf9,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
@@ -31,20 +51,32 @@ const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
 		PLL_SPEED,                                              // REG12
 		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
 		{ BK2425_R1_4,  0xff,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
+	},
+	// (TX_SPEED == 0u)
+	{
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0x21 }, // 0xF9968221ul, // REG4 carrier
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // REG5 250kbps
+		PLL_SPEED,                                              // REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0x21 }, // 0xDB8A96f9ul, // REG4 250kbps
 	}
 };
 
+// --------------------------------------------------------------------
 static const uint8_t Bank0_Reg6[ITX_MAX][2] = {
 	{BK_RF_SETUP,   0x27}, //  250kbps (6) 0x27=250kbps
 	{BK_RF_SETUP,   0x07}, // 1000kbps (6) 0x07=1Mbps, high gain, high txpower
 	{BK_RF_SETUP,   0x2F}, // 2000kbps (6) 0x2F=2Mbps, high gain, high txpower
+	{BK_RF_SETUP,   0x37}, //  250kbps (6) 0x10=carrier
 };
 
+// --------------------------------------------------------------------
 static const uint8_t Bank1_Reg14[]=
 {
-0x41,0x20,0x08,0x04,0x81,0x20,0xcf,0xF7,0xfe,0xff,0xff
+	0x41,0x20,0x08,0x04,0x81,0x20,0xcf,0xF7,0xfe,0xff,0xff
 };
 
+// --------------------------------------------------------------------
 // Bank0 register initialization value
 static const uint8_t Bank0_Reg[][2]={
     
@@ -87,8 +119,23 @@ static const uint8_t Bank0_Reg[][2]={
     {BK_FEATURE,    BK_FEATURE_EN_DPL | BK_FEATURE_EN_ACK_PAY | BK_FEATURE_EN_DYN_ACK }  // (29) 7=enable ack, no ack, dynamic payload length
 };
 
-extern const AP_HAL::HAL& hal;
+// ----------------------------------------------------------------------------
+const uint8_t RegPower[8][2] = {
+    { OUTPUT_POWER_REG4_0, OUTPUT_POWER_REG6_0 },
+    { OUTPUT_POWER_REG4_1, OUTPUT_POWER_REG6_1 },
+    { OUTPUT_POWER_REG4_2, OUTPUT_POWER_REG6_2 },
+    { OUTPUT_POWER_REG4_3, OUTPUT_POWER_REG6_3 },
+    { OUTPUT_POWER_REG4_4, OUTPUT_POWER_REG6_4 },
+    { OUTPUT_POWER_REG4_5, OUTPUT_POWER_REG6_5 },
+    { OUTPUT_POWER_REG4_6, OUTPUT_POWER_REG6_6 },
+    { OUTPUT_POWER_REG4_7, OUTPUT_POWER_REG6_7 },
+};
 
+// --------------------------------------------------------------------
+// Generic functions	
+// --------------------------------------------------------------------
+
+// --------------------------------------------------------------------
 // constructor
 Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
     dev(std::move(_dev))
@@ -107,80 +154,117 @@ Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
 	RX1_Address[4] = 0x2D;
 }
 
+// --------------------------------------------------------------------
+// Raw SPI access functions
+// --------------------------------------------------------------------
+
+// --------------------------------------------------------------------
 void Radio_Beken::ReadFifo(uint8_t *dpbuffer, uint8_t len)
 {
-    (void)dev->read_registers(BK_RD_RX_PLOAD, dpbuffer, len);
+	uint8_t tx[len+1];
+    uint8_t rx[len+1];
+    memset(tx, 0, len+1);
+    memset(rx, 0, len+1);
+	tx[0] = BK_RD_RX_PLOAD;
+    (void)dev->transfer_fullduplex(tx, rx, len+1);
+    memcpy(dpbuffer, &rx[1], len);
 }
 
+// --------------------------------------------------------------------
 void Radio_Beken::WriteFifo(const uint8_t *dpbuffer, uint8_t len)
 {
-    WriteRegisterMulti(BK_W_TX_PAYLOAD_NOACK_CMD, dpbuffer, len);
+	uint8_t tx[len+1];
+    uint8_t rx[len+1];
+    memset(rx, 0, len+1);
+	tx[0] = BK_W_TX_PAYLOAD_NOACK_CMD;
+	memcpy(&tx[1], dpbuffer, len);
+    (void)dev->transfer_fullduplex(tx, rx, len+1);
 }
 
-void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t length)
+// --------------------------------------------------------------------
+void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
 {
-    (void)dev->read_registers(address, data, length);
+	uint8_t tx[len+1];
+    uint8_t rx[len+1];
+    memset(tx, 0, len+1);
+    memset(rx, 0, len+1);
+	tx[0] = address;
+    (void)dev->transfer_fullduplex(tx, rx, len+1);
+    memcpy(data, &rx[1], len);
 }
 
-void Radio_Beken::WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t length)
+// --------------------------------------------------------------------
+void Radio_Beken::WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t len)
 {
-    uint8_t buf[length+1];
-    buf[0] = address | BK_WRITE_REG;
-    memcpy(&buf[1], data, length);
-    dev->transfer(buf, length+1, nullptr, 0);
+	uint8_t tx[len+1];
+    uint8_t rx[len+1];
+    memset(rx, 0, len+1);
+	tx[0] = address;
+	memcpy(&tx[1], data, len);
+    (void)dev->transfer_fullduplex(tx, rx, len+1);
 }
 
-uint8_t Radio_Beken::ReadReg(uint8_t reg)
-{
-    uint8_t ret = 0;
-    (void)dev->read_registers(reg | BK_READ_REG, &ret, 1);
-    return ret;
-}
+// --------------------------------------------------------------------
+// Low-level Beken functions
+// --------------------------------------------------------------------
 
+// --------------------------------------------------------------------
 uint8_t Radio_Beken::ReadStatus(void)
 {
-    uint8_t ret = 0;
-    (void)dev->read_registers(BK_NOP, &ret, 1);
-    return ret;
+	uint8_t tx = BK_NOP;
+    uint8_t rx = 0;
+    (void)dev->transfer_fullduplex(&tx, &rx, 1);
+    return rx; // Status
 }
 
+// --------------------------------------------------------------------
+uint8_t Radio_Beken::ReadReg(uint8_t reg)
+{
+	uint8_t tx[2];
+    uint8_t rx[2];
+    memset(tx, 0, 2);
+    memset(rx, 0, 2);
+	tx[0] = reg | BK_READ_REG;
+    (void)dev->transfer_fullduplex(tx, rx, 2);
+    return rx[1];
+}
+
+// --------------------------------------------------------------------
 uint8_t Radio_Beken::Strobe(uint8_t address)
 {
-    uint8_t status=0;
-    (void)dev->transfer(&address, 1, &status, 1);
-    return status;
+	uint8_t tx = address;
+    uint8_t rx = 0;
+    (void)dev->transfer_fullduplex(&tx, &rx, 1);
+    return rx; // Status
 }
 
-void Radio_Beken::WriteReg(uint8_t address, uint8_t data)
-{
-    (void)dev->write_register(address | BK_WRITE_REG, data);
-}
-
+// --------------------------------------------------------------------
 // Set which register bank we are accessing
 void Radio_Beken::SetRBank(uint8_t bank) // 1:Bank1 0:Bank0
 {
-    uint8_t lastbank = ReadStatus() & BK_STATUS_RBANK; // carl - is this how you read the status register?
+    uint8_t lastbank = ReadStatus() & BK_STATUS_RBANK;
     if (!lastbank != !bank)
     {
-        uint8_t buf[2];
-        buf[0] = BK_ACTIVATE_CMD;
-        buf[1] = 0x53;
-        dev->transfer(buf, 2, nullptr, 0);
+        uint8_t tx[2];
+        uint8_t rx[2];
+        tx[0] = BK_ACTIVATE_CMD;
+        tx[1] = 0x53;
+		(void)dev->transfer_fullduplex(&tx[0], &rx[0], 2);
     }
 }
 
-// ----------------------------------------------------------------------------
-const uint8_t RegPower[8][2] = {
-    { OUTPUT_POWER_REG4_0, OUTPUT_POWER_REG6_0 },
-    { OUTPUT_POWER_REG4_1, OUTPUT_POWER_REG6_1 },
-    { OUTPUT_POWER_REG4_2, OUTPUT_POWER_REG6_2 },
-    { OUTPUT_POWER_REG4_3, OUTPUT_POWER_REG6_3 },
-    { OUTPUT_POWER_REG4_4, OUTPUT_POWER_REG6_4 },
-    { OUTPUT_POWER_REG4_5, OUTPUT_POWER_REG6_5 },
-    { OUTPUT_POWER_REG4_6, OUTPUT_POWER_REG6_6 },
-    { OUTPUT_POWER_REG4_7, OUTPUT_POWER_REG6_7 },
-};
+// --------------------------------------------------------------------
+void Radio_Beken::WriteReg(uint8_t address, uint8_t data)
+{
+	uint8_t tx[2];
+    uint8_t rx[2];
+    memset(rx, 0, 2);
+	tx[0] = address | BK_WRITE_REG;
+	tx[1] = data;
+    (void)dev->transfer_fullduplex(tx, rx, 2);
+}
 
+// --------------------------------------------------------------------
 void Radio_Beken::WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, uint8_t length)
 {
     SetRBank(1);
@@ -188,6 +272,12 @@ void Radio_Beken::WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, 
     SetRBank(0);
 }
 
+// --------------------------------------------------------------------
+// High-level Beken functions
+// --------------------------------------------------------------------
+
+// --------------------------------------------------------------------
+// Set the radio transmission power of the beken
 void Radio_Beken::SetPower(uint8_t power)
 {
     if (power > 7) {
@@ -198,7 +288,7 @@ void Radio_Beken::SetPower(uint8_t power)
     hal.scheduler->delay(100); // delay more than 50ms.
     SetRBank(1);
     {
-        const uint8_t* p = &Bank1_RegTable[gTxSpeed][IREG1_4][0];
+		const uint8_t* p = &Bank1_RegTable[lastTxCwMode ? ITX_CARRIER : gTxSpeed][IREG1_4][0];
         uint8_t idx = *p++;
         uint8_t buf[4];
         buf[0] = *p++;
@@ -220,8 +310,54 @@ void Radio_Beken::SetPower(uint8_t power)
     bkReady = oldready;
 }
 
+// --------------------------------------------------------------------
+// Set the radio transmission frequency of the beken
+void Radio_Beken::SetChannel(uint8_t freq)
+{
+	lastTxChannel = freq;
+	WriteReg(BK_RF_CH | BK_WRITE_REG, freq);
+}
+
+// --------------------------------------------------------------------
+// Set the radio transmission mode of the beken
+// Enable/disable the carrier sending mode 
+void Radio_Beken::SetCwMode(uint8_t cw)
+{
+	uint8_t oldready = bkReady;
+	bkReady = 0;
+    hal.scheduler->delay(100); // delay more than 50ms.
+	SetRBank(1);
+	{
+		const uint8_t* p = &Bank1_RegTable[cw ? ITX_CARRIER : gTxSpeed][IREG1_4][0];
+		uint8_t idx = *p++;
+		uint8_t buf[4];
+		buf[0] = *p++;
+		buf[1] = *p++;
+		buf[2] = *p++;
+		buf[3] = *p++;
+		buf[0] &= ~0x38;
+		buf[0] |= (RegPower[lastTxPower][0] << 3); // Bits 27..29
+		WriteRegisterMulti((BK_WRITE_REG|idx), buf, 4);
+	}
+    hal.scheduler->delay(100); // delay more than 50ms.
+	SetRBank(0);
+	hal.scheduler->delay(100); // delay more than 50ms.
+	{
+		uint8_t setup = ReadReg(BK_RF_SETUP);
+		setup &= ~(3 << 1);
+		setup |= (RegPower[lastTxPower][1] << 1); // Bits 1..2
+		if (cw)
+			setup |= 0x10;
+		WriteReg((BK_WRITE_REG|BK_RF_SETUP), setup);
+	}
+	lastTxCwMode = cw;
+	bkReady = oldready;
+}
+
+// ----------------------------------------------------------------------------
 bool Radio_Beken::Reset(void)
 {
+    //...
     hal.scheduler->delay_microseconds(1000);
     return 0;
 }
@@ -241,6 +377,7 @@ void Radio_Beken::SwitchToRxMode(void)
     {	asm volatile("nop"::); }
     value = ReadReg(BK_CONFIG);	// read register CONFIG's value
     value |= BK_CONFIG_PRIM_RX; // set bit 0
+	value |= BK_CONFIG_PWR_UP;
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Set PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled..
     
     BEKEN_CE_HIGH();
@@ -254,12 +391,13 @@ void Radio_Beken::SwitchToTxMode(void)
     uint8_t value;
     Strobe(BK_FLUSH_TX); // flush Tx
     
-    BEKEN_PA_HIGH();
+//  BEKEN_PA_HIGH();
     BEKEN_CE_LOW();
     for (value = 0; value < 40; ++value)
     {	asm volatile("nop"::); }
     value = ReadReg(BK_CONFIG); // read register CONFIG's value
     value &= ~BK_CONFIG_PRIM_RX; // Clear bit 0 (PTX)
+	value |= BK_CONFIG_PWR_UP;
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Set PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled.
     BEKEN_CE_HIGH();
 }
@@ -352,3 +490,48 @@ void Radio_Beken::InitBank1Registers(ITX_SPEED spd)
         WriteRegisterMulti((BK_WRITE_REG|idx), p, 4);
     }
 }
+
+// ----------------------------------------------------------------------------
+// Set the rx and tx addresses
+void Radio_Beken::SetAddresses(const uint8_t* txaddr)
+{
+	TX_Address[1] = RX0_Address[1] = txaddr[1];
+	TX_Address[3] = RX0_Address[3] = txaddr[3];
+	TX_Address[4] = RX0_Address[4] = txaddr[4];
+	WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0), RX0_Address, 5);
+	WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR), TX_Address, 5);
+}
+
+// ----------------------------------------------------------------------------
+bool Radio_Beken::ClearAckOverflow(void)
+{
+	uint8_t status = ReadStatus();
+	if ((BK_STATUS_MAX_RT & status) == 0)
+	{
+    	return false;
+	}
+	else
+	{
+		WriteReg((BK_WRITE_REG|BK_STATUS), BK_STATUS_MAX_RT);
+    	return true;
+	}
+}
+
+
+// ----------------------------------------------------------------------------
+// Write a data packet
+bool Radio_Beken::SendPacket(uint8_t type, ///< WR_TX_PLOAD or W_TX_PAYLOAD_NOACK_CMD
+	const uint8_t* pbuf, ///< a buffer pointer
+	uint8_t len) ///< packet length in bytes
+{
+	uint8_t fifo_sta = ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
+	bool returnValue = ClearAckOverflow();
+
+	if (!(fifo_sta & BK_FIFO_STATUS_TX_FULL)) // if not full, send data
+	{
+		stats.numTxPackets++;
+		WriteRegisterMulti(type, pbuf, len); // Writes data to buffer A0,B0,A8
+	}
+	return returnValue;
+}
+
