@@ -19,7 +19,7 @@
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-static THD_WORKING_AREA(_irq_handler_wa, 512);
+static THD_WORKING_AREA(_irq_handler_wa, 2048);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
@@ -51,7 +51,12 @@ AP_Radio_beken::AP_Radio_beken(AP_Radio &_radio) :
     beken(hal.spi->get_device("beken")) // trace this later - its on libraries/AP_HAL_ChibiOS/SPIDevice.cpp:92
 {
     // link to instance for irq_trampoline
+    
+    // (temporary) go into test mode
     radio_instance = this;
+    beken.fcc.test_mode = true;
+    beken.fcc.channel = 23;
+    beken.fcc.power = 7;
 }
 
 /*
@@ -251,7 +256,7 @@ void AP_Radio_beken::radio_init(void)
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-    hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_RISING);
+    hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_FALLING);
 #endif
 
     if (load_bind_info()) { // what happens here? 
@@ -299,6 +304,27 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 {
 }
 
+
+// ----------------------------------------------------------------------------
+// Update a radio control packet
+// Called from IRQ context
+void AP_Radio_beken::UpdateTxData(void)
+{
+	packetFormatTx* tx = &beken.pktDataTx;
+
+	// Base values for this packet type
+	tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
+//	tx->channel;
+	tx->wifi = lastWifiChannel;
+	tx->rssi = -99;
+	tx->droneid[0] = myDroneId[0];
+	tx->droneid[1] = myDroneId[1];
+	tx->droneid[2] = myDroneId[2];
+	tx->droneid[3] = myDroneId[3];
+	tx->mode = 0;
+}
+
+// ----------------------------------------------------------------------------
 // Handle receiving a packet (we are still in an interrupt!)
 void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 {
@@ -320,11 +346,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		if (rxaddr == 1)
 		{
 			// Set the address on which we are receiving the control data
-			beken.TX_Address[1] = beken.RX0_Address[1] = packet[3];
-			beken.TX_Address[3] = beken.RX0_Address[3] = packet[5];
-			beken.TX_Address[4] = beken.RX0_Address[4] = packet[6];
-			beken.WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0),beken.RX0_Address,5);
-			beken.WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR),beken.TX_Address,5);
+			beken.SetAddresses(&packet[2]);
 		}
 		break;
 	case BK_PKT_TYPE_TELEMETRY:
@@ -335,6 +357,24 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 	}
 }
 
+// ----------------------------------------------------------------------------
+// Prepare to send a FCC packet
+void AP_Radio_beken::UpdateFccScan(void)
+{
+	// Support scan mode
+    if (beken.fcc.scan_mode) {
+        beken.fcc.scan_count++;
+        if (beken.fcc.scan_count >= 200) {
+            beken.fcc.scan_count = 0;
+            beken.fcc.channel += 2; // Go up by 2Mhz
+            if (beken.fcc.channel >= CHANNEL_FCC_HIGH) {
+                beken.fcc.channel = CHANNEL_FCC_LOW;
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 // main IRQ handler
 void AP_Radio_beken::irq_handler(void)
 {
@@ -409,25 +449,42 @@ void AP_Radio_beken::irq_handler(void)
 // handle timeout IRQ
 void AP_Radio_beken::irq_timeout(void)
 {
-    switch (protocolState) {
-    case STATE_BIND: {
-        break;
-    }
-        
-    case STATE_DATA: {
-        break;
-    }
+	if (!beken.bkReady) // We are reinitialising the chip in the main thread
+		return;
 
-    default:
-        break;
-    }
+	// Change to the next (non-ignored) channel
+	if (beken.fcc.test_mode)
+	{
+		beken.SwitchToTxMode();
+		UpdateFccScan();
+		beken.SetChannel(beken.fcc.channel);
+		UpdateTxData();
+		beken.pktDataTx.channel = 0;
+		if (!beken.lastTxCwMode)
+		{
+			beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+		}
+		return;
+	}
+	else
+	{
+		nextChannel(1);
+	}
+	beken.Strobe(BK_FLUSH_TX); // Discard any buffered tx bytes
+	beken.ClearAckOverflow();
+
+	// Support sending binding packets
 }
 
 void AP_Radio_beken::irq_handler_thd(void *arg)
 {
-    (void)arg;
+    (void) arg;
+//  _irq_handler_ctx->name = "RadioBeken"; // This is not valid yet! This thread is started before my parent thread sets the pointer.
+//	chRegSetThreadName("RadioBeken"); // Only valid if CH_CFG_USE_REGISTRY
     while(true) {
         eventmask_t evt = chEvtWaitAny(ALL_EVENTS);
+        if (_irq_handler_ctx != nullptr) // Sanity check
+			_irq_handler_ctx->name = "RadioBeken"; // Only useful to be done once but here is done often
 
         radio_instance->beken.lock_bus();
         
@@ -439,12 +496,12 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
             radio_instance->irq_handler();
             break;
         case EVT_TIMEOUT:
-            //if (radio_instance->beken.ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST)) {
-            //    irq_time_us = AP_HAL::micros();
-            //    radio_instance->irq_handler();
-            //} else {
-            //    radio_instance->irq_timeout();
-            //}
+			if ((radio_instance->beken.ReadStatus() & (BK_STATUS_TX_DS | BK_STATUS_MAX_RT | BK_STATUS_RX_DR)) != 0) {
+				radio_instance->irq_handler();
+			}
+			else {
+				radio_instance->irq_timeout();
+			}
             break;
         case EVT_BIND:
 //            radio_instance->initTuneRx();
@@ -459,6 +516,7 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
 
 void AP_Radio_beken::setChannel(uint8_t channel)
 {
+	beken.SetChannel(channel);
 }
 
 enum { CHANNEL_COUNT_LOGICAL = 60 };
