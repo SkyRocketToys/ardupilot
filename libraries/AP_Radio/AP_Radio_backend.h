@@ -64,6 +64,8 @@ public:
     virtual void set_wifi_channel(uint8_t channel) = 0;
     
 protected:
+	// These functions are for the radio code to access the parameters
+	// that the user can set using the web interface.
 
     AP_Radio::ap_radio_protocol get_protocol(void) const {
         return (AP_Radio::ap_radio_protocol)radio.protocol.get();

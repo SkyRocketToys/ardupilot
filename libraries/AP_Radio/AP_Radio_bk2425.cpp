@@ -123,37 +123,36 @@ void AP_Radio_beken::update(void)
     
 
 /*
-  return number of active channels
+  return number of active channels, and updates the data
  */
 uint8_t AP_Radio_beken::num_channels(void)
 {
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
     if (chan > 0) {
-        pwm_channels[chan-1] = t_status.rssi;
+        pwm_channels[chan-1] = -99; // t_status.rssi; // This will never update though
         chan_count = MAX(chan_count, chan);
     }
 
     chan = get_pps_chan();
     if (chan > 0) {
-        pwm_channels[chan-1] = t_status.pps;
+        pwm_channels[chan-1] = t_status.pps; // How many packets received per second
         chan_count = MAX(chan_count, chan);
     }
 
-#if 0
-    ch = get_tx_rssi_chan();
-    if (ch > 0) {
-        dsm.pwm_channels[ch-1] = dsm.tx_rssi;
-        dsm.num_channels = MAX(dsm.num_channels, ch);
+    chan = get_tx_rssi_chan();
+    if (chan > 0) {
+        pwm_channels[chan-1] = -99; //...
+        chan_count = MAX(chan_count, chan);
     }
 
-    ch = get_tx_pps_chan();
-    if (ch > 0) {
-        dsm.pwm_channels[ch-1] = dsm.tx_pps;
-        dsm.num_channels = MAX(dsm.num_channels, ch);
+    chan = get_tx_pps_chan();
+    if (chan > 0) {
+        pwm_channels[chan-1] = 123; // ... dsm.tx_pps;
+        chan_count = MAX(chan_count, chan);
     }
-#endif
     
+    // Every second, update the statistics
     if (now - last_pps_ms > 1000) {
         last_pps_ms = now;
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
@@ -238,6 +237,7 @@ void AP_Radio_beken::radio_init(void)
 
     beken.bkReady = 0;
     spd = beken.gTxSpeed;
+	beken.SwitchToIdleMode();
     hal.scheduler->delay(100);//delay more than 50ms.
 
     // Initialise Beken registers
@@ -268,7 +268,9 @@ void AP_Radio_beken::radio_init(void)
         protocolState = STATE_BIND;
     }
 
-    chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Initial timeout?
+    if (3 <= get_debug_level())
+		beken.DumpRegisters();
 }
 
 void AP_Radio_beken::trigger_irq_radio_event()
@@ -285,11 +287,12 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
     (void)arg;
     //we are called from ISR context
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Timeout every 10ms?
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
 
+// The user has clicked on the "Start Bind" button on the web interface
 void AP_Radio_beken::start_recv_bind(void)
 {
     protocolState = STATE_BIND;
@@ -316,7 +319,7 @@ void AP_Radio_beken::UpdateTxData(void)
 	tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
 //	tx->channel;
 	tx->wifi = lastWifiChannel;
-	tx->rssi = -99;
+	tx->pps = t_status.pps;
 	tx->droneid[0] = myDroneId[0];
 	tx->droneid[1] = myDroneId[1];
 	tx->droneid[2] = myDroneId[2];
@@ -334,12 +337,15 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		// We haz data
 		if (rxaddr == 0)
 		{
+		    packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
 			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
 			pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
 			pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
 			pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
+			chan_count = MAX(chan_count, 4);
 			//...
+//			printf(" Throttle %d\r\n", pwm_channels[0]);
 		}
 		break;
 	case BK_PKT_TYPE_BIND:
@@ -347,6 +353,8 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 			// Set the address on which we are receiving the control data
 			beken.SetAddresses(&packet[2]);
+			printf(" Bound to %x %x %x %x %x\r\n", packet[2], packet[3],
+				packet[4], packet[5], packet[6]);
 		}
 		break;
 	case BK_PKT_TYPE_TELEMETRY:
@@ -390,8 +398,9 @@ void AP_Radio_beken::irq_handler(void)
 	if (bk_sta & BK_STATUS_TX_DS)
 	{
 		// Packet was sent successfully (not yet acknowledged)
-//		sentPacketCount++;
+//		stats.sentPacketCount++;
 		beken.SwitchToRxMode(); // Prepare to receive reply
+		printf("T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
 	{
@@ -401,6 +410,7 @@ void AP_Radio_beken::irq_handler(void)
 	{
 		// We have received a packet
 		uint8_t rxstd = 0;
+		printf("R");
 		// Which pipe (address) have we received this packet on?
 		if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
 		{
@@ -412,27 +422,27 @@ void AP_Radio_beken::irq_handler(void)
 		}
 		else
 		{
-//			badRxAddress++;
+			stats.recv_errors++;
 		}
-//		ackPacketCount++;
-//		bFreshData = 1;
 		
 		uint8_t len, fifo_sta;
 		uint8_t packet[32];
 		do
 		{
-//			gRxPackets++;
+            stats.recv_packets++;
 			len = beken.ReadReg(BK_R_RX_PL_WID_CMD);	// read received packet length in bytes
-//			gLastRxLen = len;
 
 			if (len <= PACKET_LENGTH_RX_MAX)
 			{
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
+				printf("Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
+					packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
 			}
 			else // Packet was too long
 			{
-				beken.WriteReg(BK_FLUSH_RX, 0); // flush Rx
+				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, 32); // read receive payload from RX_FIFO buffer
+				beken.Strobe(BK_FLUSH_RX); // flush Rx
 			}
 			fifo_sta = beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 		} while (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)); // while not empty
@@ -450,19 +460,25 @@ void AP_Radio_beken::irq_handler(void)
 void AP_Radio_beken::irq_timeout(void)
 {
 	if (!beken.bkReady) // We are reinitialising the chip in the main thread
+	{
 		return;
-
+	}
 	// Change to the next (non-ignored) channel
 	if (beken.fcc.test_mode)
 	{
+		static int tt = 0;
+		if (++tt & 3)
+			return;
 		beken.SwitchToTxMode();
+		beken.ClearAckOverflow();
 		UpdateFccScan();
 		beken.SetChannel(beken.fcc.channel);
 		UpdateTxData();
 		beken.pktDataTx.channel = 0;
-		if (!beken.lastTxCwMode)
+		if (!beken.fcc.CW_mode)
 		{
 			beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+			printf("*");
 		}
 		return;
 	}
@@ -470,46 +486,40 @@ void AP_Radio_beken::irq_timeout(void)
 	{
 		nextChannel(1);
 	}
-	beken.Strobe(BK_FLUSH_TX); // Discard any buffered tx bytes
+//	beken.Strobe(BK_FLUSH_TX); // Discard any buffered tx bytes
 	beken.ClearAckOverflow();
 
 	// Support sending binding packets
 }
 
+// Thread that supports Beken Radio work triggered by interrupts
 void AP_Radio_beken::irq_handler_thd(void *arg)
 {
     (void) arg;
-//  _irq_handler_ctx->name = "RadioBeken"; // This is not valid yet! This thread is started before my parent thread sets the pointer.
-//	chRegSetThreadName("RadioBeken"); // Only valid if CH_CFG_USE_REGISTRY
     while(true) {
         eventmask_t evt = chEvtWaitAny(ALL_EVENTS);
         if (_irq_handler_ctx != nullptr) // Sanity check
 			_irq_handler_ctx->name = "RadioBeken"; // Only useful to be done once but here is done often
 
         radio_instance->beken.lock_bus();
-        
         switch(evt) {
         case EVT_IRQ:
             if (radio_instance->protocolState == STATE_FCCTEST) {
                 hal.console->printf("IRQ FCC\n");
             }
+            printf(":");
             radio_instance->irq_handler();
             break;
         case EVT_TIMEOUT:
-			if ((radio_instance->beken.ReadStatus() & (BK_STATUS_TX_DS | BK_STATUS_MAX_RT | BK_STATUS_RX_DR)) != 0) {
-				radio_instance->irq_handler();
-			}
-			else {
-				radio_instance->irq_timeout();
-			}
+            printf(".");
+			radio_instance->irq_timeout();
             break;
-        case EVT_BIND:
-//            radio_instance->initTuneRx();
+        case EVT_BIND: // The user has clicked on the "Start Bind" button on the web interface
+			printf("\r\nBtnStartBind\r\n");
             break;
         default:
             break;
         }
-
         radio_instance->beken.unlock_bus();
     }
 }
@@ -522,10 +532,6 @@ void AP_Radio_beken::setChannel(uint8_t channel)
 enum { CHANNEL_COUNT_LOGICAL = 60 };
 const uint8_t bindHopData[CHANNEL_COUNT_LOGICAL] = {
 #if 1
-//	54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,
-//	54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,
-//	54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,
-//	54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
