@@ -104,7 +104,7 @@ AP_HAL::Device::PeriodicHandle DeviceBus::register_periodic_callback(uint32_t pe
 
         thread_ctx = chThdCreateFromHeap(NULL,
                          THD_WORKING_AREA_SIZE(1024),
-                         name,
+                         "XX_I2CSPI", // name,
                          thread_priority,           /* Initial priority.    */
                          DeviceBus::bus_thread,    /* Thread function.     */
                          this);                     /* Thread parameter.    */
