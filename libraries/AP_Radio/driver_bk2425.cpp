@@ -388,6 +388,20 @@ void Radio_Beken::DelayCE(void)
 }
 
 // ----------------------------------------------------------------------------
+bool Radio_Beken::WasTxMode(void)
+{
+	// Were we transmitting something?
+	return bkMode == BKRADIO_TX;
+}
+
+// ----------------------------------------------------------------------------
+bool Radio_Beken::WasRxMode(void)
+{
+	// Were we receiving something?
+	return bkMode == BKRADIO_RX;
+}
+
+// ----------------------------------------------------------------------------
 // Switch to Rx mode
 void Radio_Beken::SwitchToRxMode(void)
 {
@@ -406,6 +420,7 @@ void Radio_Beken::SwitchToRxMode(void)
     
     BEKEN_CE_HIGH();
     //BEKEN_PA_LOW(); // we dont have a PA on the RX side
+	bkMode = BKRADIO_RX;
 }
 
 // ----------------------------------------------------------------------------
@@ -413,7 +428,8 @@ void Radio_Beken::SwitchToRxMode(void)
 void Radio_Beken::SwitchToTxMode(void)
 {
     uint8_t value;
-    Strobe(BK_FLUSH_TX); // flush Tx
+    Strobe(BK_FLUSH_TX); // flush half-sent Tx
+    Strobe(BK_FLUSH_RX); // flush half-received rx
     
 //  BEKEN_PA_HIGH();
     BEKEN_CE_LOW();
@@ -423,6 +439,7 @@ void Radio_Beken::SwitchToTxMode(void)
 	value |= BK_CONFIG_PWR_UP;
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Set PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled.
 //  BEKEN_CE_HIGH();
+	bkMode = BKRADIO_TX;
 }
 
 // ----------------------------------------------------------------------------
@@ -430,10 +447,12 @@ void Radio_Beken::SwitchToTxMode(void)
 void Radio_Beken::SwitchToIdleMode(void)
 {
     Strobe(BK_FLUSH_TX); // flush Tx
+    Strobe(BK_FLUSH_RX); // flush Rx
     
     BEKEN_PA_LOW();
     BEKEN_CE_LOW();
     DelayCE();
+	bkMode = BKRADIO_IDLE;
 }
 
 // ----------------------------------------------------------------------------
@@ -455,6 +474,7 @@ void Radio_Beken::SwitchToSleepMode(void)
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Clear PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled..
     // Stay low
     BEKEN_CE_LOW();
+	bkMode = BKRADIO_SLEEP;
 }
 
 // ----------------------------------------------------------------------------

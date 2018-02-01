@@ -297,6 +297,14 @@ typedef struct FccParams_s {
     bool disable_crc; ///< true=crc is disabled
 } FccParams;
 
+typedef enum BkRadioMode_e {
+	BKRADIO_SLEEP,
+	BKRADIO_IDLE,
+	BKRADIO_TX,
+	BKRADIO_RX,
+	BKRADIO_STANDBY1, // Not visible to the code yet
+	BKRADIO_STANDBY2, // Not visible to the code yet
+} BkRadioMode;
 
 //----------------------------------------------------------------------------------
 // BEKEN driver class
@@ -341,6 +349,8 @@ public:
     bool SendPacket(uint8_t type, const uint8_t* pbuf, uint8_t len);
 	void DelayCE(void);
 	void DumpRegisters(void);
+	bool WasTxMode(void);
+	bool WasRxMode(void);
 
     // Visible public variables (naughty)
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end
@@ -359,4 +369,5 @@ private:
 	uint8_t lastTxPower; // 0..7
 	uint8_t RX0_Address[5]; // The data address
 	uint8_t RX1_Address[5]; // The fixed binding address
+	BkRadioMode bkMode;
 };
