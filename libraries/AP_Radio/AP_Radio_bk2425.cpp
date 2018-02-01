@@ -129,25 +129,25 @@ uint8_t AP_Radio_beken::num_channels(void)
 {
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
-    if (chan > 0) {
+    if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
         pwm_channels[chan-1] = -99; // t_status.rssi; // This will never update though
         chan_count = MAX(chan_count, chan);
     }
 
     chan = get_pps_chan();
-    if (chan > 0) {
+    if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
         pwm_channels[chan-1] = t_status.pps; // How many packets received per second
         chan_count = MAX(chan_count, chan);
     }
 
     chan = get_tx_rssi_chan();
-    if (chan > 0) {
+    if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
         pwm_channels[chan-1] = -99; //...
         chan_count = MAX(chan_count, chan);
     }
 
     chan = get_tx_pps_chan();
-    if (chan > 0) {
+    if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
         pwm_channels[chan-1] = 123; // ... dsm.tx_pps;
         chan_count = MAX(chan_count, chan);
     }
@@ -183,7 +183,7 @@ bool AP_Radio_beken::send(const uint8_t *pkt, uint16_t len)
     return false;
 }
 
-const uint16_t CRCTable[] = {
+static const uint16_t CRCTable[] = {
         0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,
         0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
         0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,
@@ -223,6 +223,7 @@ const uint16_t CRCTable[] = {
  */
 void AP_Radio_beken::radio_init(void)
 {
+	printf("radio_init\r\n");
     beken.SetRBank(1);
     uint8_t id = beken.ReadReg(BK2425_R1_WHOAMI); // id is now 99
     beken.SetRBank(0); // Reset to default register bank.
@@ -238,14 +239,14 @@ void AP_Radio_beken::radio_init(void)
     beken.bkReady = 0;
     spd = beken.gTxSpeed;
 	beken.SwitchToIdleMode();
-    hal.scheduler->delay(100);//delay more than 50ms.
+    hal.scheduler->delay(100); // delay more than 50ms.
 
     // Initialise Beken registers
     beken.SetRBank(0);
     beken.InitBank0Registers(beken.gTxSpeed);
     beken.SetRBank(1);
     beken.InitBank1Registers(beken.gTxSpeed);
-    hal.scheduler->delay(100);//delay more than 50ms.
+    hal.scheduler->delay(100); // delay more than 50ms.
     beken.SetRBank(0);
     
     beken.SwitchToRxMode(); // switch to RX mode
@@ -339,11 +340,14 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 		    packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
-			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
-			pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
-			pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
-			pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
-			chan_count = MAX(chan_count, 4);
+//			if (4 <= BEKEN_MAX_CHANNELS) // Constant
+			{
+				pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
+				pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
+				pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
+				pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
+				chan_count = MAX(chan_count, 4);
+			}
 			//...
 //			printf(" Throttle %d\r\n", pwm_channels[0]);
 		}
@@ -468,7 +472,11 @@ void AP_Radio_beken::irq_timeout(void)
 	{
 		static int tt = 0;
 		if (++tt & 3)
+		{
+			if (beken.WasTxMode())
+				beken.SwitchToRxMode(); // We have had 10ms to send this! Don't mind the missing transmission done flag.
 			return;
+		}
 		beken.SwitchToTxMode();
 		beken.ClearAckOverflow();
 		UpdateFccScan();
@@ -484,6 +492,8 @@ void AP_Radio_beken::irq_timeout(void)
 	}
 	else
 	{
+		if (beken.WasTxMode())
+			beken.SwitchToRxMode();
 		nextChannel(1);
 	}
 //	beken.Strobe(BK_FLUSH_TX); // Discard any buffered tx bytes

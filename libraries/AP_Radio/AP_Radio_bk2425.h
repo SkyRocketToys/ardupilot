@@ -31,7 +31,7 @@
 #include "telem_structure.h"
 #include "driver_bk2425.h"
 
-#define BEKEN_MAX_CHANNELS 8
+#define BEKEN_MAX_CHANNELS 16
 
 class AP_Radio_beken : public AP_Radio_backend
 {
