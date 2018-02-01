@@ -16,7 +16,8 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Set type of direct attached radio
     // @Description: This enables support for direct attached radio receivers
-    // @Values: 0:None,1:CYRF6936
+    // @Values: 0:None,1:CYRF6936,2:CC2500,3:BK2425
+
     // @User: Advanced
     AP_GROUPINFO("_TYPE",  1, AP_Radio, radio_type, 0),
 
