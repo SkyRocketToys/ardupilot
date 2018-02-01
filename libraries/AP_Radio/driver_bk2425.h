@@ -76,10 +76,10 @@ typedef struct packetDataDevice_s {
 typedef struct packetDataDrone_s {
 	BK_PKT_TYPE packetType; ///< 0: The packet type
 	uint8_t channel; ///< 1: Next channel I will broadcast on
-	uint8_t wifi; ///< 2:
-	uint8_t rssi; ///< 3:
+	uint8_t wifi; ///< 2: Wifi channel or Factory Test mode channel
+	uint8_t pps; ///< 3: Packets per second received
 	uint8_t droneid[SZ_CRC_GUID]; ///< 4...7:
-	uint8_t mode; ///< 8:
+	uint8_t mode; ///< 8: flight mode
 	// Telemetry data (unspecified so far)
 } packetFormatTx;
 
@@ -224,6 +224,8 @@ enum {
 	PACKET_LENGTH_TX_MAX = 20,
 };
 
+// Note that bank 1 registers 0...8 are MSB first; others are LSB first
+
 #define PLL_SPEED { BK2425_R1_12, 0x00,0x12,0x73,0x05 } // 0x00127305ul, // PLL locking time 130us compatible with nRF24L01;
 
 // In the array Bank1_Reg0_13[],all the register values are the byte reversed!
@@ -284,19 +286,6 @@ enum {
 #endif
 #endif
 
-/* Statistics about the radio */
-typedef struct RadioStats_s {
-	uint8_t lastRxLen;
-	uint32_t numTxPackets;
-	uint32_t numRxPackets;
-	uint8_t badRxAddress;
-	uint32_t recvTimestampMs;
-	uint32_t numAckPackets;
-	uint32_t numSentPackets;
-	uint16_t lastTxPacketCount;
-	uint32_t lastTelemetryPktTime;
-} RadioStats;
-
 /** Parameters used by the fcc pretests */
 typedef struct FccParams_s {
     bool test_mode; ///< true iff we are sending test signals
@@ -305,6 +294,7 @@ typedef struct FccParams_s {
     uint8_t scan_count; ///< In scan mode, packet count before incrementing scan
     uint8_t channel; ///< Current frequency 8..70
     uint8_t power; ///< Current power 0..7
+    bool disable_crc; ///< true=crc is disabled
 } FccParams;
 
 
@@ -349,14 +339,15 @@ public:
 	void SetAddresses(const uint8_t* txaddr); // Set the rx and tx addresses
 	bool ClearAckOverflow(void);
     bool SendPacket(uint8_t type, const uint8_t* pbuf, uint8_t len);
+	void DelayCE(void);
+	void DumpRegisters(void);
 
     // Visible public variables (naughty)
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end
     static ITX_SPEED gTxSpeed;
-	RadioStats stats;
 	FccParams fcc;
 	packetFormatTx pktDataTx; // Packet data to send
-	bool lastTxCwMode; // 0=packet, 1=carrier wave
+	uint32_t numTxPackets;
 	uint8_t TX_Address[5]; // For sending telemetry and DFU
     
 private:

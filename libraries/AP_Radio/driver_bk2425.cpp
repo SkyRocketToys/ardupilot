@@ -80,10 +80,17 @@ static const uint8_t Bank1_Reg14[]=
 // Bank0 register initialization value
 static const uint8_t Bank0_Reg[][2]={
     
+#if 0
+    {BK_CONFIG,     BK_CONFIG_PWR_UP | BK_CONFIG_PRIM_RX }, // (0) 0x0F=Rx, PowerUp, no crc, all interrupts enabled
+    {BK_EN_AA,      0x00}, // (1) 0x00=No auto acknowledge packets on all 6 data pipes (0..5)
+    {BK_EN_RXADDR,  0x02}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
+    {BK_SETUP_AW,   0x03}, // (3) 0x01=3 byte address width
+#else
     {BK_CONFIG,     BK_CONFIG_EN_CRC | BK_CONFIG_CRCO | BK_CONFIG_PWR_UP | BK_CONFIG_PRIM_RX }, // (0) 0x0F=Rx, PowerUp, crc16, all interrupts enabled
     {BK_EN_AA,      0x00}, // (1) 0x00=No auto acknowledge packets on all 6 data pipes (0..5)
     {BK_EN_RXADDR,  0x03}, // (2) 0x01=1 or 2 out of 6 data pipes enabled (pairing heartbeat and my tx)
     {BK_SETUP_AW,   0x03}, // (3) 0x03=5 byte address width
+#endif
     {BK_SETUP_RETR, 0x00}, // (4) 0x00=No retransmissions
     {BK_RF_CH,      0x17}, // (5) 0x17=2423Mhz default frequency
     
@@ -107,8 +114,8 @@ static const uint8_t Bank0_Reg[][2]={
     {BK_RX_ADDR_P4, 0xc5},          // (14) rx address for data pipe 4
     {BK_RX_ADDR_P5, 0xc6},          // (15) rx address for data pipe 5
                                     // (16) = 5 byte register
-    {BK_RX_PW_P0,   0x20},          // (17) size of rx data pipe 0
-    {BK_RX_PW_P1,   0x20},          // (18) size of rx data pipe 1
+    {BK_RX_PW_P0,   PACKET_LENGTH_RX_CTRL},          // (17) size of rx data pipe 0
+    {BK_RX_PW_P1,   PACKET_LENGTH_RX_BIND},          // (18) size of rx data pipe 1
     {BK_RX_PW_P2,   0x20},          // (19) size of rx data pipe 2
     {BK_RX_PW_P3,   0x20},          // (20) size of rx data pipe 3
     {BK_RX_PW_P4,   0x20},          // (21) size of rx data pipe 4
@@ -147,11 +154,19 @@ Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
 	TX_Address[3] = RX0_Address[3] = 0x00;
 	TX_Address[4] = RX0_Address[4] = 0x00;
 	RX0_Address[0] = 0x31;
+#if 0
+	RX1_Address[0] = 0xc1;
+	RX1_Address[1] = 0xc1;
+	RX1_Address[2] = 0xc1;
+	RX1_Address[3] = 0xc1;
+	RX1_Address[4] = 0xc1;
+#else
 	RX1_Address[0] = 0x32;
 	RX1_Address[1] = 0x99;
 	RX1_Address[2] = 0x59;
 	RX1_Address[3] = 0xC6;
 	RX1_Address[4] = 0x2D;
+#endif
 }
 
 // --------------------------------------------------------------------
@@ -176,7 +191,7 @@ void Radio_Beken::WriteFifo(const uint8_t *dpbuffer, uint8_t len)
 	uint8_t tx[len+1];
     uint8_t rx[len+1];
     memset(rx, 0, len+1);
-	tx[0] = BK_W_TX_PAYLOAD_NOACK_CMD;
+	tx[0] = BK_WR_TX_PLOAD;
 	memcpy(&tx[1], dpbuffer, len);
     (void)dev->transfer_fullduplex(tx, rx, len+1);
 }
@@ -259,7 +274,7 @@ void Radio_Beken::WriteReg(uint8_t address, uint8_t data)
 	uint8_t tx[2];
     uint8_t rx[2];
     memset(rx, 0, 2);
-	tx[0] = address | BK_WRITE_REG;
+	tx[0] = address; // done by caller | BK_WRITE_REG;
 	tx[1] = data;
     (void)dev->transfer_fullduplex(tx, rx, 2);
 }
@@ -288,7 +303,7 @@ void Radio_Beken::SetPower(uint8_t power)
     hal.scheduler->delay(100); // delay more than 50ms.
     SetRBank(1);
     {
-		const uint8_t* p = &Bank1_RegTable[lastTxCwMode ? ITX_CARRIER : gTxSpeed][IREG1_4][0];
+		const uint8_t* p = &Bank1_RegTable[fcc.CW_mode ? ITX_CARRIER : gTxSpeed][IREG1_4][0];
         uint8_t idx = *p++;
         uint8_t buf[4];
         buf[0] = *p++;
@@ -306,7 +321,7 @@ void Radio_Beken::SetPower(uint8_t power)
     uint8_t setup = ReadReg(BK_RF_SETUP);
     setup &= ~(3 << 1);
     setup |= (RegPower[power][1] << 1); // Bits 1..2
-    WriteReg(BK_RF_SETUP, setup);
+    WriteReg(BK_WRITE_REG|BK_RF_SETUP, setup);
     bkReady = oldready;
 }
 
@@ -315,7 +330,7 @@ void Radio_Beken::SetPower(uint8_t power)
 void Radio_Beken::SetChannel(uint8_t freq)
 {
 	lastTxChannel = freq;
-	WriteReg(BK_RF_CH | BK_WRITE_REG, freq);
+	WriteReg(BK_WRITE_REG|BK_RF_CH, freq);
 }
 
 // --------------------------------------------------------------------
@@ -350,7 +365,7 @@ void Radio_Beken::SetCwMode(uint8_t cw)
 			setup |= 0x10;
 		WriteReg((BK_WRITE_REG|BK_RF_SETUP), setup);
 	}
-	lastTxCwMode = cw;
+	fcc.CW_mode = cw;
 	bkReady = oldready;
 }
 
@@ -360,6 +375,16 @@ bool Radio_Beken::Reset(void)
     //...
     hal.scheduler->delay_microseconds(1000);
     return 0;
+}
+
+// ----------------------------------------------------------------------------
+// Delay after changing chip-enable
+// This can be called from within the interrupt response thread
+void Radio_Beken::DelayCE(void)
+{
+    hal.scheduler->delay_microseconds(50);
+//  for (value = 0; value < 400; ++value)
+//  {	asm volatile("nop"::); }
 }
 
 // ----------------------------------------------------------------------------
@@ -373,8 +398,7 @@ void Radio_Beken::SwitchToRxMode(void)
     WriteReg(BK_WRITE_REG|BK_STATUS, value); // clear RX_DR or TX_DS or MAX_RT interrupt flag
     
     BEKEN_CE_LOW();
-    for (value = 0; value < 40; ++value)
-    {	asm volatile("nop"::); }
+    DelayCE();
     value = ReadReg(BK_CONFIG);	// read register CONFIG's value
     value |= BK_CONFIG_PRIM_RX; // set bit 0
 	value |= BK_CONFIG_PWR_UP;
@@ -393,34 +417,30 @@ void Radio_Beken::SwitchToTxMode(void)
     
 //  BEKEN_PA_HIGH();
     BEKEN_CE_LOW();
-    for (value = 0; value < 40; ++value)
-    {	asm volatile("nop"::); }
+    DelayCE();
     value = ReadReg(BK_CONFIG); // read register CONFIG's value
     value &= ~BK_CONFIG_PRIM_RX; // Clear bit 0 (PTX)
 	value |= BK_CONFIG_PWR_UP;
     WriteReg(BK_WRITE_REG | BK_CONFIG, value); // Set PWR_UP bit, enable CRC(2 length) & Prim:RX. RX_DR enabled.
-    BEKEN_CE_HIGH();
+//  BEKEN_CE_HIGH();
 }
 
 // ----------------------------------------------------------------------------
 // switch to Idle mode
 void Radio_Beken::SwitchToIdleMode(void)
 {
-    uint8_t value;
     Strobe(BK_FLUSH_TX); // flush Tx
     
     BEKEN_PA_LOW();
     BEKEN_CE_LOW();
-    for (value = 0; value < 40; ++value)
-    {   asm volatile("nop"::); }
+    DelayCE();
 }
 
 // ----------------------------------------------------------------------------
 // Switch to Sleep mode
 void Radio_Beken::SwitchToSleepMode(void)
 {
-    uint8_t value;
-    
+	uint8_t value;
     Strobe(BK_FLUSH_RX); // flush Rx
     Strobe(BK_FLUSH_TX); // flush Tx
     value = ReadStatus(); // read register STATUS's value
@@ -428,8 +448,7 @@ void Radio_Beken::SwitchToSleepMode(void)
     
     BEKEN_PA_LOW();
     BEKEN_CE_LOW();
-    for (value = 0; value < 40; ++value)
-    {   asm volatile("nop"::); }
+    DelayCE();
     value = ReadReg(BK_CONFIG);	// read register CONFIG's value
     value |= BK_CONFIG_PRIM_RX; // Receive mode
     value &= ~BK_CONFIG_PWR_UP; // Power down
@@ -453,22 +472,27 @@ void Radio_Beken::InitBank0Registers(ITX_SPEED spd)
         WriteReg((BK_WRITE_REG|idx), value);
     }
 
+	// Enable features
+    i = ReadReg(BK_FEATURE);
+    if (i == 0) // i!=0 showed that chip has been actived. So do not active again (as that would toggle these features off again).
+        WriteReg(BK_ACTIVATE_CMD,0x73); // Activate the BK_FEATURE register. (This command must NOT have BK_WRITE_REG set)
+    for (i = 22; i >= 21; i--)
+        WriteReg((BK_WRITE_REG|Bank0_Reg[i][0]),Bank0_Reg[i][1]);
+//  WriteReg(BK_WRITE_REG|BK_FEATURE, BK_FEATURE_EN_DPL | BK_FEATURE_EN_ACK_PAY | BK_FEATURE_EN_DYN_ACK);
+//  WriteReg(BK_WRITE_REG|BK_DYNPD, 0x3F);
+    
     // Set the various 5 byte addresses
     WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0),RX0_Address,5); // reg 10 - Rx0 addr
     WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P1),RX1_Address,5); // REG 11 - Rx1 addr
     WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR),TX_Address,5); // REG 16 - TX addr
+	WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x03);
 
-    i = ReadReg(BK_FEATURE);
-    if (i == 0) // i!=0 showed that chip has been actived.so do not active again.
-        WriteReg(BK_ACTIVATE_CMD,0x73);// Active
-    for (i = 22; i >= 21; i--)
-        WriteReg((BK_WRITE_REG|Bank0_Reg[i][0]),Bank0_Reg[i][1]);
 }
 
 // ----------------------------------------------------------------------------
 void Radio_Beken::InitBank1Registers(ITX_SPEED spd)
 {
-    int8_t i;
+    int16_t i;
        
 	for (i = IREG1_4; i <= IREG1_13; i++)
     {
@@ -500,6 +524,7 @@ void Radio_Beken::SetAddresses(const uint8_t* txaddr)
 	TX_Address[4] = RX0_Address[4] = txaddr[4];
 	WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0), RX0_Address, 5);
 	WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR), TX_Address, 5);
+	WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x03);
 }
 
 // ----------------------------------------------------------------------------
@@ -529,9 +554,36 @@ bool Radio_Beken::SendPacket(uint8_t type, ///< WR_TX_PLOAD or W_TX_PAYLOAD_NOAC
 
 	if (!(fifo_sta & BK_FIFO_STATUS_TX_FULL)) // if not full, send data
 	{
-		stats.numTxPackets++;
+		numTxPackets++;
 		WriteRegisterMulti(type, pbuf, len); // Writes data to buffer A0,B0,A8
+		BEKEN_CE_HIGH(); // Wait until FIFO has the data before sending it.
 	}
 	return returnValue;
 }
 
+// ----------------------------------------------------------------------------
+// For debugging - tell us the current beken register values (from bank 0)
+// This just prints it to the UART rather than to the console over WiFi
+void Radio_Beken::DumpRegisters(void)
+{
+	uint8_t i;
+	for (i = 0; i <= BK_FEATURE; ++i)
+	{
+		uint8_t len = 1;
+		switch (i) {
+			case 10: case 11: case 16: len = 5; break;
+			case 24: case 25: case 26: case 27: len = 0; break;
+			default: len = 1; break;
+		};
+		if (len == 1)
+		{
+			printf("Bank0reg%d : %x\r\n", i, ReadReg(i));
+		}
+		else if (len == 5)
+		{
+			uint8_t data[5];
+			ReadRegisterMulti(i, &data[0], len);
+			printf("Bank0reg%d : %x %x %x %x %x\r\n", i, data[0], data[1], data[2], data[3], data[4]);
+		}
+	}
+}
