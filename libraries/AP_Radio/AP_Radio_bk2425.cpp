@@ -130,7 +130,7 @@ uint8_t AP_Radio_beken::num_channels(void)
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = -99; // t_status.rssi; // This will never update though
+        pwm_channels[chan-1] = 1; // t_status.rssi; // This will never update though
         chan_count = MAX(chan_count, chan);
     }
 
@@ -142,7 +142,7 @@ uint8_t AP_Radio_beken::num_channels(void)
 
     chan = get_tx_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = -99; //...
+        pwm_channels[chan-1] = 1; //...
         chan_count = MAX(chan_count, chan);
     }
 
@@ -340,16 +340,14 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 		    packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
-//			if (4 <= BEKEN_MAX_CHANNELS) // Constant
-			{
-				pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
-				pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
-				pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
-				pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
-				chan_count = MAX(chan_count, 4);
-			}
+			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
+			pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
+			pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
+			pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
+			pwm_channels[4] = 1000 + (packet[7] & 0x7) * 100;
+			pwm_channels[5] = 1000 + (packet[7] >> 3) * 100;
+			chan_count = MAX(chan_count, 6);
 			//...
-//			printf(" Throttle %d\r\n", pwm_channels[0]);
 		}
 		break;
 	case BK_PKT_TYPE_BIND:
@@ -503,6 +501,7 @@ void AP_Radio_beken::irq_timeout(void)
 }
 
 // Thread that supports Beken Radio work triggered by interrupts
+// This is the only thread that should access the Beken radio chip via SPI.
 void AP_Radio_beken::irq_handler_thd(void *arg)
 {
     (void) arg;
