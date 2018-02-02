@@ -34,6 +34,17 @@ enum BK_PKT_TYPE_E {
 };
 typedef uint8_t BK_PKT_TYPE;
 
+/** A bitset of the buttons on this controller. */
+enum button_bits {
+	BUTTON_NONE           = 0x00, ///< No buttons are held
+	BUTTON_RIGHT          = 0x01, ///< SW1 = The right button (mode)
+	BUTTON_LEFT           = 0x02, ///< SW2 = The left button (launch/land)
+	BUTTON_MIDDLE         = 0x04, ///< SW3 = The middle button (GPS)
+	BUTTON_LEFT_SHOULDER  = 0x08, ///< SW4 = The left shoulder button (stunt)
+	BUTTON_RIGHT_SHOULDER = 0x10, ///< SW5 = The right shoulder button (video)
+	BUTTON_POWER          = 0x20, ///< SW6 = The top button (POWER)
+};
+
 
 /** Data for packets that are not droneid packets
 	Onair order = little-endian */
