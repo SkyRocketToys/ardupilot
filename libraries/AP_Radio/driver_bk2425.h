@@ -364,7 +364,7 @@ public:
 	bool WasRxMode(void);
 
     // Visible public variables (naughty)
-    uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end
+    uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
     static ITX_SPEED gTxSpeed;
 	FccParams fcc;
 	packetFormatTx pktDataTx; // Packet data to send
