@@ -21,9 +21,9 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 static THD_WORKING_AREA(_irq_handler_wa, 2048);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
-#define EVT_TIMEOUT EVENT_MASK(0)
-#define EVT_IRQ EVENT_MASK(1)
-#define EVT_BIND EVENT_MASK(2)
+#define EVT_TIMEOUT EVENT_MASK(0) // Event in the irq handler thread triggered by a timeout interrupt
+#define EVT_IRQ EVENT_MASK(1) // Event in the irq handler thread triggered by a radio IRQ (Tx finished, Rx finished, MaxRetries limit)
+#define EVT_BIND EVENT_MASK(2) // (not used yet)
 #endif
 
 extern const AP_HAL::HAL& hal;
@@ -38,10 +38,32 @@ AP_Radio_beken *AP_Radio_beken::radio_instance;
 thread_t *AP_Radio_beken::_irq_handler_ctx;
 virtual_timer_t AP_Radio_beken::timeout_vt;
 uint32_t AP_Radio_beken::irq_time_us;
+uint32_t AP_Radio_beken::last_timeout_us;
+uint32_t AP_Radio_beken::next_timeout_us;
+uint32_t AP_Radio_beken::delta_timeout_us = 1000; // Test every ms whether we need to switch channels
+uint32_t AP_Radio_beken::next_switch_us;
 #endif
 
+// -----------------------------------------------------------------------------
+void SyncTiming::Rx(uint32_t when)
+{
+	uint32_t ld = delta_rx_time_us;
+	uint32_t d = when - rx_time_us;
+	if ((d > ld - DIFF_DELTA_RX) && (d < ld + DIFF_DELTA_RX)) // Two deltas are similar to each other
+	{
+		if ((d > TARGET_DELTA_RX-SLOP_DELTA_RX) && (d < TARGET_DELTA_RX+SLOP_DELTA_RX)) // delta is within range of single packet distance
+		{
+			// Use filter to change the estimate of the time in microseconds between the transmitters packet (according to OUR clock)
+			sync_time_us = ((sync_time_us * (256-16)) + (d * 16)) / 256;
+		}
+	}
+	rx_time_us = when;
+	delta_rx_time_us = d;
+	last_delta_rx_time_us = ld;
+}
 
-// ----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 
 /*
   constructor
@@ -54,7 +76,7 @@ AP_Radio_beken::AP_Radio_beken(AP_Radio &_radio) :
     
     // (temporary) go into test mode
     radio_instance = this;
-    beken.fcc.test_mode = true;
+    beken.fcc.test_mode = false;
     beken.fcc.channel = 23;
     beken.fcc.power = 7;
 }
@@ -171,7 +193,7 @@ uint8_t AP_Radio_beken::num_channels(void)
  */
 uint32_t AP_Radio_beken::last_recv_us(void)
 {
-    return packet_timer;
+    return synctm.packet_timer;
 }
 
 /*
@@ -263,7 +285,6 @@ void AP_Radio_beken::radio_init(void)
     if (load_bind_info()) { // what happens here? 
         Debug(3,"Loaded bind info\n");
         protocolState = STATE_BIND;
-        chanskip = 1;
         nextChannel(1);
     } else {
         protocolState = STATE_BIND;
@@ -287,8 +308,14 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
 {
     (void)arg;
     //we are called from ISR context
+	next_timeout_us += delta_timeout_us;
+	last_timeout_us = AP_HAL::micros();
+	if (int32_t(next_timeout_us - last_timeout_us) < 500) // Too late for this one
+		next_timeout_us = last_timeout_us + delta_timeout_us;
+	uint32_t delta = US2ST(next_timeout_us - last_timeout_us);
+
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Timeout every 10ms?
+    chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 1 ms
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
@@ -298,7 +325,7 @@ void AP_Radio_beken::start_recv_bind(void)
 {
     protocolState = STATE_BIND;
     chan_count = 0;
-    packet_timer = AP_HAL::micros();
+    synctm.packet_timer = AP_HAL::micros();
     chEvtSignal(_irq_handler_ctx, EVT_BIND);
     Debug(1,"Starting bind\n");
 }
@@ -338,7 +365,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		// We haz data
 		if (rxaddr == 0)
 		{
-		    packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
+		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
 			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
 			pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
@@ -355,8 +382,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 			// Set the address on which we are receiving the control data
 			beken.SetAddresses(&packet[2]);
-			printf(" Bound to %x %x %x %x %x\r\n", packet[2], packet[3],
-				packet[4], packet[5], packet[6]);
+//			printf(" Bound to %x %x %x %x %x\r\n", packet[2], packet[3], packet[4], packet[5], packet[6]);
 		}
 		break;
 	case BK_PKT_TYPE_TELEMETRY:
@@ -399,19 +425,23 @@ void AP_Radio_beken::irq_handler(void)
 	uint8_t bk_sta = beken.ReadStatus();
 	if (bk_sta & BK_STATUS_TX_DS)
 	{
-		// Packet was sent successfully (not yet acknowledged)
+		// Packet was sent towards the Tx board
+		synctm.tx_time_us = irq_time_us;
 //		stats.sentPacketCount++;
-		beken.SwitchToRxMode(); // Prepare to receive reply
+		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
+		nextChannel(1);
 		printf("T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
 	{
 		// We have had a "max retries" error
 	}
+	bool bReply = false;
 	if (bk_sta & BK_STATUS_RX_DR)
 	{
 		// We have received a packet
 		uint8_t rxstd = 0;
+//		printf("R%ld,%ld\r\n", irq_time_us, synctm.sync_time_us);
 		printf("R");
 		// Which pipe (address) have we received this packet on?
 		if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
@@ -436,10 +466,13 @@ void AP_Radio_beken::irq_handler(void)
 
 			if (len <= PACKET_LENGTH_RX_MAX)
 			{
+				bReply = true;
+				synctm.Rx(irq_time_us);
+				next_switch_us = irq_time_us + synctm.sync_time_us + 2000; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
-				printf("Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
-					packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
+//				printf("Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
+//					packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
 			}
 			else // Packet was too long
 			{
@@ -455,9 +488,20 @@ void AP_Radio_beken::irq_handler(void)
 
 	// Clear the bits
 	beken.WriteReg((BK_WRITE_REG|BK_STATUS), (BK_STATUS_MAX_RT | BK_STATUS_TX_DS | BK_STATUS_RX_DR));
+	if (bReply)
+	{
+		hal.scheduler->delay_microseconds(100); // delay to give the tx a chance to switch to receive mode
+		// Send the telemetry reply to the controller
+		beken.Strobe(BK_FLUSH_TX); // flush Tx
+		beken.ClearAckOverflow();
+		beken.SwitchToTxMode();
+		UpdateTxData();
+		beken.pktDataTx.channel = channr;
+		beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+	}
 }	
 
-
+// ----------------------------------------------------------------------------
 // handle timeout IRQ
 void AP_Radio_beken::irq_timeout(void)
 {
@@ -465,14 +509,14 @@ void AP_Radio_beken::irq_timeout(void)
 	{
 		return;
 	}
-	// Change to the next (non-ignored) channel
+	// For fcc mode, just send packets on timeouts
 	if (beken.fcc.test_mode)
 	{
 		static int tt = 0;
 		if (++tt & 3)
 		{
 			if (beken.WasTxMode())
-				beken.SwitchToRxMode(); // We have had 10ms to send this! Don't mind the missing transmission done flag.
+				beken.SwitchToRxMode(); // We have had time to send this! Don't mind the missing transmission done flag.
 			return;
 		}
 		beken.SwitchToTxMode();
@@ -484,22 +528,31 @@ void AP_Radio_beken::irq_timeout(void)
 		if (!beken.fcc.CW_mode)
 		{
 			beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
-			printf("*");
+//			printf("*");
 		}
 		return;
 	}
-	else
+
+	// Normal modes - we have timed out for channel hopping
+	if (last_timeout_us >= next_switch_us) // We can swap channels now
 	{
+		printf("c");
+		int32_t d = synctm.sync_time_us;
+		if ((last_timeout_us - synctm.rx_time_us) > 100*d) // We have lost sync (missed 100 packets) so slow down the channel hopping until we resync
+			d *= 4;
+		next_switch_us += d; // Switch channels if we miss the next packet
+		if (int32_t(next_switch_us - last_timeout_us) < 1000) // Not enough time
+		{
+			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
+		}
 		if (beken.WasTxMode())
 			beken.SwitchToRxMode();
 		nextChannel(1);
+		beken.ClearAckOverflow();
 	}
-//	beken.Strobe(BK_FLUSH_TX); // Discard any buffered tx bytes
-	beken.ClearAckOverflow();
-
-	// Support sending binding packets
 }
 
+// ----------------------------------------------------------------------------
 // Thread that supports Beken Radio work triggered by interrupts
 // This is the only thread that should access the Beken radio chip via SPI.
 void AP_Radio_beken::irq_handler_thd(void *arg)
@@ -516,11 +569,19 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
             if (radio_instance->protocolState == STATE_FCCTEST) {
                 hal.console->printf("IRQ FCC\n");
             }
-            printf(":");
+//          printf(":");
             radio_instance->irq_handler();
             break;
         case EVT_TIMEOUT:
-            printf(".");
+			{
+        		uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
+        		if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
+        		{
+					printf("#");
+					radio_instance->irq_handler();
+				}
+			}
+//          printf(".");
 			radio_instance->irq_timeout();
             break;
         case EVT_BIND: // The user has clicked on the "Start Bind" button on the web interface
@@ -540,7 +601,7 @@ void AP_Radio_beken::setChannel(uint8_t channel)
 
 enum { CHANNEL_COUNT_LOGICAL = 60 };
 const uint8_t bindHopData[CHANNEL_COUNT_LOGICAL] = {
-#if 1
+#if 0
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
@@ -622,15 +683,7 @@ void AP_Radio_beken::send_telemetry(void)
     uint8_t frame[15];
 
     memset(frame, 0, sizeof(frame));
-   
     frame[0] = BK_PKT_TYPE_TELEMETRY;
-
-    if (get_fcc_test() >= 0) {
-        // in negative FCC test modes we don't write to the FIFO, which gives
-        // continuous transmission
-        //cc2500.WriteFifo(frame, sizeof(frame));
-    }
-    //cc2500.Strobe(CC2500_STX);
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO

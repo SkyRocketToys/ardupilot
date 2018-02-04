@@ -33,6 +33,26 @@
 
 #define BEKEN_MAX_CHANNELS 16
 
+// This structure estimates the times (in microseconds) between packets,
+// according to the STM32 clock which may well be 2% different from the STM8 clock.
+struct SyncTiming {
+	enum { TARGET_DELTA_RX = 5000,               // Nominal 5ms between packets is expected
+		SLOP_DELTA_RX = TARGET_DELTA_RX / 10,    // +/- 500us i.e. 10% skew each way is accepted.
+		DIFF_DELTA_RX = TARGET_DELTA_RX / 100 }; // Two consequetive deltas must be very close together (50us)
+    uint32_t packet_timer; // Time we last received a valid control packet
+    uint32_t rx_time_us; // Time we last received a packet
+    uint32_t tx_time_us; // Time we last finished transmitting a packet
+    uint32_t delta_rx_time_us; // Time between last rx packets
+    uint32_t last_delta_rx_time_us; // previous version of the delta
+    uint32_t sync_time_us; // Estimate of base time in microseconds between packets. 5000 +/- 500
+    SyncTiming() : // Constructor to setup sensible initial conditions
+		delta_rx_time_us(TARGET_DELTA_RX),
+		last_delta_rx_time_us(TARGET_DELTA_RX),
+		sync_time_us(TARGET_DELTA_RX)
+		{}
+	void Rx(uint32_t when); // Adjust the timing based on a new packet
+};
+
 class AP_Radio_beken : public AP_Radio_backend
 {
 public:
@@ -60,6 +80,11 @@ private:
     static AP_Radio_beken *radio_instance;
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
+    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered
+    static uint32_t last_timeout_us; // Time the timeout was last triggered
+    static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
+    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us)
+    static uint32_t next_switch_us; // Time when we next want to switch radio channels
 
 	// Static functions, for interrupt support
     static void irq_handler_thd(void* arg);
@@ -89,24 +114,14 @@ private:
     AP_Radio::stats last_stats;
 
     uint16_t pwm_channels[BEKEN_MAX_CHANNELS]; // Channel data
+    uint8_t chan_count; // Number of valid channels
 
     Radio_Beken beken;
 
-    uint8_t rxNum;
-    uint8_t channr; // Corresponds to txChannel on the button board
-    uint8_t chanskip;
-    uint32_t packet_timer;
-    static uint32_t irq_time_us;
-    const uint32_t sync_time_us = 9000;
-    uint8_t chan_count;
-    uint32_t lost;
+    uint8_t channr; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
+    uint32_t lost; // Number of packets we should have received but didnt?
     uint32_t timeouts;
-    bool have_bind_info;
-    uint8_t packet3;
-    bool telem_send_rssi;
-    float rssi_filtered;
-
-    uint32_t timeTunedMs;
+    SyncTiming synctm;
 
     // bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;
@@ -114,25 +129,21 @@ private:
         uint16_t magic;
         uint8_t bindTxId[5];
     };
+
     enum {
         STATE_INIT = 0,
-        STATE_BIND,
-        STATE_DATA,
-        STATE_DFU,
-        STATE_FCCTEST,
+        STATE_BIND, // We are waiting for a binding packet. Scan through frequencies at slow rate.
+        STATE_DATA, // We are receiving data. Scan through frequencies at normal rate.
+        STATE_SEARCH, // We have lost sync. Scan through frequencies at slow rate.
+        STATE_DFU, // We are sending DFU firmware
+        STATE_FCCTEST, // We are in FCC test mode and do not care about the Tx.
     } protocolState;
 
-    struct config {
-        uint8_t reg;
-        uint8_t value;
-    };
-    static const config radio_config[];
-
     struct telem_status t_status;
-    uint32_t last_pps_ms;
+    uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
     
     ITX_SPEED spd;
-    uint8_t myDroneId[4];
-    uint8_t lastWifiChannel;
+    uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx
+    uint8_t lastWifiChannel; //
 };
 
