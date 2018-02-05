@@ -76,7 +76,7 @@ AP_Radio_beken::AP_Radio_beken(AP_Radio &_radio) :
     
     // (temporary) go into test mode
     radio_instance = this;
-    beken.fcc.test_mode = false;
+    beken.fcc.fcc_mode = 0;
     beken.fcc.channel = 23;
     beken.fcc.power = 7;
 }
@@ -414,7 +414,7 @@ void AP_Radio_beken::UpdateFccScan(void)
 // main IRQ handler
 void AP_Radio_beken::irq_handler(void)
 {
-    if (get_fcc_test() != 0) {
+    if (beken.fcc.fcc_mode) {
         // don't process interrupts in FCCTEST mode
 		beken.WriteReg(BK_WRITE_REG | BK_STATUS,
 			(BK_STATUS_RX_DR | BK_STATUS_TX_DS | BK_STATUS_MAX_RT)); // clear RX_DR or TX_DS or MAX_RT interrupt flag
@@ -502,23 +502,88 @@ void AP_Radio_beken::irq_handler(void)
 }	
 
 // ----------------------------------------------------------------------------
-// handle timeout IRQ
+// handle timeout IRQ (called every ms)
 void AP_Radio_beken::irq_timeout(void)
 {
 	if (!beken.bkReady) // We are reinitialising the chip in the main thread
 	{
 		return;
 	}
-	// For fcc mode, just send packets on timeouts
-	if (beken.fcc.test_mode)
+
+	// Set the transmission power
+	uint8_t pwr = get_transmit_power();
+	if (pwr != beken.fcc.power + 1)
 	{
-		static int tt = 0;
-		if (++tt & 3)
+		if ((pwr > 0) && (pwr <= 8))
 		{
-			if (beken.WasTxMode())
-				beken.SwitchToRxMode(); // We have had time to send this! Don't mind the missing transmission done flag.
+			beken.SetPower(pwr-1);
+		}
+	}
+	
+	// Do we need to change our fcc test mode status?
+	uint8_t fcc = get_fcc_test();
+	if (fcc != beken.fcc.fcc_mode)
+	{
+		beken.Strobe(BK_FLUSH_TX);
+		if (fcc == 0) // Turn off fcc test mode
+		{
+			if (beken.fcc.CW_mode)
+			{
+				beken.SwitchToIdleMode();
+				beken.SetCwMode(false);
+			}
+		}
+		else
+		{
+			if (fcc > 3)
+			{
+				if (!beken.fcc.CW_mode)
+				{
+					beken.SwitchToIdleMode();
+					beken.SetCwMode(true);
+					beken.DumpRegisters();
+				}
+			}
+			else
+			{
+				if (beken.fcc.CW_mode)
+				{
+					beken.SwitchToIdleMode();
+					beken.SetCwMode(false);
+				}
+			}
+			switch (fcc) {
+			case 1: case 4:
+			default:
+				beken.fcc.channel = CHANNEL_FCC_LOW;
+				break;
+			case 2: case 5:
+				beken.fcc.channel = CHANNEL_FCC_MID;
+				break;
+			case 3: case 6:
+				beken.fcc.channel = CHANNEL_FCC_HIGH;
+				break;
+			};
+		}
+		beken.fcc.fcc_mode = fcc;
+		printf("\r\nFCC mode %d\r\n", fcc);
+	}
+
+	// For fcc mode, just send packets on timeouts
+	if (beken.fcc.fcc_mode)
+	{
+		static uint8_t tt = 0;
+		if (++tt >= 5) // Space out to every 5 ms
+		{
+			tt = 0;
+		}
+		else
+		{
+//			if (beken.WasTxMode())
+//				beken.SwitchToRxMode(); // We have had time to send this! Don't mind the missing transmission done flag.
 			return;
 		}
+
 		beken.SwitchToTxMode();
 		beken.ClearAckOverflow();
 		UpdateFccScan();

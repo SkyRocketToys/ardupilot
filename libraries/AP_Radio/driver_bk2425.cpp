@@ -321,8 +321,11 @@ void Radio_Beken::SetPower(uint8_t power)
     uint8_t setup = ReadReg(BK_RF_SETUP);
     setup &= ~(3 << 1);
     setup |= (RegPower[power][1] << 1); // Bits 1..2
+	if (fcc.CW_mode)
+		setup |= 0x10;
     WriteReg(BK_WRITE_REG|BK_RF_SETUP, setup);
     bkReady = oldready;
+    fcc.power = power;
 }
 
 // --------------------------------------------------------------------
@@ -351,21 +354,20 @@ void Radio_Beken::SetCwMode(uint8_t cw)
 		buf[2] = *p++;
 		buf[3] = *p++;
 		buf[0] &= ~0x38;
-		buf[0] |= (RegPower[lastTxPower][0] << 3); // Bits 27..29
+		buf[0] |= (RegPower[fcc.power & 7][0] << 3); // Bits 27..29
 		WriteRegisterMulti((BK_WRITE_REG|idx), buf, 4);
 	}
     hal.scheduler->delay(100); // delay more than 50ms.
 	SetRBank(0);
 	hal.scheduler->delay(100); // delay more than 50ms.
-	{
-		uint8_t setup = ReadReg(BK_RF_SETUP);
-		setup &= ~(3 << 1);
-		setup |= (RegPower[lastTxPower][1] << 1); // Bits 1..2
-		if (cw)
-			setup |= 0x10;
-		WriteReg((BK_WRITE_REG|BK_RF_SETUP), setup);
-	}
-	fcc.CW_mode = cw;
+
+	uint8_t setup = ReadReg(BK_RF_SETUP);
+	setup &= ~(3 << 1);
+	setup |= (RegPower[fcc.power & 7][1] << 1); // Bits 1..2
+	if (cw)
+		setup |= 0x10;
+	WriteReg((BK_WRITE_REG|BK_RF_SETUP), setup);
+	fcc.CW_mode = cw != 0;
 	bkReady = oldready;
 }
 
@@ -606,4 +608,14 @@ void Radio_Beken::DumpRegisters(void)
 			printf("Bank0reg%d : %x %x %x %x %x\r\n", i, data[0], data[1], data[2], data[3], data[4]);
 		}
 	}
+	SetRBank(1);
+	for (i = IREG1_4; i <= IREG1_13; ++i)
+	{
+		uint8_t len = 4;
+		uint8_t idx = Bank1_RegTable[0][i][0];
+		uint8_t data[4];
+		ReadRegisterMulti(i, &data[0], len);
+		printf("Bank1reg%d : %x %x %x %x\r\n", idx, data[0], data[1], data[2], data[3]);
+	}
+	SetRBank(0);
 }
