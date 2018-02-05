@@ -299,12 +299,12 @@ enum {
 
 /** Parameters used by the fcc pretests */
 typedef struct FccParams_s {
-    bool test_mode; ///< true iff we are sending test signals
+	uint8_t fcc_mode; ///< The value (0..6) last set by the user that we are using. Non-zero iff we are sending test signals
     bool scan_mode; ///< true for scanning, false for fixed frequencies
 	bool CW_mode; ///< true for carrier wave, false for packets
     uint8_t scan_count; ///< In scan mode, packet count before incrementing scan
     uint8_t channel; ///< Current frequency 8..70
-    uint8_t power; ///< Current power 0..7
+    uint8_t power; ///< Current power 1..8
     bool disable_crc; ///< true=crc is disabled
 } FccParams;
 
@@ -377,7 +377,6 @@ private:
 	packetFormatRx pktDataRx; // Last valid packet that has been received
 	packetFormatRx pktDataRecv; // Packet data in process of being received
 	uint8_t lastTxChannel; // 0..CHANNEL_COUNT_LOGICAL
-	uint8_t lastTxPower; // 0..7
 	uint8_t RX0_Address[5]; // The data address
 	uint8_t RX1_Address[5]; // The fixed binding address
 	BkRadioMode bkMode;
