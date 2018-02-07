@@ -284,10 +284,7 @@ void AP_Radio_beken::radio_init(void)
 
     if (load_bind_info()) { // what happens here? 
         Debug(3,"Loaded bind info\n");
-        protocolState = STATE_BIND;
         nextChannel(1);
-    } else {
-        protocolState = STATE_BIND;
     }
 
     chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Initial timeout?
@@ -323,7 +320,6 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
 // The user has clicked on the "Start Bind" button on the web interface
 void AP_Radio_beken::start_recv_bind(void)
 {
-    protocolState = STATE_BIND;
     chan_count = 0;
     synctm.packet_timer = AP_HAL::micros();
     chEvtSignal(_irq_handler_ctx, EVT_BIND);
@@ -346,7 +342,7 @@ void AP_Radio_beken::UpdateTxData(void)
 	// Base values for this packet type
 	tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
 //	tx->channel;
-	tx->wifi = lastWifiChannel;
+	tx->wifi = t_status.wifi_chan;
 	tx->pps = t_status.pps;
 	tx->droneid[0] = myDroneId[0];
 	tx->droneid[1] = myDroneId[1];
@@ -365,6 +361,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		// We haz data
 		if (rxaddr == 0)
 		{
+			syncch.SetChannel(packet[1]);
 		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
 			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
@@ -374,13 +371,35 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			pwm_channels[4] = 1000 + (packet[7] & 0x7) * 100;
 			pwm_channels[5] = 1000 + (packet[7] >> 3) * 100;
 			chan_count = MAX(chan_count, 6);
-			//...
+			switch (packet[9]) {
+			case BK_INFO_FW_VER: break;
+			case BK_INFO_DFU_RX: break;
+			case BK_INFO_FW_CRC_LO: break;
+			case BK_INFO_FW_CRC_HI: break;
+			case BK_INFO_FW_YM: break;
+			case BK_INFO_FW_DAY: break;
+			case BK_INFO_MODEL: break;
+			case BK_INFO_PPS:
+			//	rx_status.pps = packets[8]; // Remember pps from tx...
+				break;
+			case BK_INFO_BATTERY: break;
+			case BK_INFO_COUNTDOWN:
+				if (packet[10])
+				{
+					syncch.SetCountdown(packet[10]+1, packet[11]);
+					printf("%d ", packet[10]);
+				}
+				break;
+			default:
+				break;
+			};
 		}
 		break;
 	case BK_PKT_TYPE_BIND:
 		if (rxaddr == 1)
 		{
 			// Set the address on which we are receiving the control data
+			syncch.SetChannel(packet[1]);
 			beken.SetAddresses(&packet[2]);
 //			printf(" Bound to %x %x %x %x %x\r\n", packet[2], packet[3], packet[4], packet[5], packet[6]);
 		}
@@ -496,7 +515,7 @@ void AP_Radio_beken::irq_handler(void)
 		beken.ClearAckOverflow();
 		beken.SwitchToTxMode();
 		UpdateTxData();
-		beken.pktDataTx.channel = channr;
+		beken.pktDataTx.channel = syncch.channel;
 		beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
 	}
 }	
@@ -579,8 +598,6 @@ void AP_Radio_beken::irq_timeout(void)
 		}
 		else
 		{
-//			if (beken.WasTxMode())
-//				beken.SwitchToRxMode(); // We have had time to send this! Don't mind the missing transmission done flag.
 			return;
 		}
 
@@ -631,7 +648,7 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
         radio_instance->beken.lock_bus();
         switch(evt) {
         case EVT_IRQ:
-            if (radio_instance->protocolState == STATE_FCCTEST) {
+            if (radio_instance->beken.fcc.fcc_mode != 0) {
                 hal.console->printf("IRQ FCC\n");
             }
 //          printf(":");
@@ -664,25 +681,35 @@ void AP_Radio_beken::setChannel(uint8_t channel)
 	beken.SetChannel(channel);
 }
 
-enum { CHANNEL_COUNT_LOGICAL = 60 };
-const uint8_t bindHopData[CHANNEL_COUNT_LOGICAL] = {
+enum {
+	CHANNEL_COUNT_LOGICAL = 16, ///< The maximum number of entries in each frequency table
+	CHANNEL_BASE_TABLE = 0, ///< The table used for non wifi boards
+	CHANNEL_SAFE_TABLE = 3, ///< A table that will receive packets even if wrong
+	CHANNEL_NUM_TABLES = 6, ///< The number of tables
+};
+const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL] = {
 #if 0
-	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
-	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
-	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
-	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 #else
-	46,41,31,52,36,13,72,69,21,56,16,26,61,66,10,
-	46,41,31,52,36,13,72,69,21,56,16,26,61,66,10,
-	46,41,31,52,36,13,72,69,21,56,16,26,61,66,10,
-	46,41,31,52,36,13,72,69,21,56,16,26,61,66,10,
+	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,45, // Normal
+	57,62,67,72,58,63,68,59, 64,69,60,65,70,61,66,71,
+	62,10,67,72,63,68,11,64, 69,60,65,70,12,61,66,71,
+	10,67,11,72,12,68,13,69, 14,65,15,70,16,66,17,71,
+	10,70,15,20,11,71,16,21, 12,17,22,72,13,18,14,19,
+	10,15,20,25,11,16,21,12, 17,22,13,18,23,14,19,24,
 #endif
 };
 
 void AP_Radio_beken::nextChannel(uint8_t skip)
 {
-    channr = (channr + skip) % CHANNEL_COUNT_LOGICAL;
-    setChannel(bindHopData[channr]);
+    if (skip)
+		syncch.NextChannel();
+    setChannel(bindHopData[syncch.channel]);
 }
 
 uint16_t AP_Radio_beken::calc_crc(uint8_t *data, uint8_t len)
@@ -749,6 +776,35 @@ void AP_Radio_beken::send_telemetry(void)
 
     memset(frame, 0, sizeof(frame));
     frame[0] = BK_PKT_TYPE_TELEMETRY;
+}
+
+// Step through the channels
+void SyncChannel::NextChannel(void)
+{
+	if (countdown != countdown_invalid)
+	{
+		if (--countdown == 0)
+		{
+			channel = countdown_chan;
+			countdown = countdown_invalid;
+			printf("{%d} ", countdown_chan);
+			return;
+		}
+	}
+	uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
+	channel = (channel + 1) % CHANNEL_COUNT_LOGICAL;
+	channel += table * CHANNEL_COUNT_LOGICAL;
+}
+
+// If we have not received any packets for ages, try a WiFi table that covers all frequencies
+void SyncChannel::SafeTable(void)
+{
+	uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
+	if ((table != CHANNEL_BASE_TABLE) && (table != CHANNEL_SAFE_TABLE)) // Are we using a table that is high end or low end only?
+	{
+		channel %= CHANNEL_COUNT_LOGICAL;
+		channel += CHANNEL_SAFE_TABLE * CHANNEL_COUNT_LOGICAL;
+	}
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
