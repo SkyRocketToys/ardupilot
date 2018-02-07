@@ -45,6 +45,22 @@ enum button_bits {
 	BUTTON_POWER          = 0x20, ///< SW6 = The top button (POWER)
 };
 
+/** The type of info being sent in control packets */
+enum BK_INFO_TYPE_E {
+	BK_INFO_MIN = 1,
+	BK_INFO_FW_VER = 1,
+	BK_INFO_DFU_RX = 2,
+	BK_INFO_FW_CRC_LO = 3,
+	BK_INFO_FW_CRC_HI = 4,
+	BK_INFO_FW_YM = 5,
+	BK_INFO_FW_DAY = 6,
+	BK_INFO_MODEL = 7,
+	BK_INFO_PPS = 8,
+	BK_INFO_BATTERY = 9,
+	BK_INFO_COUNTDOWN = 10,
+	BK_INFO_MAX
+};
+typedef uint8_t BK_INFO_TYPE;
 
 /** Data for packets that are not droneid packets
 	Onair order = little-endian */
