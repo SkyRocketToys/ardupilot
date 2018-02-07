@@ -433,6 +433,8 @@ void AP_Radio_beken::UpdateFccScan(void)
 // main IRQ handler
 void AP_Radio_beken::irq_handler(void)
 {
+	uint32_t when = irq_time_us; // In case another interrupt triggers
+	
     if (beken.fcc.fcc_mode) {
         // don't process interrupts in FCCTEST mode
 		beken.WriteReg(BK_WRITE_REG | BK_STATUS,
@@ -445,7 +447,7 @@ void AP_Radio_beken::irq_handler(void)
 	if (bk_sta & BK_STATUS_TX_DS)
 	{
 		// Packet was sent towards the Tx board
-		synctm.tx_time_us = irq_time_us;
+		synctm.tx_time_us = when;
 //		stats.sentPacketCount++;
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 		nextChannel(1);
@@ -460,7 +462,7 @@ void AP_Radio_beken::irq_handler(void)
 	{
 		// We have received a packet
 		uint8_t rxstd = 0;
-//		printf("R%ld,%ld\r\n", irq_time_us, synctm.sync_time_us);
+//		printf("R%ld,%ld\r\n", when, synctm.sync_time_us);
 		printf("R");
 		// Which pipe (address) have we received this packet on?
 		if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
@@ -486,8 +488,8 @@ void AP_Radio_beken::irq_handler(void)
 			if (len <= PACKET_LENGTH_RX_MAX)
 			{
 				bReply = true;
-				synctm.Rx(irq_time_us);
-				next_switch_us = irq_time_us + synctm.sync_time_us + 2000; // Switch channels if we miss the next packet
+				synctm.Rx(when);
+				next_switch_us = when + synctm.sync_time_us + 3000; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
 //				printf("Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
@@ -618,14 +620,23 @@ void AP_Radio_beken::irq_timeout(void)
 	// Normal modes - we have timed out for channel hopping
 	if (last_timeout_us >= next_switch_us) // We can swap channels now
 	{
-		printf("c");
-		int32_t d = synctm.sync_time_us;
-		if ((last_timeout_us - synctm.rx_time_us) > 100*d) // We have lost sync (missed 100 packets) so slow down the channel hopping until we resync
+		int32_t d = synctm.sync_time_us; // Time between packets, e.g. 5100 us
+		uint32_t dt = last_timeout_us - synctm.rx_time_us;
+		if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
+		{
 			d *= 4;
+			printf("C");
+		}
+		else
+		{
+			printf("c");
+		}
 		next_switch_us += d; // Switch channels if we miss the next packet
-		if (int32_t(next_switch_us - last_timeout_us) < 1000) // Not enough time
+		int32_t ss = int32_t(next_switch_us - last_timeout_us);
+		if (ss < 1000) // Not enough time
 		{
 			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
+			printf("j");
 		}
 		if (beken.WasTxMode())
 			beken.SwitchToRxMode();
