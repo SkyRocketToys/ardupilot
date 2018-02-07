@@ -53,6 +53,22 @@ struct SyncTiming {
 	void Rx(uint32_t when); // Adjust the timing based on a new packet
 };
 
+struct SyncChannel {
+	enum { countdown_invalid = 0 };
+    uint8_t channel; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
+    uint8_t countdown; //
+    uint8_t countdown_chan;
+    SyncChannel() : // Constructor to setup sensible initial conditions
+		channel(0),
+		countdown(countdown_invalid),
+		countdown_chan(0)
+		{}
+    void SetChannel(uint8_t chan) { channel = chan; }
+    void SetCountdown(uint8_t cnt, uint8_t nextCh) { countdown = cnt; countdown_chan = nextCh; }
+    void NextChannel(void); // Step through the channels
+    void SafeTable(void); // Give up on this WiFi table as packets have not been received
+};
+
 class AP_Radio_beken : public AP_Radio_backend
 {
 public:
@@ -71,7 +87,7 @@ public:
     const AP_Radio::stats &get_stats(void) override; // get radio statistics structure
 
 	// Extra public functions
-    void set_wifi_channel(uint8_t channel) { lastWifiChannel = channel; } // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
+    void set_wifi_channel(uint8_t channel) { t_status.wifi_chan = channel; } // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
     
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
@@ -96,7 +112,6 @@ private:
 	void ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
-    void parse_frSkyX(const uint8_t *packet);
     uint16_t calc_crc(uint8_t *data, uint8_t len);
     bool check_crc(uint8_t ccLen, uint8_t *packet);
     void send_telemetry(void);
@@ -118,7 +133,7 @@ private:
 
     Radio_Beken beken;
 
-    uint8_t channr; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
+	SyncChannel syncch; //  uint8_t channr; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     uint32_t lost; // Number of packets we should have received but didnt?
     uint32_t timeouts;
     SyncTiming synctm;
@@ -130,20 +145,10 @@ private:
         uint8_t bindTxId[5];
     };
 
-    enum {
-        STATE_INIT = 0,
-        STATE_BIND, // We are waiting for a binding packet. Scan through frequencies at slow rate.
-        STATE_DATA, // We are receiving data. Scan through frequencies at normal rate.
-        STATE_SEARCH, // We have lost sync. Scan through frequencies at slow rate.
-        STATE_DFU, // We are sending DFU firmware
-        STATE_FCCTEST, // We are in FCC test mode and do not care about the Tx.
-    } protocolState;
-
-    struct telem_status t_status;
+    struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
     
     ITX_SPEED spd;
     uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx
-    uint8_t lastWifiChannel; //
 };
 
