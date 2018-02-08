@@ -96,7 +96,8 @@ private:
     static AP_Radio_beken *radio_instance;
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
-    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered
+    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
+    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread
     static uint32_t last_timeout_us; // Time the timeout was last triggered
     static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
     static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us)
@@ -115,7 +116,7 @@ private:
     uint16_t calc_crc(uint8_t *data, uint8_t len);
     bool check_crc(uint8_t ccLen, uint8_t *packet);
     void send_telemetry(void);
-    void irq_handler(void);
+    void irq_handler(uint32_t when);
     void irq_timeout(void);
     void save_bind_info(void);
     bool load_bind_info(void);
