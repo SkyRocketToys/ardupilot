@@ -5,12 +5,9 @@
 
 #pragma GCC optimize("O0")
 
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 
 #include <AP_Math/AP_Math.h>
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-#include <board_config.h>
-#endif
 #include "AP_Radio_bk2425.h"
 #include <utility>
 #include <stdio.h>
@@ -18,13 +15,11 @@
 #include <AP_Notify/AP_Notify.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 static THD_WORKING_AREA(_irq_handler_wa, 2048);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0) // Event in the irq handler thread triggered by a timeout interrupt
 #define EVT_IRQ EVENT_MASK(1) // Event in the irq handler thread triggered by a radio IRQ (Tx finished, Rx finished, MaxRetries limit)
 #define EVT_BIND EVENT_MASK(2) // (not used yet)
-#endif
 
 extern const AP_HAL::HAL& hal;
 
@@ -34,7 +29,6 @@ extern const AP_HAL::HAL& hal;
 
 // object instance for trampoline
 AP_Radio_beken *AP_Radio_beken::radio_instance;
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 thread_t *AP_Radio_beken::_irq_handler_ctx;
 virtual_timer_t AP_Radio_beken::timeout_vt;
 uint32_t AP_Radio_beken::irq_time_us; // Time of the event, in the irq handlers
@@ -43,7 +37,6 @@ uint32_t AP_Radio_beken::last_timeout_us;
 uint32_t AP_Radio_beken::next_timeout_us;
 uint32_t AP_Radio_beken::delta_timeout_us = 1000; // Test every ms whether we need to switch channels
 uint32_t AP_Radio_beken::next_switch_us;
-#endif
 
 // -----------------------------------------------------------------------------
 void SyncTiming::Rx(uint32_t when)
@@ -87,7 +80,6 @@ AP_Radio_beken::AP_Radio_beken(AP_Radio &_radio) :
  */
 bool AP_Radio_beken::init(void)
 {
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
     if(_irq_handler_ctx != nullptr) {
         AP_HAL::panic("AP_Radio_beken: double instantiation of irq_handler\n");
     }
@@ -97,7 +89,6 @@ bool AP_Radio_beken::init(void)
                      TIMEOUT_PRIORITY,          /* Initial priority.    */
                      irq_handler_thd,           /* Thread function.     */
                      NULL);                     /* Thread parameter.    */
-#endif
     sem = hal.util->new_semaphore();    
     
     return reset();
@@ -277,11 +268,7 @@ void AP_Radio_beken::radio_init(void)
     hal.scheduler->delay_microseconds(10*1000); // 10ms seconds delay
     
     // setup handler for rising edge of IRQ pin
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-    stm32_gpiosetevent(CYRF_IRQ_INPUT, true, false, false, irq_radio_trampoline);
-#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
     hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_FALLING);
-#endif
 
     if (load_bind_info()) { // what happens here? 
         Debug(3,"Loaded bind info\n");
