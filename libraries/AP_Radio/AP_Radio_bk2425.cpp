@@ -37,7 +37,8 @@ AP_Radio_beken *AP_Radio_beken::radio_instance;
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 thread_t *AP_Radio_beken::_irq_handler_ctx;
 virtual_timer_t AP_Radio_beken::timeout_vt;
-uint32_t AP_Radio_beken::irq_time_us;
+uint32_t AP_Radio_beken::irq_time_us; // Time of the event, in the irq handlers
+uint32_t AP_Radio_beken::irq_when_us; // Time of the event, in the handler thread
 uint32_t AP_Radio_beken::last_timeout_us;
 uint32_t AP_Radio_beken::next_timeout_us;
 uint32_t AP_Radio_beken::delta_timeout_us = 1000; // Test every ms whether we need to switch channels
@@ -431,10 +432,8 @@ void AP_Radio_beken::UpdateFccScan(void)
 
 // ----------------------------------------------------------------------------
 // main IRQ handler
-void AP_Radio_beken::irq_handler(void)
+void AP_Radio_beken::irq_handler(uint32_t when)
 {
-	uint32_t when = irq_time_us; // In case another interrupt triggers
-	
     if (beken.fcc.fcc_mode) {
         // don't process interrupts in FCCTEST mode
 		beken.WriteReg(BK_WRITE_REG | BK_STATUS,
@@ -512,6 +511,12 @@ void AP_Radio_beken::irq_handler(void)
 	if (bReply)
 	{
 		hal.scheduler->delay_microseconds(100); // delay to give the tx a chance to switch to receive mode
+//		if (AP_HAL::micros() >= next_switch_us) // The delay was so long we need to swap channels
+//		{
+//			nextChannel(1);
+//			printf("x");
+//		}
+
 		// Send the telemetry reply to the controller
 		beken.Strobe(BK_FLUSH_TX); // flush Tx
 		beken.ClearAckOverflow();
@@ -631,7 +636,18 @@ void AP_Radio_beken::irq_timeout(void)
 		{
 			printf("c");
 		}
-		next_switch_us += d; // Switch channels if we miss the next packet
+		{
+			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
+			if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
+			{
+				printf("#");
+				radio_instance->irq_handler(AP_HAL::micros());
+			}
+			else
+			{
+				next_switch_us += d; // Switch channels if we miss the next packet
+			}
+		}
 		int32_t ss = int32_t(next_switch_us - last_timeout_us);
 		if (ss < 1000) // Not enough time
 		{
@@ -657,23 +673,16 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
 			_irq_handler_ctx->name = "RadioBeken"; // Only useful to be done once but here is done often
 
         radio_instance->beken.lock_bus();
+        irq_when_us = irq_time_us; // Get the time of the event
         switch(evt) {
         case EVT_IRQ:
             if (radio_instance->beken.fcc.fcc_mode != 0) {
                 hal.console->printf("IRQ FCC\n");
             }
 //          printf(":");
-            radio_instance->irq_handler();
+            radio_instance->irq_handler(irq_when_us);
             break;
         case EVT_TIMEOUT:
-			{
-        		uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
-        		if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
-        		{
-					printf("#");
-					radio_instance->irq_handler();
-				}
-			}
 //          printf(".");
 			radio_instance->irq_timeout();
             break;
@@ -708,11 +717,11 @@ const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL] = {
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,
 #else
 	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,45, // Normal
-	57,62,67,72,58,63,68,59, 64,69,60,65,70,61,66,71,
-	62,10,67,72,63,68,11,64, 69,60,65,70,12,61,66,71,
-	10,67,11,72,12,68,13,69, 14,65,15,70,16,66,17,71,
-	10,70,15,20,11,71,16,21, 12,17,22,72,13,18,14,19,
-	10,15,20,25,11,16,21,12, 17,22,13,18,23,14,19,24,
+	57,62,67,72,58,63,68,59, 64,69,60,65,70,61,66,71, // Wifi channel 1,2,3,4,5
+	62,10,67,72,63,68,11,64, 69,60,65,70,12,61,66,71, // Wifi channel 6
+	10,67,11,72,12,68,13,69, 14,65,15,70,16,66,17,71, // Wifi channel 7
+	10,70,15,20,11,71,16,21, 12,17,22,72,13,18,14,19, // Wifi channel 8
+	10,15,20,25,11,16,21,12, 17,22,13,18,23,14,19,24, // Wifi channel 9,10,11
 #endif
 };
 
