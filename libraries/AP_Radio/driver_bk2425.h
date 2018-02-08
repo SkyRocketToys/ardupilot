@@ -8,6 +8,8 @@
 
 #include <AP_HAL/AP_HAL.h>
 
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+
 #define TX_SPEED 250u // Default transmit speed in kilobits per second.
 
 /** Channel hopping parameters. Values are in MHz from 2400Mhz. */
@@ -298,9 +300,6 @@ enum {
 #define DEFAULT_OUTPUT_REG4 TOKENPASTE2(OUTPUT_POWER_REG4_,DEFAULT_OUTPUT_POWER)
 
 // This assumes we are using ChiBios instead of the pixhawk o/s for accessing GPIO
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-#error This configuration is not supported.
-#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 #define BEKEN_SELECT()      (dev->set_chip_select(true))
 #define BEKEN_DESELECT()    (dev->set_chip_select(false))
@@ -310,7 +309,6 @@ enum {
 #define BEKEN_PA_LOW()      (palClearLine(HAL_GPIO_PIN_RADIO_PA_CTL)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 0))
 #else
 #error This configuration is not supported.
-#endif
 #endif
 
 /** Parameters used by the fcc pretests */
@@ -397,3 +395,5 @@ private:
 	uint8_t RX1_Address[5]; // The fixed binding address
 	BkRadioMode bkMode;
 };
+
+#endif

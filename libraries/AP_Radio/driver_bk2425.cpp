@@ -3,11 +3,12 @@
 // --------------------------------------------------------------------
 
 #include "driver_bk2425.h"
+
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+
 #include <utility>
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS.h>
 using namespace ChibiOS; 
-#endif
 
 #pragma GCC optimize("O0")
 
@@ -623,3 +624,5 @@ void Radio_Beken::DumpRegisters(void)
 	}
 	SetRBank(0);
 }
+
+#endif // HAL_RCINPUT_WITH_AP_RADIO
