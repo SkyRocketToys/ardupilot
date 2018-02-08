@@ -580,6 +580,10 @@ bool Radio_Beken::SendPacket(uint8_t type, ///< WR_TX_PLOAD or W_TX_PAYLOAD_NOAC
 		WriteRegisterMulti(type, pbuf, len); // Writes data to buffer A0,B0,A8
 		BEKEN_CE_HIGH(); // Wait until FIFO has the data before sending it.
 	}
+	else
+	{
+//		printf("@"); // Failed to send because full
+	}
 	return returnValue;
 }
 
