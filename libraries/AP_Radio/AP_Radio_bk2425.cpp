@@ -237,7 +237,7 @@ static const uint16_t CRCTable[] = {
  */
 void AP_Radio_beken::radio_init(void)
 {
-	printf("radio_init\r\n");
+	Debug(1, "bk2425 radio_init\r\n");
     beken.SetRBank(1);
     uint8_t id = beken.ReadReg(BK2425_R1_WHOAMI); // id is now 99
     beken.SetRBank(0); // Reset to default register bank.
@@ -375,7 +375,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				if (packet[10])
 				{
 					syncch.SetCountdown(packet[10]+1, packet[11]);
-					printf("%d ", packet[10]);
+					Debug(5, "%d ", packet[10]);
 				}
 				break;
 			default:
@@ -437,7 +437,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 //		stats.sentPacketCount++;
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 		nextChannel(1);
-		printf("T");
+		Debug(5, "T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
 	{
@@ -449,7 +449,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		// We have received a packet
 		uint8_t rxstd = 0;
 //		printf("R%ld,%ld\r\n", when, synctm.sync_time_us);
-		printf("R");
+		Debug(5, "R");
 		// Which pipe (address) have we received this packet on?
 		if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
 		{
@@ -579,7 +579,7 @@ void AP_Radio_beken::irq_timeout(void)
 			};
 		}
 		beken.fcc.fcc_mode = fcc;
-		printf("\r\nFCC mode %d\r\n", fcc);
+		Debug(1, "\r\nFCC mode %d\r\n", fcc);
 	}
 
 	// For fcc mode, just send packets on timeouts
@@ -617,17 +617,17 @@ void AP_Radio_beken::irq_timeout(void)
 		if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
 		{
 			d *= 4;
-			printf("C");
+			Debug(5, "C");
 		}
 		else
 		{
-			printf("c");
+			Debug(5, "c");
 		}
 		{
 			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 			if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
 			{
-				printf("#");
+				Debug(5, "#");
 				radio_instance->irq_handler(AP_HAL::micros());
 			}
 			else
@@ -639,7 +639,7 @@ void AP_Radio_beken::irq_timeout(void)
 		if (ss < 1000) // Not enough time
 		{
 			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
-			printf("j");
+			Debug(5, "j");
 		}
 		if (beken.WasTxMode())
 			beken.SwitchToRxMode();
@@ -674,7 +674,7 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
 			radio_instance->irq_timeout();
             break;
         case EVT_BIND: // The user has clicked on the "Start Bind" button on the web interface
-			printf("\r\nBtnStartBind\r\n");
+			//Debug(1, "\r\nBtnStartBind\r\n");
             break;
         default:
             break;
@@ -794,7 +794,7 @@ void SyncChannel::NextChannel(void)
 		{
 			channel = countdown_chan;
 			countdown = countdown_invalid;
-			printf("{%d} ", countdown_chan);
+			//printf("{%d} ", countdown_chan);
 			return;
 		}
 	}
