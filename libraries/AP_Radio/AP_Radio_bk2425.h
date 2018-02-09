@@ -33,8 +33,9 @@
 
 #define BEKEN_MAX_CHANNELS 16
 
-// This structure estimates the times (in microseconds) between packets,
+// This helper struct estimates the times (in microseconds) between packets,
 // according to the STM32 clock which may well be 2% different from the STM8 clock.
+// For instance it may be 5108 instead of the nominal 5000 microseconds.
 struct SyncTiming {
 	enum { TARGET_DELTA_RX = 5000,               // Nominal 5ms between packets is expected
 		SLOP_DELTA_RX = TARGET_DELTA_RX / 10,    // +/- 500us i.e. 10% skew each way is accepted.
@@ -53,11 +54,12 @@ struct SyncTiming {
 	void Rx(uint32_t when); // Adjust the timing based on a new packet
 };
 
+// Helper struct for synchronising channels when we change hopping table (e.g. learn of a WiFi channel change).
 struct SyncChannel {
-	enum { countdown_invalid = 0 };
+	enum { countdown_invalid = 0 }; // When countdown is this value, no change is pending
     uint8_t channel; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
-    uint8_t countdown; //
-    uint8_t countdown_chan;
+    uint8_t countdown; // How many packet slots until a pending table change occurs?
+    uint8_t countdown_chan; // Which channel do we jump to when the table change happens?
     SyncChannel() : // Constructor to setup sensible initial conditions
 		channel(0),
 		countdown(countdown_invalid),
@@ -69,13 +71,14 @@ struct SyncChannel {
     void SafeTable(void); // Give up on this WiFi table as packets have not been received
 };
 
+// Main class for receiving (and replying) to Beken radio packets
 class AP_Radio_beken : public AP_Radio_backend
 {
 public:
-	// Override base class
+	// Override base class functions
     AP_Radio_beken(AP_Radio &radio);
-    bool init(void) override; // init - initialise radio
-    bool reset(void) override; // rest radio
+    bool init(void) override; // initialise the radio
+    bool reset(void) override; // reset the radio
     bool send(const uint8_t *pkt, uint16_t len) override; // send a packet
     void start_recv_bind(void) override; // start bind process as a receiver
     uint32_t last_recv_us(void) override; // return time in microseconds of last received R/C packet
@@ -97,10 +100,10 @@ private:
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
     static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
-    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread
-    static uint32_t last_timeout_us; // Time the timeout was last triggered
+    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread (copied from irq_time_us)
+    static uint32_t last_timeout_us; // Time the timeout was last triggered (copied from irq_time_us via irq_when_us)
     static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
-    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us)
+    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us). Faster than the actual timing, since at the time we retrigger a timer interrupt we have insufficient information.
     static uint32_t next_switch_us; // Time when we next want to switch radio channels
 
 	// Static functions, for interrupt support
@@ -134,22 +137,22 @@ private:
 
     Radio_Beken beken;
 
-	SyncChannel syncch; //  uint8_t channr; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
+	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     uint32_t lost; // Number of packets we should have received but didnt?
     uint32_t timeouts;
-    SyncTiming synctm;
+    SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
 
     // bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;
     struct PACKED bind_info {
         uint16_t magic;
-        uint8_t bindTxId[5];
+        uint8_t bindTxId[5]; // The transmission address I last used
     };
 
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
     
-    ITX_SPEED spd;
+    ITX_SPEED spd; // Speed of radio modulation.
     uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx
 };
 
