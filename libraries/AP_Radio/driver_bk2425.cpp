@@ -604,23 +604,23 @@ void Radio_Beken::DumpRegisters(void)
 		};
 		if (len == 1)
 		{
-			printf("Bank0reg%d : %x\r\n", i, ReadReg(i));
+			//printf("Bank0reg%d : %x\r\n", i, ReadReg(i));
 		}
 		else if (len == 5)
 		{
 			uint8_t data[5];
 			ReadRegisterMulti(i, &data[0], len);
-			printf("Bank0reg%d : %x %x %x %x %x\r\n", i, data[0], data[1], data[2], data[3], data[4]);
+			//printf("Bank0reg%d : %x %x %x %x %x\r\n", i, data[0], data[1], data[2], data[3], data[4]);
 		}
 	}
 	SetRBank(1);
 	for (i = IREG1_4; i <= IREG1_13; ++i)
 	{
 		uint8_t len = 4;
-		uint8_t idx = Bank1_RegTable[0][i][0];
 		uint8_t data[4];
 		ReadRegisterMulti(i, &data[0], len);
-		printf("Bank1reg%d : %x %x %x %x\r\n", idx, data[0], data[1], data[2], data[3]);
+		//uint8_t idx = Bank1_RegTable[0][i][0];
+		//printf("Bank1reg%d : %x %x %x %x\r\n", idx, data[0], data[1], data[2], data[3]);
 	}
 	SetRBank(0);
 }
