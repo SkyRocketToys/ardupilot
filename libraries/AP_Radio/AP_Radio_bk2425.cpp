@@ -388,7 +388,12 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			case BK_INFO_PPS:
 			//	rx_status.pps = packets[8]; // Remember pps from tx...
 				break;
-			case BK_INFO_BATTERY: break;
+			case BK_INFO_BATTERY:
+				// "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display
+				// The CC2500 code (and this) actually assumes it is in 0.04 volt units, hence the tx scaling by 23/156 (38/256) instead of 60/256)
+				// Which means a maximum value is 152 units representing 6.0v rather than 240 units representing 6.0v
+		        pwm_channels[6] = packet[10] * 4;
+				break;
 			case BK_INFO_COUNTDOWN:
 				if (packet[10])
 				{
