@@ -121,6 +121,7 @@ private:
     bool load_bind_info(void);
 	void UpdateFccScan(void);
 	void UpdateTxData(void);
+	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
 
     // semaphore between ISR and main thread
     AP_HAL::Semaphore *sem;    
