@@ -67,11 +67,11 @@ typedef uint8_t BK_INFO_TYPE;
 /** Data for packets that are not droneid packets
 	Onair order = little-endian */
 typedef struct packetDataDeviceCtrl_s {
-	uint8_t throttle; ///< High 8 bits of the throttle joystick
-	uint8_t roll; ///< High 8 bits of the roll joystick
-	uint8_t pitch; ///< High 8 bits of the pitch joystick
-	uint8_t yaw; ///< High 8 bits of the yaw joystick
-	uint8_t lsb; ///< Low 2 bits of throttle, roll, pitch, yaw
+	uint8_t roll; ///< Low 8 bits of the roll joystick
+	uint8_t pitch; ///< Low 8 bits of the pitch joystick
+	uint8_t throttle; ///< Low 8 bits of the throttle joystick
+	uint8_t yaw; ///< Low 8 bits of the yaw joystick
+	uint8_t msb; ///< High 2 bits of roll (7..6), pitch (5..4), throttle (3..2), yaw (1..0)
 	uint8_t buttons_held; ///< The buttons
 	uint8_t buttons_toggled; ///< The buttons
 	uint8_t data_type; ///< Type of extra data being sent

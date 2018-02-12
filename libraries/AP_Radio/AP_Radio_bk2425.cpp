@@ -345,6 +345,45 @@ void AP_Radio_beken::UpdateTxData(void)
 }
 
 // ----------------------------------------------------------------------------
+/* support all 4 rc input modes by swapping channels. */
+void AP_Radio_beken::map_stick_mode(void)
+{
+    switch (get_stick_mode()) {
+    case 1: {
+        // mode1 = swap throttle and pitch
+        uint16_t tmp = pwm_channels[1];
+        pwm_channels[1] = pwm_channels[2];
+        pwm_channels[2] = tmp;
+        break;
+    }
+
+    case 3: {
+        // mode3 = swap throttle and pitch, swap roll and yaw
+        uint16_t tmp = pwm_channels[1];
+        pwm_channels[1] = pwm_channels[2];
+        pwm_channels[2] = tmp;
+        tmp = pwm_channels[0];
+        pwm_channels[0] = pwm_channels[3];
+        pwm_channels[3] = tmp;
+        break;
+    }
+
+    case 4: {
+        // mode4 = swap roll and yaw
+        uint16_t tmp = pwm_channels[0];
+        pwm_channels[0] = pwm_channels[3];
+        pwm_channels[3] = tmp;
+        break;
+    }
+        
+    case 2:
+    default:
+        // nothing to do, transmitter is natively mode2
+        break;
+    }
+}
+
+// ----------------------------------------------------------------------------
 // Handle receiving a packet (we are still in an interrupt!)
 void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 {
@@ -357,12 +396,14 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			syncch.SetChannel(packet[1]);
 		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
 			// Put the data into the control values
-			pwm_channels[0] = 1000 + 4 * packet[2] + (packet[6] & 3); // Throttle
-			pwm_channels[1] = 1000 + 4 * packet[3] + ((packet[6] >> 2) & 3); // Pitch
-			pwm_channels[2] = 1000 + 4 * packet[4] + ((packet[6] >> 4) & 3); // Roll
-			pwm_channels[3] = 1000 + 4 * packet[5] + ((packet[6] >> 6) & 3); // Yaw
-			pwm_channels[4] = 1000 + (packet[7] & 0x7) * 100;
-			pwm_channels[5] = 1000 + (packet[7] >> 3) * 100;
+			pwm_channels[0] = 1000 + packet[2] + (uint16_t(packet[6] & 0xC0) << 2); // Roll
+			pwm_channels[1] = 1000 + packet[3] + (uint16_t(packet[6] & 0x30) << 4); // Pitch
+			pwm_channels[2] = 1000 + packet[4] + (uint16_t(packet[6] & 0x0C) << 6); // Throttle
+			pwm_channels[3] = 1000 + packet[5] + (uint16_t(packet[6] & 0x03) << 8); // Yaw
+			pwm_channels[4] = 1000 + ((packet[7] & 0x07) >> 0) * 100; // SW1, SW2, SW3
+			pwm_channels[5] = 1000 + ((packet[7] & 0x38) >> 3) * 100; // SW4, SW5, SW6
+			// cope with mode1/mode2/mode3/mode4
+			map_stick_mode();
 			chan_count = MAX(chan_count, 6);
 			switch (packet[9]) {
 			case BK_INFO_FW_VER: break;
