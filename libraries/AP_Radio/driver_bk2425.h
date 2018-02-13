@@ -88,6 +88,7 @@ enum { SZ_DFU = 16 }; ///< Size of DFU packets
 typedef struct packetDataDeviceBind_s {
 	uint8_t bind_address[SZ_ADDRESS]; ///< The address being used by control packets
 	uint8_t hopping; ///< The hopping table in use for this connection
+	uint8_t droneid[SZ_CRC_GUID]; ///< 
 } packetDataDeviceBind;
 
 /** Data structure for data packet transmitted from device (controller) to host (drone) */
@@ -105,11 +106,12 @@ typedef struct packetDataDevice_s {
 typedef struct packetDataDrone_s {
 	BK_PKT_TYPE packetType; ///< 0: The packet type
 	uint8_t channel; ///< 1: Next channel I will broadcast on
-	uint8_t wifi; ///< 2: Wifi channel or Factory Test mode channel
-	uint8_t pps; ///< 3: Packets per second received
-	uint8_t droneid[SZ_CRC_GUID]; ///< 4...7:
-	uint8_t mode; ///< 8: flight mode
-	// Telemetry data (unspecified so far)
+	uint8_t pps; ///< 2: Packets per second the drone received
+	uint8_t flags; ///< 3: Flags
+	uint8_t droneid[SZ_CRC_GUID]; ///< 4...7: CRC of the drone
+	uint8_t flight_mode; ///< 8:
+	uint8_t wifi; ///< 9: Wifi channel + 24 * tx power.
+	uint8_t note_adjust; ///< 10: note adjust for the tx buzzer (should this be sent so often?)
 } packetFormatTx;
 
 typedef struct packetDataDfu_s {
@@ -246,9 +248,9 @@ typedef enum ITX_SPEED_e {
 
 enum {
 	PACKET_LENGTH_RX_CTRL = 12,
-	PACKET_LENGTH_RX_BIND = 10,
-	PACKET_LENGTH_RX_MAX = 12,
-	PACKET_LENGTH_TX_TELEMETRY = 9,
+	PACKET_LENGTH_RX_BIND = 12,
+	PACKET_LENGTH_RX_MAX  = 12,
+	PACKET_LENGTH_TX_TELEMETRY = 11,
 	PACKET_LENGTH_TX_DFU = 20,
 	PACKET_LENGTH_TX_MAX = 20,
 };

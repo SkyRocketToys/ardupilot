@@ -122,6 +122,7 @@ private:
 	void UpdateFccScan(void);
 	void UpdateTxData(void);
 	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
+	void update_SRT_telemetry(void);
 
     // semaphore between ISR and main thread
     AP_HAL::Semaphore *sem;    
