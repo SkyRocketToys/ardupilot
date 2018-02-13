@@ -326,6 +326,23 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 
 
 // ----------------------------------------------------------------------------
+// Update the telemetry status variable; can be called in irq thread
+// since the functions it calls are lightweight
+void AP_Radio_beken::update_SRT_telemetry(void)
+{
+    t_status.flags = 0;
+    t_status.flags |= AP_Notify::flags.gps_status >= 3?TELEM_FLAG_GPS_OK:0;
+    t_status.flags |= AP_Notify::flags.pre_arm_check?TELEM_FLAG_ARM_OK:0;
+    t_status.flags |= AP_Notify::flags.failsafe_battery?0:TELEM_FLAG_BATT_OK;
+    t_status.flags |= hal.util->get_soft_armed()?TELEM_FLAG_ARMED:0;
+    t_status.flags |= AP_Notify::flags.have_pos_abs?TELEM_FLAG_POS_OK:0;
+    t_status.flags |= AP_Notify::flags.video_recording?TELEM_FLAG_VIDEO:0;
+    t_status.flight_mode = AP_Notify::flags.flight_mode;
+    t_status.tx_max = get_tx_max_power();
+    t_status.note_adjust = get_tx_buzzer_adjust();
+}
+
+// ----------------------------------------------------------------------------
 // Update a radio control packet
 // Called from IRQ context
 void AP_Radio_beken::UpdateTxData(void)
@@ -333,16 +350,20 @@ void AP_Radio_beken::UpdateTxData(void)
 	packetFormatTx* tx = &beken.pktDataTx;
 
 	// Base values for this packet type
+	update_SRT_telemetry();
 	tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
 //	tx->channel;
-	tx->wifi = t_status.wifi_chan;
 	tx->pps = t_status.pps;
+	tx->flags = t_status.flags;
 	tx->droneid[0] = myDroneId[0];
 	tx->droneid[1] = myDroneId[1];
 	tx->droneid[2] = myDroneId[2];
 	tx->droneid[3] = myDroneId[3];
-	tx->mode = 0;
+	tx->flight_mode = t_status.flight_mode;
+	tx->wifi = t_status.wifi_chan + (24 * t_status.tx_max);
+	tx->note_adjust = t_status.note_adjust;
 }
+
 
 // ----------------------------------------------------------------------------
 /* support all 4 rc input modes by swapping channels. */
