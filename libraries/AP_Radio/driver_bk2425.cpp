@@ -4,7 +4,7 @@
 
 #include "driver_bk2425.h"
 
-#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 
 #include <utility>
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS.h>

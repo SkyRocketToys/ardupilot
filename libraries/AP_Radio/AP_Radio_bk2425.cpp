@@ -5,7 +5,7 @@
 
 #pragma GCC optimize("O0")
 
-#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 
 #include <AP_Math/AP_Math.h>
 #include "AP_Radio_bk2425.h"
