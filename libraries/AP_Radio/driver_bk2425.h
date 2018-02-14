@@ -8,7 +8,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 
-#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 
 #define TX_SPEED 250u // Default transmit speed in kilobits per second.
 

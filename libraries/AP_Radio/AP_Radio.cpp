@@ -158,6 +158,8 @@ bool AP_Radio::init(void)
     case RADIO_TYPE_CC2500:
         driver = new AP_Radio_cc2500(*this);
         break;
+#endif
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
     case RADIO_TYPE_BK2425:
         driver = new AP_Radio_beken(*this);
         break;

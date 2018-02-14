@@ -22,7 +22,7 @@
 
 #include "AP_Radio_backend.h"
 
-#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 #include "hal.h"
 #include "telem_structure.h"
 #include "driver_bk2425.h"
