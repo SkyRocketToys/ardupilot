@@ -509,7 +509,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 //		stats.sentPacketCount++;
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 		nextChannel(1);
-		printf("T");
+		DebugPrintf(2, "T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
 	{
