@@ -318,6 +318,7 @@ typedef struct FccParams_s {
 	uint8_t fcc_mode; ///< The value (0..6) last set by the user that we are using. Non-zero iff we are sending test signals
     bool scan_mode; ///< true for scanning, false for fixed frequencies
 	bool CW_mode; ///< true for carrier wave, false for packets
+	bool disable_crc_mode; ///< false for CRCs enabled, true for CRCs ignored.
     uint8_t scan_count; ///< In scan mode, packet count before incrementing scan
     uint8_t channel; ///< Current frequency 8..70
     uint8_t power; ///< Current power 1..8
@@ -364,6 +365,7 @@ public:
     void SetPower(uint8_t power);
     void SetChannel(uint8_t channel);
     void SetCwMode(uint8_t cw);
+    void SetCrcMode(uint8_t disable_crc); // non-zero means crc is ignored
     bool Reset(void);
 	void SwitchToRxMode(void);
 	void SwitchToTxMode(void);

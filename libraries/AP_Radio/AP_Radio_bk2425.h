@@ -113,8 +113,6 @@ private:
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
     uint16_t calc_crc(uint8_t *data, uint8_t len);
-    bool check_crc(uint8_t ccLen, uint8_t *packet);
-    void send_telemetry(void);
     void irq_handler(uint32_t when);
     void irq_timeout(void);
     void save_bind_info(void);
