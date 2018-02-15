@@ -372,6 +372,23 @@ void Radio_Beken::SetCwMode(uint8_t cw)
 	bkReady = oldready;
 }
 
+// --------------------------------------------------------------------
+// Enable/disable the CRC receive  mode 
+void Radio_Beken::SetCrcMode(uint8_t disable_crc)
+{
+	uint8_t oldready = bkReady;
+	bkReady = 0;
+
+	uint8_t config = ReadReg(BK_CONFIG);
+	if (disable_crc)
+		config &= ~(BK_CONFIG_EN_CRC | BK_CONFIG_CRCO); // Disable CRC
+	else
+		config |= (BK_CONFIG_EN_CRC | BK_CONFIG_CRCO); // Enable CRC
+	WriteReg((BK_WRITE_REG|BK_CONFIG), config);
+	fcc.disable_crc_mode = (disable_crc != 0);
+	bkReady = oldready;
+}
+
 // ----------------------------------------------------------------------------
 bool Radio_Beken::Reset(void)
 {
