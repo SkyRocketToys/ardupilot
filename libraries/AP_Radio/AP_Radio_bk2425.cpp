@@ -149,7 +149,7 @@ uint8_t AP_Radio_beken::num_channels(void)
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = 1; // t_status.rssi; // This will never update though
+        pwm_channels[chan-1] = 50; // Fixed value that will not update
         chan_count = MAX(chan_count, chan);
     }
 
@@ -161,13 +161,13 @@ uint8_t AP_Radio_beken::num_channels(void)
 
     chan = get_tx_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = 1; //...
+        pwm_channels[chan-1] = 50; // Fixed value that will not update
         chan_count = MAX(chan_count, chan);
     }
 
     chan = get_tx_pps_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = 123; // ... dsm.tx_pps;
+        pwm_channels[chan-1] = tx_pps;
         chan_count = MAX(chan_count, chan);
     }
     
@@ -435,7 +435,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			case BK_INFO_FW_DAY: break;
 			case BK_INFO_MODEL: break;
 			case BK_INFO_PPS:
-			//	rx_status.pps = packets[8]; // Remember pps from tx...
+				tx_pps = packet[10]; // Remember pps from tx
 				break;
 			case BK_INFO_BATTERY:
 				// "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display

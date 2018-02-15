@@ -149,6 +149,7 @@ private:
 
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
+	uint8_t tx_pps; // Last telemetry PPS received from Tx
     
     ITX_SPEED spd; // Speed of radio modulation.
     uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx
