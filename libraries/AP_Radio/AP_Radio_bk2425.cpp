@@ -472,6 +472,11 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		// Packet was sent towards the Tx board
 		synctm.tx_time_us = when;
 //		stats.sentPacketCount++;
+		if (beken.fcc.disable_crc_mode && !beken.fcc.disable_crc)
+		{
+			beken.SwitchToIdleMode();
+			beken.SetCrcMode(true);
+		}
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 		nextChannel(1);
 		DebugPrintf(2, "T");
@@ -541,10 +546,21 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			// Send the telemetry reply to the controller
 			beken.Strobe(BK_FLUSH_TX); // flush Tx
 			beken.ClearAckOverflow();
-			beken.SwitchToTxMode();
 			UpdateTxData();
 			beken.pktDataTx.channel = syncch.channel;
-			beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+			if (beken.fcc.disable_crc_mode)
+			{
+				// Only disable the CRC on reception, not transmission, so the connection remains.
+				beken.SwitchToIdleMode();
+				beken.SetCrcMode(false);
+				beken.SwitchToTxMode();
+				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+			}
+			else
+			{
+				beken.SwitchToTxMode();
+				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+			}
 		}
 		else // Try to still work when telemetry is disabled
 		{
@@ -572,6 +588,7 @@ void AP_Radio_beken::irq_timeout(void)
 		{
 			if ((pwr > 0) && (pwr <= 8))
 			{
+				beken.SwitchToIdleMode();
 				beken.SetPower(pwr-1);
 			}
 		}
@@ -580,7 +597,9 @@ void AP_Radio_beken::irq_timeout(void)
 		uint8_t crc = get_disable_crc();
 		if (crc != beken.fcc.disable_crc_mode)
 		{
+			beken.SwitchToIdleMode();
 			beken.SetCrcMode(crc);
+			beken.fcc.disable_crc_mode = crc;
 		}
 		
 		// Do we need to change our fcc test mode status?
@@ -692,8 +711,10 @@ void AP_Radio_beken::irq_timeout(void)
 			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
 			DebugPrintf(2, "j");
 		}
-		if (beken.WasTxMode())
+		if (!beken.WasRxMode())
+		{
 			beken.SwitchToRxMode();
+		}
 		nextChannel(1);
 		beken.ClearAckOverflow();
 	}

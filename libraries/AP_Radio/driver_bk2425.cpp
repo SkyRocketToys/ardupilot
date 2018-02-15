@@ -294,6 +294,7 @@ void Radio_Beken::WriteRegisterMultiBank1(uint8_t address, const uint8_t *data, 
 
 // --------------------------------------------------------------------
 // Set the radio transmission power of the beken
+// Prerequisite: We should be in idle mode before calling this function
 void Radio_Beken::SetPower(uint8_t power)
 {
     if (power > 7) {
@@ -340,6 +341,7 @@ void Radio_Beken::SetChannel(uint8_t freq)
 // --------------------------------------------------------------------
 // Set the radio transmission mode of the beken
 // Enable/disable the carrier sending mode 
+// Prerequisite: We should be in idle mode before calling this function
 void Radio_Beken::SetCwMode(uint8_t cw)
 {
 	uint8_t oldready = bkReady;
@@ -374,6 +376,7 @@ void Radio_Beken::SetCwMode(uint8_t cw)
 
 // --------------------------------------------------------------------
 // Enable/disable the CRC receive  mode 
+// Prerequisite: We should be in idle mode before calling this function
 void Radio_Beken::SetCrcMode(uint8_t disable_crc)
 {
 	uint8_t oldready = bkReady;
@@ -385,7 +388,7 @@ void Radio_Beken::SetCrcMode(uint8_t disable_crc)
 	else
 		config |= (BK_CONFIG_EN_CRC | BK_CONFIG_CRCO); // Enable CRC
 	WriteReg((BK_WRITE_REG|BK_CONFIG), config);
-	fcc.disable_crc_mode = (disable_crc != 0);
+	fcc.disable_crc = (disable_crc != 0);
 	bkReady = oldready;
 }
 
