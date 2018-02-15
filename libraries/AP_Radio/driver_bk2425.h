@@ -318,11 +318,11 @@ typedef struct FccParams_s {
 	uint8_t fcc_mode; ///< The value (0..6) last set by the user that we are using. Non-zero iff we are sending test signals
     bool scan_mode; ///< true for scanning, false for fixed frequencies
 	bool CW_mode; ///< true for carrier wave, false for packets
-	bool disable_crc_mode; ///< false for CRCs enabled, true for CRCs ignored.
+	bool disable_crc_mode; ///< false for CRCs enabled, true for CRCs ignored on reception
     uint8_t scan_count; ///< In scan mode, packet count before incrementing scan
     uint8_t channel; ///< Current frequency 8..70
     uint8_t power; ///< Current power 1..8
-    bool disable_crc; ///< true=crc is disabled
+    bool disable_crc; ///< true=crc is physically disabled
 } FccParams;
 
 typedef enum BkRadioMode_e {
