@@ -39,9 +39,10 @@ enum BK_PKT_TYPE_E {
 	BK_PKT_TYPE_INVALID      = 0,    ///< Invalid packet from empty packets or bad CRC
 	BK_PKT_TYPE_CTRL_FOUND   = 0x10, ///< (Tx->Drone) User control - known receiver
 	BK_PKT_TYPE_CTRL_LOST    = 0x11, ///< (Tx->Drone) User control - unknown receiver
-	BK_PKT_TYPE_BIND         = 0x12, ///< (Tx->Drone) Tell drones this tx is broadcasting
+	BK_PKT_TYPE_BIND_AUTO    = 0x12, ///< (Tx->Drone) Tell drones this tx is broadcasting
 	BK_PKT_TYPE_TELEMETRY    = 0x13, ///< (Drone->Tx) Send telemetry to tx
 	BK_PKT_TYPE_DFU          = 0x14, ///< (Drone->Tx) Send new firmware to tx
+	BK_PKT_TYPE_BIND_MANUAL  = 0x15, ///< (Tx->Drone) Tell drones this tx is broadcasting
 };
 typedef uint8_t BK_PKT_TYPE;
 
@@ -76,16 +77,16 @@ typedef uint8_t BK_INFO_TYPE;
 /** Data for packets that are not droneid packets
 	Onair order = little-endian */
 typedef struct packetDataDeviceCtrl_s {
-	uint8_t roll; ///< Low 8 bits of the roll joystick
-	uint8_t pitch; ///< Low 8 bits of the pitch joystick
-	uint8_t throttle; ///< Low 8 bits of the throttle joystick
-	uint8_t yaw; ///< Low 8 bits of the yaw joystick
-	uint8_t msb; ///< High 2 bits of roll (7..6), pitch (5..4), throttle (3..2), yaw (1..0)
-	uint8_t buttons_held; ///< The buttons
-	uint8_t buttons_toggled; ///< The buttons
-	uint8_t data_type; ///< Type of extra data being sent
-	uint8_t data_value_lo; ///< Value of extra data being sent
-	uint8_t data_value_hi; ///< Value of extra data being sent
+	uint8_t roll; ///< 2: Low 8 bits of the roll joystick
+	uint8_t pitch; ///< 3: Low 8 bits of the pitch joystick
+	uint8_t throttle; ///< 4: Low 8 bits of the throttle joystick
+	uint8_t yaw; ///< 5: Low 8 bits of the yaw joystick
+	uint8_t msb; ///< 6: High 2 bits of roll (7..6), pitch (5..4), throttle (3..2), yaw (1..0)
+	uint8_t buttons_held; ///< 7: The buttons
+	uint8_t buttons_toggled; ///< 8: The buttons
+	uint8_t data_type; ///< 9: Type of extra data being sent
+	uint8_t data_value_lo; ///< 10: Value of extra data being sent
+	uint8_t data_value_hi; ///< 11: Value of extra data being sent
 } packetDataDeviceCtrl;
 
 enum { SZ_ADDRESS = 5 }; ///< Size of address for transmission packets (40 bits)
@@ -102,8 +103,8 @@ typedef struct packetDataDeviceBind_s {
 
 /** Data structure for data packet transmitted from device (controller) to host (drone) */
 typedef struct packetDataDevice_s {
-	BK_PKT_TYPE packetType; ///< The packet type
-	uint8_t channel; ///< Next channel I will broadcast on
+	BK_PKT_TYPE packetType; ///< 0: The packet type
+	uint8_t channel; ///< 1: Next channel I will broadcast on
 	union packetDataDevice_u ///< The variant part of the packets
 	{
 		packetDataDeviceCtrl ctrl; ///< Control packets

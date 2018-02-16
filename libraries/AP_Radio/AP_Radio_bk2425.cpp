@@ -373,25 +373,26 @@ void AP_Radio_beken::map_stick_mode(void)
 // Handle receiving a packet (we are still in an interrupt!)
 void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 {
-    switch (packet[0]) {
+	const packetFormatRx * rx = (const packetFormatRx *) packet; // Interpret the packet data
+	switch (rx->packetType) {
 	case BK_PKT_TYPE_CTRL_FOUND:
 	case BK_PKT_TYPE_CTRL_LOST:
 		// We haz data
 		if (rxaddr == 0)
 		{
-			syncch.SetChannel(packet[1]);
+			syncch.SetChannel(rx->channel);
 		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
-			// Put the data into the control values
-			pwm_channels[0] = 1000 + packet[2] + (uint16_t(packet[6] & 0xC0) << 2); // Roll
-			pwm_channels[1] = 1000 + packet[3] + (uint16_t(packet[6] & 0x30) << 4); // Pitch
-			pwm_channels[2] = 1000 + packet[4] + (uint16_t(packet[6] & 0x0C) << 6); // Throttle
-			pwm_channels[3] = 1000 + packet[5] + (uint16_t(packet[6] & 0x03) << 8); // Yaw
-			pwm_channels[4] = 1000 + ((packet[7] & 0x07) >> 0) * 100; // SW1, SW2, SW3
-			pwm_channels[5] = 1000 + ((packet[7] & 0x38) >> 3) * 100; // SW4, SW5, SW6
+			// Put the data into the control values (assuming mode2)
+			pwm_channels[0] = 1000 + rx->u.ctrl.roll     + (uint16_t(rx->u.ctrl.msb & 0xC0) << 2); // Roll
+			pwm_channels[1] = 1000 + rx->u.ctrl.pitch    + (uint16_t(rx->u.ctrl.msb & 0x30) << 4); // Pitch
+			pwm_channels[2] = 1000 + rx->u.ctrl.throttle + (uint16_t(rx->u.ctrl.msb & 0x0C) << 6); // Throttle
+			pwm_channels[3] = 1000 + rx->u.ctrl.yaw      + (uint16_t(rx->u.ctrl.msb & 0x03) << 8); // Yaw
+			pwm_channels[4] = 1000 + ((rx->u.ctrl.buttons_held & 0x07) >> 0) * 100; // SW1, SW2, SW3
+			pwm_channels[5] = 1000 + ((rx->u.ctrl.buttons_held & 0x38) >> 3) * 100; // SW4, SW5, SW6
 			// cope with mode1/mode2/mode3/mode4
 			map_stick_mode();
-			chan_count = MAX(chan_count, 6);
-			switch (packet[9]) {
+			chan_count = MAX(chan_count, 7);
+			switch (rx->u.ctrl.data_type) {
 			case BK_INFO_FW_VER: break;
 			case BK_INFO_DFU_RX: break;
 			case BK_INFO_FW_CRC_LO: break;
@@ -400,19 +401,22 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			case BK_INFO_FW_DAY: break;
 			case BK_INFO_MODEL: break;
 			case BK_INFO_PPS:
-				tx_pps = packet[10]; // Remember pps from tx
+				tx_pps = rx->u.ctrl.data_value_lo; // Remember pps from tx
 				break;
 			case BK_INFO_BATTERY:
 				// "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display
 				// The CC2500 code (and this) actually assumes it is in 0.04 volt units, hence the tx scaling by 23/156 (38/256) instead of 60/256)
 				// Which means a maximum value is 152 units representing 6.0v rather than 240 units representing 6.0v
-		        pwm_channels[6] = packet[10] * 4;
+		        pwm_channels[6] = rx->u.ctrl.data_value_lo * 4;
 				break;
 			case BK_INFO_COUNTDOWN:
-				if (packet[10])
+				if (get_factory_test() == 0)
 				{
-					syncch.SetCountdown(packet[10]+1, packet[11]);
-					DebugPrintf(2, "(%d) ", packet[10]);
+					if (rx->u.ctrl.data_value_lo)
+					{
+						syncch.SetCountdown(rx->u.ctrl.data_value_lo+1, rx->u.ctrl.data_value_hi);
+						DebugPrintf(2, "(%d) ", rx->u.ctrl.data_value_lo);
+					}
 				}
 				break;
 			default:
@@ -420,13 +424,20 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			};
 		}
 		break;
-	case BK_PKT_TYPE_BIND:
+	case BK_PKT_TYPE_BIND_AUTO:
+		if (get_autobind_rssi() > 50)
+			break;
+		// else fall through
+	case BK_PKT_TYPE_BIND_MANUAL:
 		if (rxaddr == 1)
 		{
 			// Set the address on which we are receiving the control data
-			syncch.SetChannel(packet[1]);
-			beken.SetAddresses(&packet[2]);
-			Debug(3, " Bound to %x %x %x %x %x\r\n", packet[2], packet[3], packet[4], packet[5], packet[6]);
+			syncch.SetChannel(rx->channel);
+			if (get_factory_test() == 0)
+			{
+				beken.SetAddresses(&rx->u.bind.bind_address[0]);
+				Debug(3, " Bound to %x %x %x %x %x\r\n", packet[2], packet[3], packet[4], packet[5], packet[6]);
+			}
 		}
 		break;
 	case BK_PKT_TYPE_TELEMETRY:
