@@ -21,6 +21,15 @@ enum CHANNEL_MHZ_e {
 	CHANNEL_FCC_MID = 41, ///< A representative physical channel
 };
 
+enum {
+	CHANNEL_COUNT_LOGICAL = 16, ///< The maximum number of entries in each frequency table
+	CHANNEL_BASE_TABLE = 0, ///< The table used for non wifi boards
+	CHANNEL_SAFE_TABLE = 3, ///< A table that will receive packets even if wrong
+	CHANNEL_NUM_TABLES = 6, ///< The number of tables
+	CHANNEL_COUNT_TEST = 16, ///< The number of test mode tables
+};
+
+
 // ----------------------------------------------------------------------------
 // Packet format definition
 // ----------------------------------------------------------------------------
@@ -323,6 +332,7 @@ typedef struct FccParams_s {
     uint8_t channel; ///< Current frequency 8..70
     uint8_t power; ///< Current power 1..8
     bool disable_crc; ///< true=crc is physically disabled
+	uint8_t factory_mode; ///< factory test mode 0..8
 } FccParams;
 
 typedef enum BkRadioMode_e {
@@ -366,6 +376,7 @@ public:
     void SetChannel(uint8_t channel);
     void SetCwMode(uint8_t cw);
     void SetCrcMode(uint8_t disable_crc); // non-zero means crc is ignored
+	void SetFactoryMode(uint8_t factory);
     bool Reset(void);
 	void SwitchToRxMode(void);
 	void SwitchToTxMode(void);
@@ -380,6 +391,7 @@ public:
 	void DumpRegisters(void);
 	bool WasTxMode(void);
 	bool WasRxMode(void);
+	void ResetAddress();
 
     // Visible public variables (naughty)
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
