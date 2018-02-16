@@ -148,6 +148,13 @@ const uint8_t RegPower[8][2] = {
 Radio_Beken::Radio_Beken(AP_HAL::OwnPtr<AP_HAL::SPIDevice> _dev) :
     dev(std::move(_dev))
 {
+	ResetAddress();
+}
+
+// --------------------------------------------------------------------
+// Use the default addresses
+void Radio_Beken::ResetAddress(void)
+{
 	// Set the default address
 	TX_Address[0] = 0x33;
 	TX_Address[1] = RX0_Address[1] = 0x00;
@@ -389,6 +396,41 @@ void Radio_Beken::SetCrcMode(uint8_t disable_crc)
 		config |= (BK_CONFIG_EN_CRC | BK_CONFIG_CRCO); // Enable CRC
 	WriteReg((BK_WRITE_REG|BK_CONFIG), config);
 	fcc.disable_crc = (disable_crc != 0);
+	bkReady = oldready;
+}
+
+// ----------------------------------------------------------------------------
+void Radio_Beken::SetFactoryMode(uint8_t factory)
+{
+	uint8_t oldready = bkReady;
+	bkReady = 0;
+
+	// Set receive/transmit addresses
+	if (factory)
+	{
+		// For factory modes, use fixed addresses
+		TX_Address[0] = 0x35;
+		TX_Address[1] = RX1_Address[1] = RX0_Address[1] = 0x99;
+		TX_Address[2] = RX1_Address[2] = RX0_Address[2] = 0x59;
+		TX_Address[3] = RX1_Address[3] = RX0_Address[3] = 0xC6;
+		TX_Address[4] = RX1_Address[4] = RX0_Address[4] = factory;
+		RX0_Address[0] = 0x34;
+		RX1_Address[0] = 0x43;
+	}
+	else
+	{
+		// For normal modes, use the default addresses
+		ResetAddress();
+	}
+
+	// Write the addresses to the registers
+	WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0), RX0_Address, 5);
+	WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P1), RX1_Address, 5);
+	WriteRegisterMulti((BK_WRITE_REG|BK_TX_ADDR), TX_Address, 5);
+	WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x03);
+
+	// Frequency is set by the caller
+	fcc.factory_mode = factory;
 	bkReady = oldready;
 }
 

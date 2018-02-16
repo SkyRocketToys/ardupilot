@@ -412,7 +412,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				if (packet[10])
 				{
 					syncch.SetCountdown(packet[10]+1, packet[11]);
-					DebugPrintf(2, "%d ", packet[10]);
+					DebugPrintf(2, "(%d) ", packet[10]);
 				}
 				break;
 			default:
@@ -601,6 +601,17 @@ void AP_Radio_beken::irq_timeout(void)
 			beken.SetCrcMode(crc);
 			beken.fcc.disable_crc_mode = crc;
 		}
+
+		// Do we need to change our factory test mode?
+		uint8_t factory = get_factory_test();
+		if (factory != beken.fcc.factory_mode)
+		{
+			beken.SwitchToIdleMode();
+			// Set frequency
+			syncch.channel = factory ? (factory-1) + CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES : 0;
+			// Set address
+			beken.SetFactoryMode(factory);
+		}
 		
 		// Do we need to change our fcc test mode status?
 		uint8_t fcc = get_fcc_test();
@@ -758,15 +769,8 @@ void AP_Radio_beken::setChannel(uint8_t channel)
 	beken.SetChannel(channel);
 }
 
-enum {
-	CHANNEL_COUNT_LOGICAL = 16, ///< The maximum number of entries in each frequency table
-	CHANNEL_BASE_TABLE = 0, ///< The table used for non wifi boards
-	CHANNEL_SAFE_TABLE = 3, ///< A table that will receive packets even if wrong
-	CHANNEL_NUM_TABLES = 6, ///< The number of tables
-	CHANNEL_COUNT_TEST = 16, ///< The number of test mode tables
-};
 const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL+CHANNEL_COUNT_TEST] = {
-#if 0
+#if 0 // Single frequency mode
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Normal
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 1,2,3,4,5
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 6
@@ -774,7 +778,7 @@ const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL+CHANNEL_COUNT
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 8
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 9,10,11
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Test mode channels
-#else
+#else // Normal mode
 	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,45, // Normal
 	57,62,67,72,58,63,68,59, 64,69,60,65,70,61,66,71, // Wifi channel 1,2,3,4,5
 	62,10,67,72,63,68,11,64, 69,60,65,70,12,61,66,71, // Wifi channel 6
@@ -835,29 +839,42 @@ bool AP_Radio_beken::load_bind_info(void)
 // Step through the channels
 void SyncChannel::NextChannel(void)
 {
-	if (countdown != countdown_invalid)
+	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
-		if (--countdown == 0)
-		{
-			channel = countdown_chan;
-			countdown = countdown_invalid;
-//			DebugPrintf(2, "{%d} ", countdown_chan); // radio_instance not accessible
-			return;
-		}
+		// We are in the factory test modes. Keep the channel as is.
 	}
-	uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
-	channel = (channel + 1) % CHANNEL_COUNT_LOGICAL;
-	channel += table * CHANNEL_COUNT_LOGICAL;
+	else
+	{
+		if (countdown != countdown_invalid)
+		{
+			if (--countdown == 0)
+			{
+				channel = countdown_chan;
+				countdown = countdown_invalid;
+				return;
+			}
+		}
+		uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
+		channel = (channel + 1) % CHANNEL_COUNT_LOGICAL;
+		channel += table * CHANNEL_COUNT_LOGICAL;
+	}
 }
 
 // If we have not received any packets for ages, try a WiFi table that covers all frequencies
 void SyncChannel::SafeTable(void)
 {
-	uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
-	if ((table != CHANNEL_BASE_TABLE) && (table != CHANNEL_SAFE_TABLE)) // Are we using a table that is high end or low end only?
+	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
-		channel %= CHANNEL_COUNT_LOGICAL;
-		channel += CHANNEL_SAFE_TABLE * CHANNEL_COUNT_LOGICAL;
+		// We are in the factory test modes. Keep the channel as is.
+	}
+	else
+	{
+		uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
+		if ((table != CHANNEL_BASE_TABLE) && (table != CHANNEL_SAFE_TABLE)) // Are we using a table that is high end or low end only?
+		{
+			channel %= CHANNEL_COUNT_LOGICAL;
+			channel += CHANNEL_SAFE_TABLE * CHANNEL_COUNT_LOGICAL;
+		}
 	}
 }
 
