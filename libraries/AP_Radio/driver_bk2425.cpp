@@ -338,7 +338,7 @@ void Radio_Beken::SetPower(uint8_t power)
 }
 
 // --------------------------------------------------------------------
-// Set the radio transmission frequency of the beken
+// Set the physical radio transmission frequency of the beken
 void Radio_Beken::SetChannel(uint8_t freq)
 {
 	lastTxChannel = freq;
