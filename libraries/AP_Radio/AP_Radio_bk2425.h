@@ -28,6 +28,12 @@
 #include "driver_bk2425.h"
 
 #define BEKEN_MAX_CHANNELS 16
+// Documentation of the expected RSSI values. These are determined by the Cypress chip.
+enum {
+	BK_RSSI_MIN = 0, // Minimum value for RSSI
+	BK_RSSI_DEFAULT = 16, // The default value for RSSI for chips that do not support it.
+	BK_RSSI_MAX = 31 // Maximum value for RSSI
+};
 
 // This helper struct estimates the times (in microseconds) between packets,
 // according to the STM32 clock which may well be 2% different from the STM8 clock.
@@ -61,9 +67,11 @@ struct SyncChannel {
 		countdown(countdown_invalid),
 		countdown_chan(0)
 		{}
-    void SetChannel(uint8_t chan) { channel = chan; }
-    void SetCountdown(uint8_t cnt, uint8_t nextCh) { countdown = cnt; countdown_chan = nextCh; }
-    void NextChannel(void); // Step through the channels
+    void SetChannel(uint8_t chan) // We have received a packet describing the current channel index
+    { channel = chan; }
+    void SetCountdown(uint8_t cnt, uint8_t nextCh) // We receive a countdown to a non-normal channel change in the future
+    { countdown = cnt; countdown_chan = nextCh; }
+    void NextChannel(void); // Step through the channels normally (taking countdowns into account)
     void SafeTable(void); // Give up on this WiFi table as packets have not been received
 };
 
@@ -72,7 +80,7 @@ class AP_Radio_beken : public AP_Radio_backend
 {
 public:
 	// Override base class functions
-    AP_Radio_beken(AP_Radio &radio);
+    AP_Radio_beken(AP_Radio &radio); // Normal constructore
     bool init(void) override; // initialise the radio
     bool reset(void) override; // reset the radio
     bool send(const uint8_t *pkt, uint16_t len) override; // send a packet
@@ -89,10 +97,10 @@ public:
     void set_wifi_channel(uint8_t channel) { t_status.wifi_chan = channel; } // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
     
 private:
-    AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
+    AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev; // Low level support of SPI device
     
     // Static data, for interrupt support
-    static AP_Radio_beken *radio_instance;
+    static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
     static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
@@ -101,6 +109,7 @@ private:
     static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
     static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us). Faster than the actual timing, since at the time we retrigger a timer interrupt we have insufficient information.
     static uint32_t next_switch_us; // Time when we next want to switch radio channels
+    static uint32_t bind_time_ms; // Rough time in ms (milliseconds) when the last BIND command was received
 
 	// Static functions, for interrupt support
     static void irq_handler_thd(void* arg);
@@ -110,6 +119,7 @@ private:
 	//  Private functions
     void radio_init(void);
 	void ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
+	void ProcessBindPacket(const packetFormatRx * rx);
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
     uint16_t calc_crc(uint8_t *data, uint8_t len);
@@ -125,17 +135,14 @@ private:
     // semaphore between ISR and main thread
     AP_HAL::Semaphore *sem;    
 
-    AP_Radio::stats stats;
-    AP_Radio::stats last_stats;
+    AP_Radio::stats stats; // Radio stats (live) for the current time-period
+    AP_Radio::stats last_stats; // Radio stats (snapshot) for the previous time-period
 
     uint16_t pwm_channels[BEKEN_MAX_CHANNELS]; // Channel data
     uint8_t chan_count; // Number of valid channels
 
-    Radio_Beken beken;
-
+    Radio_Beken beken; // The low level class for communicating to the Beken chip 
 	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
-    uint32_t lost; // Number of packets we should have received but didnt?
-    uint32_t timeouts;
     SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
 
     // bind structure saved to storage

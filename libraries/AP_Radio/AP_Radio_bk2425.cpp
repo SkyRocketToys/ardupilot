@@ -40,6 +40,7 @@ uint32_t AP_Radio_beken::last_timeout_us;
 uint32_t AP_Radio_beken::next_timeout_us;
 uint32_t AP_Radio_beken::delta_timeout_us = 1000;
 uint32_t AP_Radio_beken::next_switch_us;
+uint32_t AP_Radio_beken::bind_time_ms;
 
 // -----------------------------------------------------------------------------
 // We have re
@@ -149,7 +150,7 @@ uint8_t AP_Radio_beken::num_channels(void)
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = 50; // Fixed value that will not update
+        pwm_channels[chan-1] = BK_RSSI_DEFAULT; // Fixed value that will not update (halfway in the RSSI range for Cypress chips, 0..31)
         chan_count = MAX(chan_count, chan);
     }
 
@@ -161,7 +162,7 @@ uint8_t AP_Radio_beken::num_channels(void)
 
     chan = get_tx_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = 50; // Fixed value that will not update
+        pwm_channels[chan-1] = BK_RSSI_DEFAULT; // Fixed value that will not update (halfway in the RSSI range for Cypress chips, 0..31)
         chan_count = MAX(chan_count, chan);
     }
 
@@ -176,11 +177,11 @@ uint8_t AP_Radio_beken::num_channels(void)
         last_pps_ms = now;
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
         last_stats = stats;
-        if (lost != 0 || timeouts != 0) {
-            Debug(3,"lost=%lu timeouts=%lu\n", lost, timeouts);
+        if (stats.lost_packets != 0 || stats.timeouts != 0) {
+            Debug(3,"lost=%lu timeouts=%lu\n", stats.lost_packets, stats.timeouts);
         }
-        lost=0;
-        timeouts=0;
+        stats.lost_packets=0;
+        stats.timeouts=0;
     }
     return chan_count;
 }
@@ -280,6 +281,7 @@ void AP_Radio_beken::start_recv_bind(void)
 {
     chan_count = 0;
     synctm.packet_timer = AP_HAL::micros();
+	radio_instance->bind_time_ms = AP_HAL::millis();
     chEvtSignal(_irq_handler_ctx, EVT_BIND);
     Debug(1,"Starting bind\n");
 }
@@ -370,6 +372,22 @@ void AP_Radio_beken::map_stick_mode(void)
 }
 
 // ----------------------------------------------------------------------------
+// This is a valid manual/auto binding packet.
+// The type of binding is valid now, and it came with the right address.
+void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
+{
+	// Set the address on which we are receiving the control data
+	syncch.SetChannel(rx->channel);
+	if (get_factory_test() == 0) // Final check that we are not in factory mode
+	{
+		beken.SetAddresses(&rx->u.bind.bind_address[0]);
+		Debug(3, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
+			rx->u.bind.bind_address[1], rx->u.bind.bind_address[2],
+			rx->u.bind.bind_address[3], rx->u.bind.bind_address[4]);
+	}
+}
+
+// ----------------------------------------------------------------------------
 // Handle receiving a packet (we are still in an interrupt!)
 void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 {
@@ -424,22 +442,32 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			};
 		}
 		break;
+		
 	case BK_PKT_TYPE_BIND_AUTO:
-		if (get_autobind_rssi() > 50)
-			break;
-		// else fall through
+		if (rxaddr == 1)
+		{
+			if (get_autobind_rssi() > BK_RSSI_DEFAULT) // Have we disabled autobind using fake RSSI parameter?
+				break;
+			if (get_autobind_time() == 0) // Have we disabled autobind using zero time parameter?
+				break;
+			uint32_t now = AP_HAL::millis();
+			if (now < get_autobind_time() * 1000) // Is this too soon to autobind?
+				break;
+			ProcessBindPacket(rx);
+		}
+		break;
+		
 	case BK_PKT_TYPE_BIND_MANUAL:
 		if (rxaddr == 1)
 		{
-			// Set the address on which we are receiving the control data
-			syncch.SetChannel(rx->channel);
-			if (get_factory_test() == 0)
-			{
-				beken.SetAddresses(&rx->u.bind.bind_address[0]);
-				Debug(3, " Bound to %x %x %x %x %x\r\n", packet[2], packet[3], packet[4], packet[5], packet[6]);
-			}
+			if (bind_time_ms == 0) // We have never receiving a binding click
+				break; // Do not bind
+//			if ((AP_HAL::millis() - bind_time_ms) > 1000 * 60) // Have we pressed the button to bind recently? One minute timeout
+//				break; // Do not bind
+			ProcessBindPacket(rx);
 		}
 		break;
+		
 	case BK_PKT_TYPE_TELEMETRY:
 	case BK_PKT_TYPE_DFU:
 	default:
