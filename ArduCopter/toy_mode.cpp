@@ -82,19 +82,19 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_ACTION6", 9, ToyMode, actions[5], ACTION_NONE),
 
-    // @Param: _LEFT
-    // @DisplayName: Tmode left action
-    // @Description: This is the action taken for the left button (mode button) being pressed
+    // @Param: _MODE_BTN
+    // @DisplayName: Tmode mode button action
+    // @Description: This is the action taken for the mode button being pressed
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
     // @User: Standard
-    AP_GROUPINFO("_LEFT", 10, ToyMode, actions[6], ACTION_TOGGLE_MODE),
+    AP_GROUPINFO("_MODE_BTN", 10, ToyMode, actions[6], ACTION_TOGGLE_MODE),
 
-    // @Param: _LEFT_LONG
-    // @DisplayName: Tmode left long action
-    // @Description: This is the action taken for a long press of the left button (home button)
+    // @Param: _MODE_LONG
+    // @DisplayName: Tmode mode button long action
+    // @Description: This is the action taken for a long press of the mode button
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold
     // @User: Standard
-    AP_GROUPINFO("_LEFT_LONG", 11, ToyMode, actions[7], ACTION_NONE),
+    AP_GROUPINFO("_MODE_LONG", 11, ToyMode, actions[7], ACTION_NONE),
 
     // @Param: _TRIM_AUTO
     // @DisplayName: Stick auto trim limit
@@ -103,12 +103,12 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_TRIM_AUTO", 12, ToyMode, trim_auto, 50),
 
-    // @Param: _RIGHT
-    // @DisplayName: Tmode right action
-    // @Description: This is the action taken for the right button (RTL) being pressed
+    // @Param: _LL_BTN
+    // @DisplayName: Tmode launch/land button action
+    // @Description: This is the action taken for the launch/land button being pressed
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
     // @User: Standard
-    AP_GROUPINFO("_RIGHT", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
+    AP_GROUPINFO("_LL_BTN", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
 
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
@@ -219,12 +219,12 @@ void ToyMode::update()
     copter.ahrs.set_indoor_mode(copter.control_mode == ALT_HOLD || copter.control_mode == FLOWHOLD);
 #endif
     
-    bool left_button = false;
+    bool mode_button = false;
     bool right_button = false;
     bool left_action_button = false;
     bool right_action_button = false;
     bool power_button = false;
-    bool left_change = false;
+    bool mode_button_change = false;
     
     uint16_t ch5_in = hal.rcin->read(CH_5);
     uint16_t ch6_in = hal.rcin->read(CH_6);
@@ -245,12 +245,12 @@ void ToyMode::update()
         // V2450 button mapping from cypress radio. It maps the
         // buttons onto channels 5, 6 and 7 in a complex way, with the
         // left button latching
-        left_change = ((ch5_in > 1700 && last_ch5 <= 1700) || (ch5_in <= 1700 && last_ch5 > 1700));
+        mode_button_change = ((ch5_in > 1700 && last_ch5 <= 1700) || (ch5_in <= 1700 && last_ch5 > 1700));
         
         last_ch5 = ch5_in;
                         
         // get buttons from channels
-        left_button = (ch5_in > 2050 || (ch5_in > 1050 && ch5_in < 1150));
+        mode_button = (ch5_in > 2050 || (ch5_in > 1050 && ch5_in < 1150));
         right_button = (ch6_in > 1500);
         uint8_t ch7_bits = (ch7_in>1000)?uint8_t((ch7_in-1000)/100):0;
         left_action_button = (ch7_bits&1) != 0;
@@ -261,13 +261,13 @@ void ToyMode::update()
         // onto channels 5 and 6, with no latching
         uint8_t ch5_bits = (ch5_in>1000)?uint8_t((ch5_in-1000)/100):0;
         uint8_t ch6_bits = (ch6_in>1000)?uint8_t((ch6_in-1000)/100):0;
-        left_button = (ch5_bits & 4) != 0;
+        mode_button = (ch5_bits & 1) != 0;
         right_button = (ch5_bits & 2) != 0;
         right_action_button = (ch6_bits & 1) != 0;
         left_action_button = (ch6_bits & 2) != 0;
         power_button = (ch6_bits & 4) != 0;
-        left_change = (left_button != last_left_button);
-        last_left_button = left_button;
+        mode_button_change = (mode_button != last_mode_button);
+        last_mode_button = mode_button;
     }
     
     // decode action buttons into an action
@@ -280,14 +280,14 @@ void ToyMode::update()
         action_input = 3;
     }
     
-    if (action_input != 0 && left_button) {
+    if (action_input != 0 && mode_button) {
         // combined button actions
         action_input += 3;
-        left_press_counter = 0;
-    } else if (left_button) {
-        left_press_counter++;
+        mode_press_counter = 0;
+    } else if (mode_button) {
+        mode_press_counter++;
     } else {
-        left_press_counter = 0;
+        mode_press_counter = 0;
     }
 
     bool reset_combination = left_action_button && right_action_button;
@@ -311,7 +311,7 @@ void ToyMode::update()
     if (reset_combination) {
         // don't act on buttons when combination pressed
         action_input = 0;
-        left_press_counter = 0;
+        mode_press_counter = 0;
     }
 
     /*
@@ -320,25 +320,25 @@ void ToyMode::update()
     enum toy_action action = action_input?toy_action(actions[action_input-1].get()):ACTION_NONE;
    
     // check for long left button press
-    if (action == ACTION_NONE && left_press_counter > TOY_LONG_PRESS_COUNT) {
-        left_press_counter = -TOY_COMMAND_DELAY;
+    if (action == ACTION_NONE && mode_press_counter > TOY_LONG_PRESS_COUNT) {
+        mode_press_counter = -TOY_COMMAND_DELAY;
         action = toy_action(actions[7].get());
-        ignore_left_change = true;
+        ignore_mode_button_change = true;
     }
 
     // cope with long left press triggering a left change
-    if (ignore_left_change && left_change) {
-        left_change = false;
-        ignore_left_change = false;
+    if (ignore_mode_button_change && mode_button_change) {
+        mode_button_change = false;
+        ignore_mode_button_change = false;
     }
 
     if (is_v2450_buttons()) {
         // check for left button latching change
-        if (action == ACTION_NONE && left_change) {
+        if (action == ACTION_NONE && mode_button_change) {
             action = toy_action(actions[6].get());
         }
     } else if (is_f412_buttons()) {
-        if (action == ACTION_NONE && left_change && !left_button) {
+        if (action == ACTION_NONE && mode_button_change && !mode_button) {
             // left release
             action = toy_action(actions[6].get());
         }
