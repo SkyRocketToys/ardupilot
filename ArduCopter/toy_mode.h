@@ -120,11 +120,11 @@ private:
     uint32_t throttle_low_counter;
     uint32_t throttle_high_counter;
     uint16_t last_ch5;
-    bool last_left_button;
+    bool last_mode_button;
     uint8_t last_mode_choice;
-    int32_t left_press_counter;
+    int32_t mode_press_counter;
     int32_t right_press_counter;
-    bool ignore_left_change;
+    bool ignore_mode_button_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;
     bool upgrade_to_loiter;
