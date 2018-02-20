@@ -457,12 +457,12 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		}
 		break;
 		
-	case BK_PKT_TYPE_BIND_MANUAL:
+	case BK_PKT_TYPE_BIND_MANUAL: // Sent by the tx for a few seconds after power-up when
 		if (rxaddr == 1)
 		{
 			if (bind_time_ms == 0) // We have never receiving a binding click
 				break; // Do not bind
-//			if ((AP_HAL::millis() - bind_time_ms) > 1000 * 60) // Have we pressed the button to bind recently? One minute timeout
+//			if (uint32_t(AP_HAL::millis() - bind_time_ms) > 1000ul * 60u) // Have we pressed the button to bind recently? One minute timeout
 //				break; // Do not bind
 			ProcessBindPacket(rx);
 		}
