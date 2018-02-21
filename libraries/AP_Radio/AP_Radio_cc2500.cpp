@@ -20,7 +20,6 @@
 #include <AP_Math/crc.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-static THD_WORKING_AREA(_irq_handler_wa, 512);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
@@ -62,11 +61,12 @@ bool AP_Radio_cc2500::init(void)
         AP_HAL::panic("AP_Radio_cc2500: double instantiation of irq_handler\n");
     }
     chVTObjectInit(&timeout_vt);
-    _irq_handler_ctx = chThdCreateStatic(_irq_handler_wa,
-                     sizeof(_irq_handler_wa),
-                     TIMEOUT_PRIORITY,        /* Initial priority.    */
-                     irq_handler_thd,  /* Thread function.     */
-                     NULL);                     /* Thread parameter.    */
+    _irq_handler_ctx = chThdCreateFromHeap(NULL,
+                                           THD_WORKING_AREA_SIZE(2048),
+                                           "radio_cc2500",
+                                           TIMEOUT_PRIORITY,
+                                           irq_handler_thd,
+                                           NULL);
 #endif
     sem = hal.util->new_semaphore();    
     
