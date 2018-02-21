@@ -34,6 +34,9 @@
 #include <AP_Radio/AP_Radio.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #endif
+#define FORCE_VERSION_H_INCLUDE
+#include "ap_version.h"
+
 
 extern const AP_HAL::HAL& hal;
 
@@ -1419,6 +1422,18 @@ void GCS_MAVLINK::send_autopilot_version() const
         os_custom_version[sizeof(os_custom_version) - 1] = '\0';
     }
 
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    AP_Radio *radio = AP_Radio::instance();
+    if (radio) {
+        vendor_id = radio->get_tx_version();
+    }
+#endif
+
+#ifdef BUILD_DATE_YEAR
+    // encode build date in os_sw_version
+    os_sw_version = (BUILD_DATE_YEAR*100*100) + (BUILD_DATE_MONTH*100) + BUILD_DATE_DAY;
+#endif
+    
     mavlink_msg_autopilot_version_send(
         chan,
         hal.util->get_capabilities(),
