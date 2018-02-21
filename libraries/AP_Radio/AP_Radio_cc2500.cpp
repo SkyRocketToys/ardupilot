@@ -45,8 +45,9 @@ uint32_t AP_Radio_cc2500::irq_time_us;
   selects 47 of these channels. Each channel step represents 0.3MHz,
   from 2403.6 MHz at channel 0 up to 2473.8MHz at channel 234
  */
-#define CC2500_MAX_CHANNELS 0xEB
-#define MAX_CHANNELS 47
+#define MAX_CHANNEL_NUMBER 0xEB
+#define NUM_CHANNELS 47
+#define AUTOBIND_CHANNEL 100
 
 /*
   constructor
@@ -109,7 +110,7 @@ const AP_Radio::stats &AP_Radio_cc2500::get_stats(void)
  */
 uint16_t AP_Radio_cc2500::read(uint8_t chan)
 {
-    if (chan >= CC2500_MAX_CHANNELS) {
+    if (chan >= CC2500_MAX_PWM_CHANNELS) {
         return 0;
     }
     return pwm_channels[chan];
@@ -306,6 +307,7 @@ void AP_Radio_cc2500::radio_init(void)
         listLength = NUM_CHANNELS;
         initialiseData(0);
         protocolState = STATE_SEARCH;
+        packet_timer = AP_HAL::micros();
         chanskip = 1;
         nextChannel(1);
     } else {
@@ -499,6 +501,63 @@ bool AP_Radio_cc2500::handle_SRT_packet(const uint8_t *packet)
     return true;
 }
 
+
+/*
+  handle a autobind packet
+ */
+bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
+{
+    const struct autobind_packet_cc2500 *pkt = (const struct autobind_packet_cc2500 *)packet;
+    if (pkt->length != sizeof(struct autobind_packet_cc2500)-1 ||
+        pkt->magic1 != 0xC5 ||
+        pkt->magic2 != 0xA2 ||
+        pkt->txid[0] != uint8_t(~pkt->txid_inverse[0]) ||
+        pkt->txid[1] != uint8_t(~pkt->txid_inverse[1])) {
+        Debug(3, "AB len=%u elen=%u m1=%02x m1=%02x 0x%x 0x%x 0x%x 0x%x\n",
+              pkt->length, sizeof(struct autobind_packet_cc2500)-1, pkt->magic1, pkt->magic2,
+              pkt->txid[0], pkt->txid[1], ~pkt->txid_inverse[0], ~pkt->txid_inverse[1]);
+        // not a valid autobind packet
+        return false;
+    }
+    bindTxId[0] = pkt->txid[0];
+    bindTxId[1] = pkt->txid[1];
+
+    // we have no way to get the bind offset with autobind, so use 0
+    // as best guess
+    bindOffset = 0;
+    listLength = NUM_CHANNELS;
+
+    // calculate hopping channels to match TX
+    uint8_t channel = bindTxId[0] & 0x07;
+    uint8_t channel_spacing = bindTxId[1];
+
+    // Filter bad tables
+    if (channel_spacing < 0x02) {
+        channel_spacing += 0x02;
+    }
+    if (channel_spacing>0xE9) {
+        channel_spacing -= 0xE7;
+    }
+    if (channel_spacing % NUM_CHANNELS == 0) {
+        channel_spacing++;
+    }
+    
+    bindHopData[0] = channel;
+    for (uint8_t i=1; i<NUM_CHANNELS; i++) {
+        channel = (channel+channel_spacing) % MAX_CHANNEL_NUMBER;
+        uint8_t val=channel;
+        if ((val==0x00) || (val==0x5A) || (val==0xDC)) {
+            val++;
+        }
+        bindHopData[i] = val;
+    }
+
+    Debug(1,"Saved bind data\n");
+    save_bind_info();
+    
+    return true;
+}
+
 // main IRQ handler
 void AP_Radio_cc2500::irq_handler(void)
 {
@@ -527,7 +586,9 @@ void AP_Radio_cc2500::irq_handler(void)
         return;
     }
     
-    if (ccLen != 32 && ccLen != sizeof(srt_packet)+2) {
+    if (ccLen != 32 &&
+        ccLen != sizeof(srt_packet)+2 &&
+        ccLen != sizeof(autobind_packet_cc2500)+2) {
         cc2500.Strobe(CC2500_SFRX);
         cc2500.Strobe(CC2500_SRX);
         Debug(3, "bad len %u\n", ccLen);
@@ -590,6 +651,8 @@ void AP_Radio_cc2500::irq_handler(void)
             ok = handle_D16_packet(packet);
         } else if (ccLen == sizeof(srt_packet)+2) {
             ok = handle_SRT_packet(packet);
+        } else if (ccLen == sizeof(autobind_packet_cc2500)+2) {
+            ok = handle_autobind_packet(packet);
         }
         if (ok) {
             // get RSSI value from status byte
@@ -682,6 +745,7 @@ void AP_Radio_cc2500::irq_timeout(void)
             cc2500.Strobe(CC2500_SRX);
             timeouts++;
             protocolState = STATE_SEARCH;
+            search_count = 0;
         } else {
             nextChannel(chanskip);
             // to keep the timeouts 1ms behind the expected time we
@@ -693,8 +757,18 @@ void AP_Radio_cc2500::irq_timeout(void)
     }
 
     case STATE_SEARCH:
-        // shift by one channel at a time when searching
-        nextChannel(1);
+        search_count++;
+        if (stats.recv_packets == 0 &&
+            get_autobind_time() != 0 &&
+            (AP_HAL::micros() - packet_timer) > get_autobind_time() * 1000UL*1000UL &&
+            (search_count & 1) == 0) {
+            // try for an autobind packet every 2nd packet, waiting 30ms for a rely
+            setChannel(AUTOBIND_CHANNEL);
+            chVTSet(&timeout_vt, MS2ST(30), trigger_timeout_event, nullptr);
+        } else {
+            // shift by one channel at a time when searching
+            nextChannel(1);
+        }
         break;
             
     case STATE_FCCTEST: {
@@ -909,7 +983,7 @@ void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
         uint16_t word_temp = (((c[i]-64)<<1)/3+860);
         if ((word_temp > 800) && (word_temp < 2200)) {
             uint8_t chan = i+j;
-            if (chan < CC2500_MAX_CHANNELS) {
+            if (chan < CC2500_MAX_PWM_CHANNELS) {
                 pwm_channels[chan] = word_temp;
                 if (chan >= chan_count) {
                     chan_count = chan+1;
@@ -930,11 +1004,11 @@ uint16_t AP_Radio_cc2500::calc_crc(const uint8_t *data, uint8_t len)
 
 bool AP_Radio_cc2500::check_crc(uint8_t ccLen, uint8_t *packet)
 {
-    if (ccLen == sizeof(srt_packet)+2) {
-        struct srt_packet *pkt = (struct srt_packet *)packet;
+    if (ccLen == sizeof(srt_packet)+2 ||
+        ccLen == sizeof(autobind_packet_cc2500)+2) {
         // SRT packet
-        uint16_t lcrc = calc_crc(packet,sizeof(struct srt_packet)-2);
-        return lcrc == ((pkt->crc[0]<<8) | pkt->crc[1]);
+        uint16_t lcrc = calc_crc(&packet[0],(ccLen-4));
+        return ((lcrc >>8)==packet[ccLen-4] && (lcrc&0x00FF)==packet[ccLen-3]);
     } else if (ccLen == 32) {
         // D16 packet
         uint16_t lcrc = calc_crc(&packet[3],(ccLen-7));
