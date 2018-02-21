@@ -323,7 +323,8 @@ class chibios(Board):
             '-mno-thumb-interwork',
             '-mthumb',
             '-mfpu=fpv4-sp-d16',
-            '-mfloat-abi=hard'
+            '-mfloat-abi=hard',
+            '-DCHIBIOS_BOARD_NAME="%s"' % self.name,
         ]
 
         bldnode = cfg.bldnode.make_node(self.name)
@@ -382,11 +383,14 @@ class skyviper_f412(chibios):
         )
         env.CHIBIOS_FATFS_FLAG = 'USE_FATFS=no'
         env.DEFAULT_PARAMETERS = '../../Tools/Frame_params/SkyViper-F412/defaults.parm'
+        env.CXXFLAGS += ['-DCHIBIOS_SHORT_BOARD_NAME="SRT-F412"' ]
+        
 
 class skyviper_f412_rev1(skyviper_f412):
     name = 'skyviper-f412-rev1'
     def configure_env(self, cfg, env):
         super(skyviper_f412_rev1, self).configure_env(cfg, env)
+        env.CXXFLAGS += ['-DCHIBIOS_SHORT_BOARD_NAME="SRT-F412"' ]
 
 class fmuv3(chibios):
     name = 'fmuv3'
@@ -410,6 +414,7 @@ class skyviper_v2450(fmuv3):
         super(skyviper_v2450, self).configure_env(cfg, env)
         env.DEFAULT_PARAMETERS = '../../Tools/Frame_params/SkyViper-2450GPS/defaults.parm'
         env.CHIBIOS_FATFS_FLAG = 'USE_FATFS=no'
+        env.CXXFLAGS += ['-DCHIBIOS_SHORT_BOARD_NAME="SRT-v2450GPS"' ]
 
 class fmuv4(chibios):
     name = 'fmuv4'
