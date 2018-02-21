@@ -151,7 +151,8 @@ uint8_t AP_Radio_cc2500::num_channels(void)
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
         last_stats = stats;
         if (lost != 0 || timeouts != 0) {
-            Debug(3,"lost=%u timeouts=%u TS=%u\n", unsigned(lost), unsigned(timeouts), sizeof(struct telem_packet_cc2500));
+            Debug(3,"lost=%u timeouts=%u TS=%u\n",
+                  unsigned(lost), unsigned(timeouts), sizeof(struct telem_packet_cc2500));
         }
         lost=0;
         timeouts=0;
@@ -178,12 +179,12 @@ bool AP_Radio_cc2500::send(const uint8_t *pkt, uint16_t len)
 
 const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
-    {CC2500_17_MCSM1,    0x0C}, // stay in RX on packet receive, CCA always, TX -> IDLE
+    {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
     {CC2500_18_MCSM0,    0x18}, // XOSC expire 64, cal on IDLE -> TX or RX
     {CC2500_06_PKTLEN,   0x1E}, // packet length 30
     {CC2500_07_PKTCTRL1, 0x04}, // enable RSSI+LQI, no addr check, no autoflush, PQT=0
     {CC2500_08_PKTCTRL0, 0x01}, // var length mode, no CRC, FIFO enable, no whitening
-    {CC2500_3E_PATABLE,  0xFF}, // ?? what are we doing to PA table here?
+    {CC2500_3E_PATABLE,  0xFF}, // set max power
     {CC2500_0B_FSCTRL1,  0x0A}, // IF=253.90625kHz assuming 26MHz crystal
     {CC2500_0C_FSCTRL0,  0x00}, // freqoffs = 0
     {CC2500_0D_FREQ2,    0x5C}, // freq control high
@@ -600,11 +601,13 @@ void AP_Radio_cc2500::irq_handler(void)
             chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
         
             cc2500.Strobe(CC2500_SIDLE);
-            cc2500.SetPower(get_transmit_power());
-            if (ccLen == 32 || get_protocol() == AP_Radio::PROTOCOL_D16) {
-                send_D16_telemetry();
-            } else {
-                send_SRT_telemetry();
+            if (get_telem_enable()) {
+                cc2500.SetPower(get_transmit_power());
+                if (ccLen == 32 || get_protocol() == AP_Radio::PROTOCOL_D16) {
+                    send_D16_telemetry();
+                } else {
+                    send_SRT_telemetry();
+                }
             }
         
             // we can safely sleep here as we have a dedicated thread for radio processing. We need to sleep
@@ -1026,10 +1029,10 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
     t_status.tx_max = get_tx_max_power();
     t_status.note_adjust = get_tx_buzzer_adjust();
 
-    // send fw update packet for 7/8 of packets if any data pending
+    // send fw update packet for 1/4 of packets if any data pending
     if (fwupload.length != 0 &&
         fwupload.length > fwupload.acked &&
-        ((fwupload.counter++ & 0x07) != 0) &&
+        ((fwupload.counter++ & 0x03) == 0) &&
         sem->take_nonblocking()) {
         pkt.type = fwupload.fw_type;
         pkt.payload.fw.seq = fwupload.sequence;
