@@ -150,7 +150,17 @@ uint8_t AP_Radio_beken::num_channels(void)
     uint32_t now = AP_HAL::millis();
     uint8_t chan = get_rssi_chan();
     if ((chan > 0) && ((chan-1) < BEKEN_MAX_CHANNELS)) {
-        pwm_channels[chan-1] = BK_RSSI_DEFAULT; // Fixed value that will not update (halfway in the RSSI range for Cypress chips, 0..31)
+		uint8_t value = BK_RSSI_DEFAULT; // Fixed value that will not update (halfway in the RSSI range for Cypress chips, 0..31)
+		if (beken.fcc.enable_cd)
+		{
+			if (beken.fcc.last_cd)
+				value += 4;
+			else
+				value -= 4;
+		}
+		if (t_status.pps == 0)
+			value = BK_RSSI_MIN; // No packets = no RSSI
+        pwm_channels[chan-1] = value;
         chan_count = MAX(chan_count, chan);
     }
 
@@ -241,10 +251,12 @@ void AP_Radio_beken::radio_init(void)
     // setup handler for rising edge of IRQ pin
     hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_FALLING);
 
-    if (load_bind_info()) { // what happens here? 
+    if (load_bind_info()) { // See if we already have bound to the address of a tx
         Debug(3,"Loaded bind info\n");
         nextChannel(1);
     }
+
+	beken.EnableCarrierDetect(true); // For autobinding
 
     chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Initial timeout?
     if (3 <= get_debug_level())
@@ -384,6 +396,7 @@ void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 		Debug(3, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
 			rx->u.bind.bind_address[1], rx->u.bind.bind_address[2],
 			rx->u.bind.bind_address[3], rx->u.bind.bind_address[4]);
+		save_bind_info(); // May take some time
 	}
 }
 
@@ -400,7 +413,11 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 			syncch.SetChannel(rx->channel);
 		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
-		    already_bound = true; // Do not autobind to a different tx unless we power off
+		    if (!already_bound)
+		    {
+				already_bound = true; // Do not autobind to a different tx unless we power off
+// test rssi	beken.EnableCarrierDetect(false); // Save 1ma of power
+			}
 			// Put the data into the control values (assuming mode2)
 			pwm_channels[0] = 1000 + rx->u.ctrl.roll     + (uint16_t(rx->u.ctrl.msb & 0xC0) << 2); // Roll
 			pwm_channels[1] = 1000 + rx->u.ctrl.pitch    + (uint16_t(rx->u.ctrl.msb & 0x30) << 4); // Pitch
@@ -456,6 +473,9 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			uint32_t now = AP_HAL::millis();
 			if (now < get_autobind_time() * 1000) // Is this too soon from rebooting/powering up to autobind?
 				break;
+			// Check the carrier detect to see if the drone is too far away to auto-bind
+			if (!beken.CarrierDetect())
+				break;
 			ProcessBindPacket(rx);
 		}
 		break;
@@ -465,6 +485,8 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 			if (bind_time_ms == 0) // We have never receiving a binding click
 				break; // Do not bind
+			if (already_bound) // Do not manually-bind (i.e. to another tx) until we reboot.
+				break;
 //			if (uint32_t(AP_HAL::millis() - bind_time_ms) > 1000ul * 60u) // Have we pressed the button to bind recently? One minute timeout
 //				break; // Do not bind
 			ProcessBindPacket(rx);
@@ -576,6 +598,14 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		beken.WriteReg(BK_WRITE_REG | BK_STATUS,
 			(BK_STATUS_RX_DR | BK_STATUS_TX_DS | BK_STATUS_MAX_RT)); // clear RX_DR or TX_DS or MAX_RT interrupt flag
 		ProcessPacket(packet, rxstd);
+		if (beken.fcc.enable_cd)
+		{
+			beken.fcc.last_cd = beken.CarrierDetect(); // Detect if close or not
+		}
+		else
+		{
+			beken.fcc.last_cd = true; // Assumed to be close
+		}
 	}
 
 	// Clear the bits
@@ -869,11 +899,7 @@ bool AP_Radio_beken::load_bind_info(void)
         return false;
     }
 
-//    beken.TX_Address[0] = info.bindTxId[0];
-//    beken.TX_Address[1] = info.bindTxId[1];
-//    beken.TX_Address[2] = info.bindTxId[2];
-//    beken.TX_Address[3] = info.bindTxId[3];
-//    beken.TX_Address[4] = info.bindTxId[4];
+	beken.SetAddresses(&info.bindTxId[0]);
 
     return true;
 }
