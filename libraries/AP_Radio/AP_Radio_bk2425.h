@@ -144,6 +144,7 @@ private:
     Radio_Beken beken; // The low level class for communicating to the Beken chip 
 	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
+    bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
 
     // bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;
