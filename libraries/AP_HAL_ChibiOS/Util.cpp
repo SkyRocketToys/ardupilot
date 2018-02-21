@@ -37,6 +37,12 @@ extern "C" {
     void *malloc_ccm(size_t size);
 };
 
+
+// start of 12 byte CPU ID
+#ifndef UDID_START
+#define UDID_START	0x1FFF7A10
+#endif
+
 /**
    how much free memory do we have in bytes.
 */
@@ -138,6 +144,24 @@ void Util::set_imu_target_temp(int8_t *target)
 #if HAL_WITH_IO_MCU && HAL_HAVE_IMU_HEATER
     heater.target = target;
 #endif
+}
+
+
+/*
+  display system identifer - board type and serial number
+ */
+bool Util::get_system_id(char buf[40])
+{
+    uint8_t serialid[12];
+    memcpy(serialid, (const void *)UDID_START, 12);
+    // this format is chosen to match the human_readable_serial()
+    // function in auth.c
+    snprintf(buf, 40, "%s %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+             CHIBIOS_SHORT_BOARD_NAME,
+             (unsigned)serialid[0], (unsigned)serialid[1], (unsigned)serialid[2], (unsigned)serialid[3], 
+             (unsigned)serialid[4], (unsigned)serialid[5], (unsigned)serialid[6], (unsigned)serialid[7], 
+             (unsigned)serialid[8], (unsigned)serialid[9], (unsigned)serialid[10],(unsigned)serialid[11]); 
+    return true;
 }
 
 #ifdef HAL_PWM_ALARM
