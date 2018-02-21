@@ -400,6 +400,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		{
 			syncch.SetChannel(rx->channel);
 		    synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
+		    already_bound = true; // Do not autobind to a different tx unless we power off
 			// Put the data into the control values (assuming mode2)
 			pwm_channels[0] = 1000 + rx->u.ctrl.roll     + (uint16_t(rx->u.ctrl.msb & 0xC0) << 2); // Roll
 			pwm_channels[1] = 1000 + rx->u.ctrl.pitch    + (uint16_t(rx->u.ctrl.msb & 0x30) << 4); // Pitch
@@ -450,8 +451,10 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				break;
 			if (get_autobind_time() == 0) // Have we disabled autobind using zero time parameter?
 				break;
+			if (already_bound) // Do not auto-bind (i.e. to another tx) until we reboot.
+				break;
 			uint32_t now = AP_HAL::millis();
-			if (now < get_autobind_time() * 1000) // Is this too soon to autobind?
+			if (now < get_autobind_time() * 1000) // Is this too soon from rebooting/powering up to autobind?
 				break;
 			ProcessBindPacket(rx);
 		}
