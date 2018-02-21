@@ -56,7 +56,7 @@ public:
     void unregister(void);
 
     // lock all shared DMA channels. Used on reboot
-    static void lock_all(void);
+    static void lock_all(uint32_t timeout_ms);
     
 private:
     dma_allocate_fn_t allocate;

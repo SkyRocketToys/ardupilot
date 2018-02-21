@@ -141,9 +141,9 @@ void Shared_DMA::unlock_from_IRQ(void)
   lock all channels - used on reboot to ensure no sensor DMA is in
   progress
  */
-void Shared_DMA::lock_all(void)
+void Shared_DMA::lock_all(uint32_t timeout_ms)
 {
     for (uint8_t i=0; i<SHARED_DMA_MAX_STREAM_ID; i++) {
-        chBSemWait(&locks[i].semaphore);
+        chBSemWaitTimeout(&locks[i].semaphore, MS2ST(timeout_ms));
     }
 }

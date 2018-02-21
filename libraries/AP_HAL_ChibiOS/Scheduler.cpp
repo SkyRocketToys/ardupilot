@@ -246,7 +246,7 @@ void Scheduler::reboot(bool hold_in_bootloader)
 
     // lock all shared DMA channels. This has the effect of waiting
     // till the sensor buses are idle
-    Shared_DMA::lock_all();
+    Shared_DMA::lock_all(10);
     
     // delay to ensure the async force_saftey operation completes
     delay(500);
