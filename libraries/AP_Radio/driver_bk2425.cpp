@@ -400,6 +400,44 @@ void Radio_Beken::SetCrcMode(uint8_t disable_crc)
 }
 
 // ----------------------------------------------------------------------------
+// Enable the carrier detect feature: Bank1 Reg5 Bit 18
+void Radio_Beken::EnableCarrierDetect(bool bEnable)
+{
+	if (bEnable == fcc.enable_cd)
+		return;
+    uint8_t oldready = bkReady;
+    bkReady = 0;
+    SetRBank(1);
+    {
+		const uint8_t* p = &Bank1_RegTable[gTxSpeed][IREG1_5][0];
+        uint8_t idx = *p++;
+        uint8_t buf[4];
+        buf[0] = *p++;
+        buf[1] = *p++;
+        buf[2] = *p++;
+        buf[3] = *p++;
+        if (bEnable)
+			buf[1] &= ~0x04;
+        WriteRegisterMulti((BK_WRITE_REG|idx), buf, 4);
+    }
+    SetRBank(0);
+	bkReady = oldready;
+	fcc.enable_cd = bEnable;
+}
+
+// ----------------------------------------------------------------------------
+// Returns true if a carrier is detected
+bool Radio_Beken::CarrierDetect(void)
+{
+	if (fcc.enable_cd)
+	{
+		if (ReadReg(BK_CD) & 0x01)
+			return true;
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------------
 void Radio_Beken::SetFactoryMode(uint8_t factory)
 {
 	uint8_t oldready = bkReady;

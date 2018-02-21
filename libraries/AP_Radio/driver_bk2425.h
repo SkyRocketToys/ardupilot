@@ -334,6 +334,8 @@ typedef struct FccParams_s {
     uint8_t power; ///< Current power 1..8
     bool disable_crc; ///< true=crc is physically disabled
 	uint8_t factory_mode; ///< factory test mode 0..8
+	bool enable_cd; ///< enable carrier detect
+	bool last_cd; ///< last carrier detect on a packet received
 } FccParams;
 
 typedef enum BkRadioMode_e {
@@ -392,7 +394,9 @@ public:
 	void DumpRegisters(void);
 	bool WasTxMode(void);
 	bool WasRxMode(void);
-	void ResetAddress();
+	void ResetAddress(void);
+	void EnableCarrierDetect(bool bEnable);
+	bool CarrierDetect(void);
 
     // Visible public variables (naughty)
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
