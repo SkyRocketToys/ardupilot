@@ -26,7 +26,7 @@
 #include "telem_structure.h"
 #include "driver_cc2500.h"
 
-#define CC2500_MAX_CHANNELS 16
+#define CC2500_MAX_PWM_CHANNELS 16
 
 class AP_Radio_cc2500 : public AP_Radio_backend
 {
@@ -92,7 +92,7 @@ private:
     AP_Radio::stats stats;
     AP_Radio::stats last_stats;
 
-    uint16_t pwm_channels[CC2500_MAX_CHANNELS];
+    uint16_t pwm_channels[CC2500_MAX_PWM_CHANNELS];
 
     Radio_CC2500 cc2500;
 
@@ -118,6 +118,7 @@ private:
     uint64_t bind_mask;
     uint8_t best_lqi;
     int8_t best_bindOffset;
+    uint8_t search_count;
 
     uint32_t timeTunedMs;
 
@@ -199,6 +200,7 @@ private:
 
     bool handle_D16_packet(const uint8_t *packet);
     bool handle_SRT_packet(const uint8_t *packet);
+    bool handle_autobind_packet(const uint8_t *packet);
 
     // check sending of fw upload ack
     void check_fw_ack(void);
