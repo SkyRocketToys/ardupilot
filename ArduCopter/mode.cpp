@@ -175,7 +175,7 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
     flightmode = new_flightmode;
     control_mode = mode;
     control_mode_reason = reason;
-    DataFlash.Log_Write_Mode(control_mode);
+    DataFlash.Log_Write_Mode(control_mode, reason);
 
     adsb.set_is_auto_mode((mode == AUTO) || (mode == RTL) || (mode == GUIDED));
 
