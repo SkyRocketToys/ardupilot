@@ -55,6 +55,9 @@ public:
     static ToneAlarm& get_ToneAlarm() { return _toneAlarm; }
 #endif
 
+    // get system ID as string
+    bool get_system_id(char buf[40]);
+    
 private:
 #ifdef HAL_PWM_ALARM
     static ToneAlarm _toneAlarm;
