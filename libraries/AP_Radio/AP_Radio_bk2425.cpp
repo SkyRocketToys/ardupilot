@@ -15,7 +15,6 @@
 #include <AP_Notify/AP_Notify.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
-static THD_WORKING_AREA(_irq_handler_wa, 2048);
 #define TIMEOUT_PRIORITY 250	//Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0) // Event in the irq handler thread triggered by a timeout interrupt
 #define EVT_IRQ EVENT_MASK(1) // Event in the irq handler thread triggered by a radio IRQ (Tx finished, Rx finished, MaxRetries limit)
@@ -89,11 +88,12 @@ bool AP_Radio_beken::init(void)
         AP_HAL::panic("AP_Radio_beken: double instantiation of irq_handler\n");
     }
     chVTObjectInit(&timeout_vt);
-    _irq_handler_ctx = chThdCreateStatic(_irq_handler_wa,
-                     sizeof(_irq_handler_wa),
-                     TIMEOUT_PRIORITY,          /* Initial priority.    */
-                     irq_handler_thd,           /* Thread function.     */
-                     NULL);                     /* Thread parameter.    */
+    _irq_handler_ctx = chThdCreateFromHeap(NULL,
+                                           THD_WORKING_AREA_SIZE(2048),
+                                           "radio_bk2425",
+                                           TIMEOUT_PRIORITY,          /* Initial priority.    */
+                                           irq_handler_thd,           /* Thread function.     */
+                                           NULL);                     /* Thread parameter.    */
     sem = hal.util->new_semaphore();    
     
     return reset();
