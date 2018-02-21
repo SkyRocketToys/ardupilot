@@ -41,6 +41,14 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 #endif
 
 /*
+  there are 235 (0xEB) channels we can use. The binding process
+  selects 47 of these channels. Each channel step represents 0.3MHz,
+  from 2403.6 MHz at channel 0 up to 2473.8MHz at channel 234
+ */
+#define CC2500_MAX_CHANNELS 0xEB
+#define MAX_CHANNELS 47
+
+/*
   constructor
  */
 AP_Radio_cc2500::AP_Radio_cc2500(AP_Radio &_radio) :
@@ -295,7 +303,7 @@ void AP_Radio_cc2500::radio_init(void)
 
     if (load_bind_info()) {
         Debug(3,"Loaded bind info\n");
-        listLength = 47;
+        listLength = NUM_CHANNELS;
         initialiseData(0);
         protocolState = STATE_SEARCH;
         chanskip = 1;
@@ -565,7 +573,7 @@ void AP_Radio_cc2500::irq_handler(void)
         break;
 
     case STATE_STARTING:
-        listLength = 47;
+        listLength = NUM_CHANNELS;
         initialiseData(0);
         protocolState = STATE_SEARCH;
         chanskip = 1;
@@ -638,7 +646,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     if (get_fcc_test() != 0 && protocolState != STATE_FCCTEST) {
         protocolState = STATE_FCCTEST;
         Debug(1,"Starting FCCTEST %d\n", get_fcc_test());
-        setChannel(labs(get_fcc_test()) * 10);
+        setChannel((labs(get_fcc_test())-1) * 10);
         send_D16_telemetry();
     }
     
@@ -693,8 +701,9 @@ void AP_Radio_cc2500::irq_timeout(void)
         if (get_fcc_test() == 0) {
             protocolState = STATE_DATA;
             Debug(1,"Ending FCCTEST\n");
+        } else {
+            setChannel((labs(get_fcc_test())-1) * 10);
         }
-        setChannel(labs(get_fcc_test()) * 10);
         cc2500.SetPower(get_transmit_power());
         send_D16_telemetry();
         break;
@@ -852,7 +861,7 @@ bool AP_Radio_cc2500::getBindData(uint8_t ccLen, uint8_t *packet)
             }
         }
         // bind has finished when we have hopping data for all channels
-        return (listLength == 47 && bind_mask == ((uint64_t(1)<<47)-1));
+        return (listLength == NUM_CHANNELS && bind_mask == ((uint64_t(1)<<NUM_CHANNELS)-1));
     }
     return false;
 }
