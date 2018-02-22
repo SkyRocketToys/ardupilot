@@ -40,13 +40,26 @@ virtual_timer_t AP_Radio_cc2500::timeout_vt;
 uint32_t AP_Radio_cc2500::irq_time_us;
 #endif
 
+#define USE_D16_FORMAT 0
+
 /*
-  there are 235 (0xEB) channels we can use. The binding process
-  selects 47 of these channels. Each channel step represents 0.3MHz,
-  from 2403.6 MHz at channel 0 up to 2473.8MHz at channel 234
+  we are setup for a channel spacing of 0.3MHz, with channel 0 being 2403.6MHz
+
+  For D16 protocol we select 47 channels from a max of 235 channels
+
+  For SRT protocol we select 23 channels from a max of 233 channels,
+  and avoid channels near to the WiFi channel of the Sonix video board
  */
-#define MAX_CHANNEL_NUMBER 0xEB
+#if USE_D16_FORMAT
 #define NUM_CHANNELS 47
+#define MAX_CHANNEL_NUMBER 0xEB
+#define INTER_PACKET_MS 9
+#else
+#define NUM_CHANNELS 23
+#define MAX_CHANNEL_NUMBER 0xEB
+#define INTER_PACKET_MS 8
+#endif
+
 #define AUTOBIND_CHANNEL 100
 
 /*
@@ -314,7 +327,7 @@ void AP_Radio_cc2500::radio_init(void)
         protocolState = STATE_BIND_TUNING;
     }
 
-    chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
 }
 
 void AP_Radio_cc2500::trigger_irq_radio_event()
@@ -331,7 +344,7 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     (void)arg;
     //we are called from ISR context
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
@@ -501,6 +514,99 @@ bool AP_Radio_cc2500::handle_SRT_packet(const uint8_t *packet)
     return true;
 }
 
+/*
+  see if we have already assigned a channel
+ */
+bool AP_Radio_cc2500::have_channel(uint8_t channel, uint8_t count, uint8_t loop)
+{
+    uint8_t i;
+    for (i=0; i<count; i++) {
+        if (bindHopData[i] == channel) {
+            return true;
+        }
+        if (loop < 5) {
+            int separation = ((int)bindHopData[i]) - (int)channel;
+            if (separation < 0) {
+                separation = -separation;
+            }
+            if (separation < 4) {
+                // try if possible to stay at least 4 channels from existing channels
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/*
+  mapping from WiFi channel number minus 1 to cc2500 channel
+  number. WiFi channels are separated by 5MHz starting at 2412 MHz,
+  except for channel 14, which has a 12MHz separation. We represent
+  channel 14 as 255 as we want to keep this table 8 bit.
+ */
+static const uint8_t wifi_chan_map[14] = {
+    28, 44, 61, 78, 94, 111, 128, 144, 161, 178, 194, 211, 228, 255
+};
+
+/*
+  create hopping table for SRT protocol
+ */
+void AP_Radio_cc2500::setup_hopping_table_SRT(void)
+{
+    uint8_t val;
+    uint8_t channel = bindTxId[0] % 127;
+    uint8_t channel_spacing = bindTxId[1] % 127;
+    uint8_t i;
+    uint8_t wifi_chan = t_status.wifi_chan;
+    uint8_t cc_wifi_mid, cc_wifi_low, cc_wifi_high;
+
+    if (wifi_chan == 0 || wifi_chan > 14) {
+        wifi_chan = 9;
+    }
+    cc_wifi_mid = wifi_chan_map[wifi_chan-1];
+    if (cc_wifi_mid < 30) {
+        cc_wifi_low = 0;
+    } else {
+        cc_wifi_low = cc_wifi_mid - 30;
+    }
+    if (cc_wifi_mid > 225) {
+        cc_wifi_high = 255;
+    } else {
+        cc_wifi_high = cc_wifi_mid + 30;
+    }
+    
+    if (channel_spacing < 7) {
+        channel_spacing += 7;
+    }
+    
+    for (i=0; i<NUM_CHANNELS; i++) {
+        // loop is to prevent any possibility of non-completion
+        uint8_t loop = 0;
+        do {
+            channel = (channel+channel_spacing) % MAX_CHANNEL_NUMBER;
+            
+            if ((channel <= cc_wifi_low || channel >= cc_wifi_high) && !have_channel(channel, i, loop)) {
+                // accept if not in wifi range and not already allocated
+                break;
+            }
+        } while (loop++ < 100);
+        val=channel;
+        // channels to avoid from D16 code, not properly understood
+        if ((val==0x00) || (val==0x5A) || (val==0xDC)) {
+            val++;
+        }
+        bindHopData[i] = val;
+    }
+    for (i=0; i<NUM_CHANNELS; i++) {
+        Debug(3, "%u ", bindHopData[i]);
+    }
+    Debug(3, "\n");
+    last_wifi_channel = t_status.wifi_chan;
+    Debug(2, "Setup hopping for 0x%x:0x%0x WiFi %u %u-%u spc:%u\n",
+          bindTxId[0], bindTxId[1],
+          wifi_chan, cc_wifi_low, cc_wifi_high, channel_spacing);
+}
+
 
 /*
   handle a autobind packet
@@ -527,30 +633,7 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
     bindOffset = 0;
     listLength = NUM_CHANNELS;
 
-    // calculate hopping channels to match TX
-    uint8_t channel = bindTxId[0] & 0x07;
-    uint8_t channel_spacing = bindTxId[1];
-
-    // Filter bad tables
-    if (channel_spacing < 0x02) {
-        channel_spacing += 0x02;
-    }
-    if (channel_spacing>0xE9) {
-        channel_spacing -= 0xE7;
-    }
-    if (channel_spacing % NUM_CHANNELS == 0) {
-        channel_spacing++;
-    }
-    
-    bindHopData[0] = channel;
-    for (uint8_t i=1; i<NUM_CHANNELS; i++) {
-        channel = (channel+channel_spacing) % MAX_CHANNEL_NUMBER;
-        uint8_t val=channel;
-        if ((val==0x00) || (val==0x5A) || (val==0xDC)) {
-            val++;
-        }
-        bindHopData[i] = val;
-    }
+    setup_hopping_table_SRT();
 
     Debug(1,"Saved bind data\n");
     save_bind_info();
@@ -669,7 +752,7 @@ void AP_Radio_cc2500::irq_handler(void)
             stats.recv_packets++;
 
             packet_timer = irq_time_us;
-            chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr);
+            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
         
             cc2500.Strobe(CC2500_SIDLE);
             if (get_telem_enable()) {
@@ -684,7 +767,7 @@ void AP_Radio_cc2500::irq_handler(void)
             // we can safely sleep here as we have a dedicated thread for radio processing. We need to sleep
             // for enough time for the packet to be fully transmitted
             cc2500.unlock_bus();
-            hal.scheduler->delay_microseconds(3500);
+            hal.scheduler->delay_microseconds(2000);
             cc2500.lock_bus();
         
             nextChannel(chanskip);
@@ -749,8 +832,8 @@ void AP_Radio_cc2500::irq_timeout(void)
         } else {
             nextChannel(chanskip);
             // to keep the timeouts 1ms behind the expected time we
-            // need to set the timeout to 9ms
-            chVTSet(&timeout_vt, MS2ST(9), trigger_timeout_event, nullptr);
+            // need to set the timeout to the inter-packet delay again now
+            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS), trigger_timeout_event, nullptr);
             lost++;
         }
         break;
@@ -762,9 +845,9 @@ void AP_Radio_cc2500::irq_timeout(void)
             get_autobind_time() != 0 &&
             (AP_HAL::micros() - packet_timer) > get_autobind_time() * 1000UL*1000UL &&
             (search_count & 1) == 0) {
-            // try for an autobind packet every 2nd packet, waiting 30ms for a rely
+            // try for an autobind packet every 2nd packet, waiting 3 packet delays
             setChannel(AUTOBIND_CHANNEL);
-            chVTSet(&timeout_vt, MS2ST(30), trigger_timeout_event, nullptr);
+            chVTSet(&timeout_vt, MS2ST((INTER_PACKET_MS+1)*3), trigger_timeout_event, nullptr);
         } else {
             // shift by one channel at a time when searching
             nextChannel(1);
@@ -1054,6 +1137,8 @@ bool AP_Radio_cc2500::load_bind_info(void)
     listLength = info.listLength;
     memcpy(bindHopData, info.bindHopData, sizeof(bindHopData));
 
+    setup_hopping_table_SRT();
+
     return true;
 }
 
@@ -1149,6 +1234,10 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
         cc2500.WriteFifo((const uint8_t *)&pkt, sizeof(pkt));
     }
     cc2500.Strobe(CC2500_STX);
+
+    if (last_wifi_channel != t_status.wifi_chan) {
+        setup_hopping_table_SRT();
+    }
 }
 
 /*
