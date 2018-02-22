@@ -326,6 +326,9 @@ public:
     // get timing statistics structure
     void getTimingStatistics(int8_t instance, struct ekf_timing &timing) const;
 
+    // write diagnostics to DataFlash log
+    void Log_Write_EKF2(class AP_AHRS_NavEKF &ahrs);
+
 private:
     uint8_t num_cores; // number of allocated cores
     uint8_t primary;   // current primary core
