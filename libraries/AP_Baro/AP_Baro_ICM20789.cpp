@@ -214,8 +214,8 @@ bool AP_Baro_ICM20789::init()
 
     debug("ICM20789: startup OK\n");
 
-    // use 10ms to ensure we don't lose samples, with max lag of 10ms
-    dev->register_periodic_callback(CONVERSION_INTERVAL/2, FUNCTOR_BIND_MEMBER(&AP_Baro_ICM20789::timer, void));
+    // use 25ms to guarantee we don't read before data is ready
+    dev->register_periodic_callback(25000, FUNCTOR_BIND_MEMBER(&AP_Baro_ICM20789::timer, void));
 
     return true;
 
@@ -324,6 +324,11 @@ void AP_Baro_ICM20789::convert_data(uint32_t Praw, uint32_t Traw)
 void AP_Baro_ICM20789::timer(void)
 {
     uint8_t d[9] {};
+    uint32_t now = AP_HAL::micros();
+    if (now - last_measure_us < 23800) {
+        // don't attempt sampling at less than 23.8ms delay
+        return;
+    }
     if (dev->transfer(nullptr, 0, d, sizeof(d))) {
         // ignore CRC bytes for now
         uint32_t Praw = (uint32_t(d[0]) << 16) | (uint32_t(d[1]) << 8) | d[3];
