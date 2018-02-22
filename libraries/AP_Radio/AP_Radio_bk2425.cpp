@@ -43,7 +43,8 @@ uint32_t AP_Radio_beken::next_switch_us;
 uint32_t AP_Radio_beken::bind_time_ms;
 
 // -----------------------------------------------------------------------------
-// We have re
+// We have received a packet
+// Sort out our timing relative to the tx to avoid clock drift
 void SyncTiming::Rx(uint32_t when)
 {
 	uint32_t ld = delta_rx_time_us;
@@ -59,6 +60,46 @@ void SyncTiming::Rx(uint32_t when)
 	rx_time_us = when;
 	delta_rx_time_us = d;
 	last_delta_rx_time_us = ld;
+}
+
+// -----------------------------------------------------------------------------
+// Implement queuing (a 92 byte packet) in the circular buffer
+void FwUpload::queue(const uint8_t *pSrc, uint8_t len)
+{
+	if (len == 0 || len > free_length())
+		return; // Safety check for out of space error
+	if (pending_head + len > SZ_BUFFER)
+	{
+		uint8_t n = SZ_BUFFER-pending_head;
+		memcpy(&pending_data[pending_head], pSrc, n);
+		memcpy(&pending_data[0], pSrc+n, len-n);
+	}
+	else
+	{
+		memcpy(&pending_data[pending_head], pSrc, len);
+	}
+	pending_head = (pending_head + len) & (SZ_BUFFER-1);
+	added += len;
+}
+
+// -----------------------------------------------------------------------------
+// Implement dequeing (a 16 byte packet)
+void FwUpload::dequeue(uint8_t *pDst, uint8_t len)
+{
+	if (len == 0 || len > pending_length())
+		return; // Safety check for underflow error
+	if (pending_tail + len > SZ_BUFFER)
+	{
+		uint8_t n = SZ_BUFFER-pending_tail;
+		memcpy(pDst, &pending_data[pending_tail], n);
+		memcpy(pDst+n, &pending_data[0], len-n);
+	}
+	else
+	{
+		memcpy(pDst, &pending_data[pending_tail], len);
+	}
+	pending_tail = (pending_tail + len) & (SZ_BUFFER-1);
+	sent += len;
 }
 
 
@@ -139,6 +180,7 @@ uint16_t AP_Radio_beken::read(uint8_t chan)
  */
 void AP_Radio_beken::update(void)
 {
+	check_fw_ack();
 }
     
 
@@ -288,6 +330,7 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
     chSysUnlockFromISR();
 }
 
+// ----------------------------------------------------------------------------
 // The user has clicked on the "Start Bind" button on the web interface
 void AP_Radio_beken::start_recv_bind(void)
 {
@@ -298,9 +341,42 @@ void AP_Radio_beken::start_recv_bind(void)
     Debug(1,"Starting bind\n");
 }
 
+// ----------------------------------------------------------------------------
 // handle a data96 mavlink packet for fw upload
 void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m)
 {
+    uint32_t ofs=0;
+    memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
+    Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
+    if (sem->take_nonblocking()) {
+        fwupload.chan = chan;
+        fwupload.need_ack = false;
+        if (ofs == 0)
+        {
+			printf("Fwr ");
+			fwupload.reset();
+		}
+		if (ofs != fwupload.added)
+		{
+			printf("Fwbo ");
+			fwupload.need_ack = true; // We want more data
+		}
+		else
+		{
+			printf("F");
+			if (m.type == 43) {
+				// sending a tune to play - for development testing
+				fwupload.fw_type = TELEM_PLAY;
+				fwupload.queue(&m.data[0], MIN(m.len, 90));
+			} else {
+				// sending a chunk of firmware OTA upload
+				fwupload.fw_type = TELEM_FW;
+				fwupload.queue(&m.data[4], MIN(m.len-4, 92)); // This might fail if mavlink sends it too fast to me
+				printf("f");
+			}
+		}
+        sem->give();
+    } 
 }
 
 
@@ -323,26 +399,72 @@ void AP_Radio_beken::update_SRT_telemetry(void)
 
 // ----------------------------------------------------------------------------
 // Update a radio control packet
-// Called from IRQ context
-void AP_Radio_beken::UpdateTxData(void)
+// Called from IRQ context.
+// Returns true for DFU, false for telemetry
+bool AP_Radio_beken::UpdateTxData(void)
 {
-	packetFormatTx* tx = &beken.pktDataTx;
-
-	// Base values for this packet type
-	update_SRT_telemetry();
-	tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
-//	tx->channel;
-	tx->pps = t_status.pps;
-	tx->flags = t_status.flags;
-	tx->droneid[0] = myDroneId[0];
-	tx->droneid[1] = myDroneId[1];
-	tx->droneid[2] = myDroneId[2];
-	tx->droneid[3] = myDroneId[3];
-	tx->flight_mode = t_status.flight_mode;
-	tx->wifi = t_status.wifi_chan + (24 * t_status.tx_max);
-	tx->note_adjust = t_status.note_adjust;
+    // send firmware update packet for 7/8 of packets if any data pending
+    if ((fwupload.added >= (fwupload.acked + SZ_DFU)) && // Do we have a new packet to upload?
+        ((fwupload.counter++ & 0x07) != 0) && // Avoid starvation of telemetry
+        sem->take_nonblocking()) // Is the other threads busy with fwupload data?
+	{
+		// Send DFU packet
+		packetFormatDfu* tx = &beken.pktDataDfu;
+		if (fwupload.sent > fwupload.acked)
+		{
+			// Resend the last tx packet until it is acknowledged
+//			DebugPrintf(4, "resend %u", fwupload.acked);
+		}
+		else
+		{
+			// Send firmware update packet
+			tx->packetType = BK_PKT_TYPE_DFU;
+		//	tx->channel;
+			uint16_t addr = fwupload.sent;
+			tx->address_lo = addr & 0xff;
+			tx->address_hi = (addr >> 8);
+			fwupload.dequeue(&tx->data[0], SZ_DFU);
+//			DebugPrintf(4, "send %u", fwupload.acked);
+			if (fwupload.free_length() >= 96)
+				fwupload.need_ack = true; // Request a new mavlink packet
+		}
+        sem->give();
+        return true;
+    } else {
+		// Send telemetry packet
+		packetFormatTx* tx = &beken.pktDataTx;
+		update_SRT_telemetry();
+		tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
+	//	tx->channel;
+		tx->pps = t_status.pps;
+		tx->flags = t_status.flags;
+		tx->droneid[0] = myDroneId[0];
+		tx->droneid[1] = myDroneId[1];
+		tx->droneid[2] = myDroneId[2];
+		tx->droneid[3] = myDroneId[3];
+		tx->flight_mode = t_status.flight_mode;
+		tx->wifi = t_status.wifi_chan + (24 * t_status.tx_max);
+		tx->note_adjust = t_status.note_adjust;
+		return false;
+    }
+	
 }
 
+// ----------------------------------------------------------------------------
+// When (most of) a 92 byte packet has been sent to the Tx, ask for another one
+// called from main thread
+void AP_Radio_beken::check_fw_ack(void)
+{
+    if (fwupload.need_ack && sem->take_nonblocking()) {
+        // ack the send of a DATA96 fw packet to TX
+        fwupload.need_ack = false;
+        uint8_t data16[16] {};
+        uint32_t ack_to = fwupload.added;
+        memcpy(&data16[0], &ack_to, 4); // Assume endianness matches
+        mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
+        sem->give();
+    }
+}
 
 // ----------------------------------------------------------------------------
 /* support all 4 rc input modes by swapping channels. */
@@ -430,7 +552,15 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			chan_count = MAX(chan_count, 7);
 			switch (rx->u.ctrl.data_type) {
 			case BK_INFO_FW_VER: break;
-			case BK_INFO_DFU_RX: break;
+			case BK_INFO_DFU_RX:
+				{
+					uint16_t ofs = rx->u.ctrl.data_value_hi;
+					ofs <<= 8;
+					ofs |= rx->u.ctrl.data_value_lo;
+					if (ofs == fwupload.acked + SZ_DFU)
+						fwupload.acked = ofs;
+				}
+				break;
 			case BK_INFO_FW_CRC_LO: break;
 			case BK_INFO_FW_CRC_HI: break;
 			case BK_INFO_FW_YM: break;
@@ -581,7 +711,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			{
 				bReply = true;
 				synctm.Rx(when);
-				printf("%d ", when + synctm.sync_time_us + 3000 - next_switch_us);
+//				printf("%d ", when + synctm.sync_time_us + 3000 - next_switch_us);
 				next_switch_us = when + synctm.sync_time_us + 3000; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
@@ -618,21 +748,19 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			// Send the telemetry reply to the controller
 			beken.Strobe(BK_FLUSH_TX); // flush Tx
 			beken.ClearAckOverflow();
-			UpdateTxData();
+			bool txDfu = UpdateTxData();
 			beken.pktDataTx.channel = syncch.channel;
 			if (beken.fcc.disable_crc_mode)
 			{
 				// Only disable the CRC on reception, not transmission, so the connection remains.
 				beken.SwitchToIdleMode();
 				beken.SetCrcMode(false);
-				beken.SwitchToTxMode();
-				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
 			}
+			beken.SwitchToTxMode();
+			if (txDfu)
+				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataDfu, PACKET_LENGTH_TX_DFU);
 			else
-			{
-				beken.SwitchToTxMode();
 				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
-			}
 		}
 		else // Try to still work when telemetry is disabled
 		{
