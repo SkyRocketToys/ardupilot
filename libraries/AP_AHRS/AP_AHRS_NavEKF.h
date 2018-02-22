@@ -21,6 +21,8 @@
  *
  */
 
+#define AP_AHRS_NAVEKF_AVAILABLE 1
+
 #include <AP_HAL/AP_HAL.h>
 #include "AP_AHRS.h"
 
@@ -33,7 +35,6 @@
 #include <AP_NavEKF3/AP_NavEKF3.h>
 #include <AP_NavEKF/AP_Nav_Common.h>              // definitions shared by inertial and ekf nav filters
 
-#define AP_AHRS_NAVEKF_AVAILABLE 1
 #define AP_AHRS_NAVEKF_SETTLE_TIME_MS 20000     // time in milliseconds the ekf needs to settle after being started
 
 class AP_AHRS_NavEKF : public AP_AHRS_DCM {
