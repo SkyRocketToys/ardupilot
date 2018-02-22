@@ -18,9 +18,10 @@
 #include <AP_Notify/AP_Notify.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Math/crc.h>
+#include <AP_Param/AP_Param.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-#define TIMEOUT_PRIORITY 250	//Right above timer thread
+#define TIMEOUT_PRIORITY 185
 #define EVT_TIMEOUT EVENT_MASK(0)
 #define EVT_IRQ EVENT_MASK(1)
 #define EVT_BIND EVENT_MASK(2)
@@ -29,8 +30,6 @@
 extern const AP_HAL::HAL& hal;
 
 #define Debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { gcs().send_text(MAV_SEVERITY_INFO, fmt, ##args); }} while (0)
-
-#define LP_FIFO_SIZE  16      // Physical data FIFO lengths in Radio
 
 // object instance for trampoline
 AP_Radio_cc2500 *AP_Radio_cc2500::radio_instance;
@@ -298,7 +297,7 @@ void AP_Radio_cc2500::radio_init(void)
         cc2500.Strobe(CC2500_SIDLE);
         cc2500.WriteRegCheck(CC2500_0A_CHANNR, c);
         cc2500.Strobe(CC2500_SCAL);
-        hal.scheduler->delay_microseconds(900);
+        hal.scheduler->delay_microseconds(2000);
         calData[c][0] = cc2500.ReadReg(CC2500_23_FSCAL3);
         calData[c][1] = cc2500.ReadReg(CC2500_24_FSCAL2);
         calData[c][2] = cc2500.ReadReg(CC2500_25_FSCAL1);
@@ -330,7 +329,11 @@ void AP_Radio_cc2500::radio_init(void)
     chanskip = 1;
     nextChannel(1);
 
+    // set default autobind power to suit the cc2500
+    AP_Param::set_default_by_name("BRD_RADIO_ABLVL", 75);
+
     chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
+
 }
 
 void AP_Radio_cc2500::trigger_irq_radio_event()
@@ -628,6 +631,14 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
         // not a valid autobind packet
         return false;
     }
+    uint8_t rssi_raw = packet[sizeof(struct autobind_packet_cc2500)];
+    float rssi_dbm = map_RSSI_to_dBm(rssi_raw);
+
+    if (rssi_dbm < get_autobind_rssi()) {
+        Debug(3,"autobind RSSI %u needs %u\n", rssi_dbm, get_autobind_rssi());
+        return false;
+    }
+    
     bindTxId[0] = pkt->txid[0];
     bindTxId[1] = pkt->txid[1];
 
@@ -644,6 +655,20 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
     save_bind_info();
     
     return true;
+}
+
+/*
+  map a raw RSSI value to a dBm value
+ */
+uint8_t AP_Radio_cc2500::map_RSSI_to_dBm(uint8_t rssi_raw)
+{
+    float rssi_dbm;
+    if (rssi_raw >= 128) {
+        rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) - 82;
+    } else {
+        rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) + 65;
+    }
+    return rssi_dbm;
 }
 
 // main IRQ handler
@@ -745,12 +770,7 @@ void AP_Radio_cc2500::irq_handler(void)
         if (ok) {
             // get RSSI value from status byte
             uint8_t rssi_raw = packet[ccLen-2];
-            float rssi_dbm;
-            if (rssi_raw >= 128) {
-                rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) - 82;
-            } else {
-                rssi_dbm = ((((uint16_t)rssi_raw) * 18) >> 5) + 65;
-            }
+            float rssi_dbm = map_RSSI_to_dBm(rssi_raw);
             rssi_filtered = 0.95 * rssi_filtered + 0.05 * rssi_dbm;
             t_status.rssi = uint8_t(MAX(rssi_filtered, 1));
 
@@ -828,7 +848,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
         
-        if (now - packet_timer > 50*sync_time_us) {
+        if (now - packet_timer > 50*INTER_PACKET_MS) {
             Debug(3,"searching %u\n", unsigned(now - packet_timer));
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);

@@ -107,7 +107,6 @@ private:
     int8_t fcc_chan;
     uint32_t packet_timer;
     static uint32_t irq_time_us;
-    const uint32_t sync_time_us = 9000;
     uint8_t chan_count;
     uint32_t lost;
     uint32_t timeouts;
@@ -204,6 +203,7 @@ private:
     bool handle_autobind_packet(const uint8_t *packet);
     bool have_channel(uint8_t channel, uint8_t count, uint8_t loop);
     void setup_hopping_table_SRT(void);
+    uint8_t map_RSSI_to_dBm(uint8_t rssi_raw);
 
     // check sending of fw upload ack
     void check_fw_ack(void);
