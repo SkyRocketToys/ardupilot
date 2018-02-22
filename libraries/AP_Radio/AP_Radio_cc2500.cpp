@@ -848,7 +848,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
         
-        if (now - packet_timer > 50*INTER_PACKET_MS) {
+        if (now - packet_timer > 50*INTER_PACKET_MS*1000UL) {
             Debug(3,"searching %u\n", unsigned(now - packet_timer));
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);
