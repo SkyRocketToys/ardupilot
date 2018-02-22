@@ -565,20 +565,21 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
     uint8_t i;
     uint8_t wifi_chan = t_status.wifi_chan;
     uint8_t cc_wifi_mid, cc_wifi_low, cc_wifi_high;
+    const uint8_t wifi_separation = 50;
 
     if (wifi_chan == 0 || wifi_chan > 14) {
         wifi_chan = 9;
     }
     cc_wifi_mid = wifi_chan_map[wifi_chan-1];
-    if (cc_wifi_mid < 30) {
+    if (cc_wifi_mid < wifi_separation) {
         cc_wifi_low = 0;
     } else {
-        cc_wifi_low = cc_wifi_mid - 30;
+        cc_wifi_low = cc_wifi_mid - wifi_separation;
     }
     if (cc_wifi_mid > 225) {
         cc_wifi_high = 255;
     } else {
-        cc_wifi_high = cc_wifi_mid + 30;
+        cc_wifi_high = cc_wifi_mid + wifi_separation;
     }
     
     if (channel_spacing < 7) {
