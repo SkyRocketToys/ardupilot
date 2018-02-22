@@ -71,7 +71,7 @@ public:
 
     // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
     void set_wifi_channel(uint8_t channel) {
-        // t_status.wifi_chan = channel;
+        t_status.wifi_chan = channel;
     }
     
 private:
@@ -119,6 +119,7 @@ private:
     uint8_t best_lqi;
     int8_t best_bindOffset;
     uint8_t search_count;
+    uint8_t last_wifi_channel;
 
     uint32_t timeTunedMs;
 
@@ -201,6 +202,8 @@ private:
     bool handle_D16_packet(const uint8_t *packet);
     bool handle_SRT_packet(const uint8_t *packet);
     bool handle_autobind_packet(const uint8_t *packet);
+    bool have_channel(uint8_t channel, uint8_t count, uint8_t loop);
+    void setup_hopping_table_SRT(void);
 
     // check sending of fw upload ack
     void check_fw_ack(void);
