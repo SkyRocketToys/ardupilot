@@ -75,6 +75,28 @@ struct SyncChannel {
     void SafeTable(void); // Give up on this WiFi table as packets have not been received
 };
 
+// Support OTA upload. Assumes that mavlink offsets go from zero upwards contiguously
+struct FwUpload {
+	enum { SZ_BUFFER = 128 }; // Must be a power of two
+	mavlink_channel_t chan; // Reference for talking to mavlink subsystem
+	bool need_ack; // When true, we need to talk to mavlink subsystem (ask for more firmware)
+	uint8_t counter; // Used to throttle the upload, to prevent starvation of telemetry
+	enum telem_type fw_type; // Whether we are uploading program code or a test tune
+	uint32_t added;  // The number of bytes added to the queue
+	uint32_t sent;   // The number of bytes sent to the tx
+	uint32_t acked;  // The number of bytes acked by the tx
+	uint8_t pending_data[SZ_BUFFER]; // Pending data (from mavlink packets) circular buffer
+	uint8_t pending_head; // Where mavlink packets are added (relative to pending_data[0])
+	uint8_t pending_tail; // Where DFU packets are taken from (relative to pending_data[0])
+
+	// Helper functions	
+	uint8_t pending_length() { return (pending_head - pending_tail) & (SZ_BUFFER-1); }
+	uint8_t free_length() { return SZ_BUFFER - pending_length(); }
+	void queue(const uint8_t *pSrc, uint8_t len); // Assumes sufficient room has been checked for
+	void dequeue(uint8_t *pDst, uint8_t len); // Assumes sufficient data has been checked for
+	void reset() { added = sent = acked = 0; pending_head = pending_tail = 0; need_ack = false; }
+};
+
 // Main class for receiving (and replying) to Beken radio packets
 class AP_Radio_beken : public AP_Radio_backend
 {
@@ -97,20 +119,6 @@ public:
     void set_wifi_channel(uint8_t channel) { t_status.wifi_chan = channel; } // set the 2.4GHz wifi channel used by companion computer, so it can be avoided
     
 private:
-    AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev; // Low level support of SPI device
-    
-    // Static data, for interrupt support
-    static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
-    static thread_t *_irq_handler_ctx;
-    static virtual_timer_t timeout_vt;
-    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
-    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread (copied from irq_time_us)
-    static uint32_t last_timeout_us; // Time the timeout was last triggered (copied from irq_time_us via irq_when_us)
-    static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
-    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us). Faster than the actual timing, since at the time we retrigger a timer interrupt we have insufficient information.
-    static uint32_t next_switch_us; // Time when we next want to switch radio channels
-    static uint32_t bind_time_ms; // Rough time in ms (milliseconds) when the last BIND command was received
-
 	// Static functions, for interrupt support
     static void irq_handler_thd(void* arg);
     static void trigger_irq_radio_event(void);
@@ -128,16 +136,29 @@ private:
     void save_bind_info(void);
     bool load_bind_info(void);
 	void UpdateFccScan(void);
-	void UpdateTxData(void);
+	bool UpdateTxData(void);
 	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
 	void update_SRT_telemetry(void);
+	void check_fw_ack(void);
+   
+    // Static data, for interrupt support
+    static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
+    static thread_t *_irq_handler_ctx;
+    static virtual_timer_t timeout_vt;
+    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
+    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread (copied from irq_time_us)
+    static uint32_t last_timeout_us; // Time the timeout was last triggered (copied from irq_time_us via irq_when_us)
+    static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
+    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us). Faster than the actual timing, since at the time we retrigger a timer interrupt we have insufficient information.
+    static uint32_t next_switch_us; // Time when we next want to switch radio channels
+    static uint32_t bind_time_ms; // Rough time in ms (milliseconds) when the last BIND command was received
 
-    // semaphore between ISR and main thread
-    AP_HAL::Semaphore *sem;    
+	// Class data
+    AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev; // Low level support of SPI device
+    AP_HAL::Semaphore *sem;  // semaphore between ISR and main thread to protect fwupload
 
     AP_Radio::stats stats; // Radio stats (live) for the current time-period
     AP_Radio::stats last_stats; // Radio stats (snapshot) for the previous time-period
-
     uint16_t pwm_channels[BEKEN_MAX_CHANNELS]; // Channel data
     uint8_t chan_count; // Number of valid channels
 
@@ -145,18 +166,21 @@ private:
 	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
     bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
+	FwUpload fwupload; // Support OTA upload
 
-    // bind structure saved to storage
+    // Bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;
     struct PACKED bind_info {
         uint16_t magic;
         uint8_t bindTxId[5]; // The transmission address I last used
     };
 
+	// Received
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
 	uint8_t tx_pps; // Last telemetry PPS received from Tx
     
+    // Parameters
     ITX_SPEED spd; // Speed of radio modulation.
     uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx
 };

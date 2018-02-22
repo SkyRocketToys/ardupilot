@@ -402,13 +402,14 @@ public:
     uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
     static ITX_SPEED gTxSpeed;
 	FccParams fcc;
-	packetFormatTx pktDataTx; // Packet data to send
-	uint32_t numTxPackets;
+	packetFormatTx pktDataTx; // Packet data to send (telemetry)
+	packetFormatDfu pktDataDfu; // Packet data to send (DFU)
 	uint8_t TX_Address[5]; // For sending telemetry and DFU
     
 private:
     AP_HAL::OwnPtr<AP_HAL::SPIDevice> dev;
 	uint8_t bFreshData; // Have we received a packet since we last processed one
+	uint32_t numTxPackets;
 	packetFormatRx pktDataRx; // Last valid packet that has been received
 	packetFormatRx pktDataRecv; // Packet data in process of being received
 	uint8_t lastTxChannel; // 0..CHANNEL_COUNT_LOGICAL
