@@ -28,7 +28,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define Debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { hal.console->printf(fmt, ##args); }} while (0)
+#define Debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { gcs().send_text(MAV_SEVERITY_INFO, fmt, ##args); }} while (0)
 
 #define LP_FIFO_SIZE  16      // Physical data FIFO lengths in Radio
 
@@ -317,15 +317,18 @@ void AP_Radio_cc2500::radio_init(void)
 
     if (load_bind_info()) {
         Debug(3,"Loaded bind info\n");
-        listLength = NUM_CHANNELS;
-        initialiseData(0);
-        protocolState = STATE_SEARCH;
-        packet_timer = AP_HAL::micros();
-        chanskip = 1;
-        nextChannel(1);
     } else {
-        protocolState = STATE_BIND_TUNING;
+        listLength = NUM_CHANNELS;
+        bindOffset = 0;
+        cc2500.WriteRegCheck(CC2500_09_ADDR, 0);
+        setup_hopping_table_SRT();
     }
+    // we go straight into search, and rely on autobind
+    initialiseData(0);
+    protocolState = STATE_SEARCH;
+    packet_timer = AP_HAL::micros();
+    chanskip = 1;
+    nextChannel(1);
 
     chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
 }
@@ -633,6 +636,8 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
     bindOffset = 0;
     listLength = NUM_CHANNELS;
 
+    cc2500.WriteRegCheck(CC2500_09_ADDR, bindTxId[0]);
+
     setup_hopping_table_SRT();
 
     Debug(1,"Saved bind data\n");
@@ -748,7 +753,10 @@ void AP_Radio_cc2500::irq_handler(void)
             }
             rssi_filtered = 0.95 * rssi_filtered + 0.05 * rssi_dbm;
             t_status.rssi = uint8_t(MAX(rssi_filtered, 1));
-            
+
+            if (stats.recv_packets == 0) {
+                Debug(3,"cc2500: got 1st packet\n");
+            }
             stats.recv_packets++;
 
             packet_timer = irq_time_us;
@@ -767,7 +775,7 @@ void AP_Radio_cc2500::irq_handler(void)
             // we can safely sleep here as we have a dedicated thread for radio processing. We need to sleep
             // for enough time for the packet to be fully transmitted
             cc2500.unlock_bus();
-            hal.scheduler->delay_microseconds(2000);
+            hal.scheduler->delay_microseconds(3100);
             cc2500.lock_bus();
         
             nextChannel(chanskip);
@@ -847,7 +855,8 @@ void AP_Radio_cc2500::irq_timeout(void)
             (search_count & 1) == 0) {
             // try for an autobind packet every 2nd packet, waiting 3 packet delays
             setChannel(AUTOBIND_CHANNEL);
-            chVTSet(&timeout_vt, MS2ST((INTER_PACKET_MS+1)*3), trigger_timeout_event, nullptr);
+            cc2500.WriteRegCheck(CC2500_09_ADDR, 0);
+            chVTSet(&timeout_vt, MS2ST(30), trigger_timeout_event, nullptr);
         } else {
             // shift by one channel at a time when searching
             nextChannel(1);
@@ -929,7 +938,6 @@ void AP_Radio_cc2500::initialiseData(uint8_t adr)
 {
     cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, bindOffset);
     cc2500.WriteRegCheck(CC2500_18_MCSM0, 0x8);
-    cc2500.WriteRegCheck(CC2500_09_ADDR, adr ? 0x03 : bindTxId[0]);
     //cc2500.WriteRegCheck(CC2500_07_PKTCTRL1, 0x0D); // address check, no broadcast, autoflush, status enable
     cc2500.WriteRegCheck(CC2500_19_FOCCFG, 0x16);
     hal.scheduler->delay_microseconds(10*1000);
@@ -1136,6 +1144,8 @@ bool AP_Radio_cc2500::load_bind_info(void)
     bindOffset = info.bindOffset;
     listLength = info.listLength;
     memcpy(bindHopData, info.bindHopData, sizeof(bindHopData));
+
+    cc2500.WriteRegCheck(CC2500_09_ADDR, bindTxId[0]);
 
     setup_hopping_table_SRT();
 
