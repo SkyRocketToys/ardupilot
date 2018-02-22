@@ -149,8 +149,8 @@ public:
     bool consistent() const;
 
     /// Return the health of a compass
-    bool healthy(uint8_t i) const { return _state[i].healthy; }
-    bool healthy(void) const { return healthy(get_primary()); }
+    bool healthy(uint8_t i) const;
+    bool healthy(void) const;
     uint8_t get_healthy_mask() const;
 
     /// Returns the current offset values

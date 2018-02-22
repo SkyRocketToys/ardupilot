@@ -473,6 +473,16 @@ Compass::init()
     return true;
 }
 
+bool Compass::healthy(uint8_t i) const
+{
+    return _state[i].healthy;
+}
+
+bool Compass::healthy(void) const
+{
+    return healthy(get_primary());
+}
+
 //  Register a new compass instance
 //
 uint8_t Compass::register_compass(void)
