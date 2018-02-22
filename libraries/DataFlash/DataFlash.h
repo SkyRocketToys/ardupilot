@@ -163,6 +163,8 @@ public:
     void Log_Write(const char *name, const char *labels, const char *units, const char *mults, const char *fmt, ...);
     void Log_WriteV(const char *name, const char *labels, const char *units, const char *mults, const char *fmt, va_list arg_list);
 
+    void Log_Write_EKF_Timing(const char *name, uint64_t time_us, const struct ekf_timing &timing);
+
     // This structure provides information on the internal member data of a PID for logging purposes
     struct PID_Info {
         float desired;
@@ -291,7 +293,6 @@ private:
     bool _armed;
 
 #if AP_AHRS_NAVEKF_AVAILABLE
-    void Log_Write_EKF2(AP_AHRS_NavEKF &ahrs);
     void Log_Write_EKF3(AP_AHRS_NavEKF &ahrs);
 #endif
 
@@ -333,8 +334,6 @@ private:
     double multiplier_name(const uint8_t multiplier_id);
     bool seen_ids[256] = { };
 #endif
-
-    void Log_Write_EKF_Timing(const char *name, uint64_t time_us, const struct ekf_timing &timing);
 
     // possibly expensive calls to start log system:
     void Prep();
