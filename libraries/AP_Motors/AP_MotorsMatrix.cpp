@@ -439,6 +439,7 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
             }
             break;  // quad
 
+#if 0
         case MOTOR_FRAME_HEXA:
             switch (frame_type) {
                 case MOTOR_FRAME_TYPE_PLUS:
@@ -641,7 +642,7 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
                     break;
             }
             break;
-
+#endif
         default:
             // matrix doesn't support the configured class
             break;
