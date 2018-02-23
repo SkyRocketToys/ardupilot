@@ -633,12 +633,13 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
         return false;
     }
     uint8_t rssi_raw = packet[sizeof(struct autobind_packet_cc2500)];
-    float rssi_dbm = map_RSSI_to_dBm(rssi_raw);
+    uint8_t rssi_dbm = map_RSSI_to_dBm(rssi_raw);
 
     if (rssi_dbm < get_autobind_rssi()) {
-        Debug(3,"autobind RSSI %u needs %u\n", rssi_dbm, get_autobind_rssi());
+        Debug(1,"autobind RSSI %u needs %u\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi());
         return false;
     }
+    Debug(1,"autobind at RSSI %u above %u\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi());
     
     bindTxId[0] = pkt->txid[0];
     bindTxId[1] = pkt->txid[1];
