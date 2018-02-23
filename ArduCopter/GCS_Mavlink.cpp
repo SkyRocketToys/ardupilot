@@ -1106,7 +1106,9 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 
             } else if (is_equal(packet.param6,1.0f)) {
                 // compassmot calibration
+#if COMPASSMOT_ENABLED == ENABLED
                 result = copter.mavlink_compassmot(chan);
+#endif
             }
             break;
 

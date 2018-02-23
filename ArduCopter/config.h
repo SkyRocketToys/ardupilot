@@ -267,6 +267,10 @@
  # define NAV_GUIDED    ENABLED
 #endif
 
+#ifndef COMPASSMOT_ENABLED
+ # define COMPASSMOT_ENABLED       ENABLED
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 // Optionally-compiled prearm checks:
 #ifndef PREARM_PID_CHECKS_ENABLED
