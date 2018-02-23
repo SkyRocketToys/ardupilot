@@ -347,23 +347,24 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 {
     uint32_t ofs=0;
     memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
-    Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
+//  Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
+    printf("\r\ngot data96 of len %u from chan %u at offset %u (%d %d %d %d)\r\n",
+		m.len, chan, unsigned(ofs), m.data[4], m.data[5], m.data[6], m.data[7]);
     if (sem->take_nonblocking()) {
         fwupload.chan = chan;
         fwupload.need_ack = false;
         if (ofs == 0)
         {
-			printf("Fwr ");
 			fwupload.reset();
+			fwupload.file_length = ((uint16_t(m.data[4]) << 8) | (m.data[5])) + 6; // Add the header to the length
 		}
 		if (ofs != fwupload.added)
 		{
-			printf("Fwbo ");
+			printf("f");
 			fwupload.need_ack = true; // We want more data
 		}
 		else
 		{
-			printf("F");
 			if (m.type == 43) {
 				// sending a tune to play - for development testing
 				fwupload.fw_type = TELEM_PLAY;
@@ -372,7 +373,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 				// sending a chunk of firmware OTA upload
 				fwupload.fw_type = TELEM_FW;
 				fwupload.queue(&m.data[4], MIN(m.len-4, 92)); // This might fail if mavlink sends it too fast to me
-				printf("f");
+				printf("F%d(%c%c%c%c%c%c) ", ofs, m.data[4], m.data[5], m.data[6], m.data[7], m.data[8], m.data[9]);
 			}
 		}
         sem->give();
@@ -413,7 +414,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 		if (fwupload.sent > fwupload.acked)
 		{
 			// Resend the last tx packet until it is acknowledged
-//			DebugPrintf(4, "resend %u", fwupload.acked);
+			DebugPrintf(3, "resend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
 		}
 		else
 		{
@@ -424,9 +425,11 @@ bool AP_Radio_beken::UpdateTxData(void)
 			tx->address_lo = addr & 0xff;
 			tx->address_hi = (addr >> 8);
 			fwupload.dequeue(&tx->data[0], SZ_DFU);
-//			DebugPrintf(4, "send %u", fwupload.acked);
+			DebugPrintf(3, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
 			if (fwupload.free_length() >= 96)
+			{
 				fwupload.need_ack = true; // Request a new mavlink packet
+			}
 		}
         sem->give();
         return true;
@@ -457,11 +460,39 @@ void AP_Radio_beken::check_fw_ack(void)
 {
     if (fwupload.need_ack && sem->take_nonblocking()) {
         // ack the send of a DATA96 fw packet to TX
-        fwupload.need_ack = false;
-        uint8_t data16[16] {};
-        uint32_t ack_to = fwupload.added;
-        memcpy(&data16[0], &ack_to, 4); // Assume endianness matches
-        mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
+        if (fwupload.added < fwupload.file_length)
+        {
+			fwupload.need_ack = false;
+			uint8_t data16[16] {};
+			uint32_t ack_to = fwupload.added;
+			memcpy(&data16[0], &ack_to, 4); // Assume endianness matches
+			mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
+		}
+		else if (fwupload.added & 0x7f) // Are we on a boundary
+		{
+			// Pad out some bytes at the end
+			uint8_t data16[16];
+			memset(&data16[0], 0, sizeof(data16));
+			if (fwupload.free_length() > 16)
+			{
+				fwupload.queue(&data16[0], 16-(fwupload.added & 15));
+			}
+			DebugPrintf(2, "Pad to %d\r\n", fwupload.added);
+		}
+		else if (fwupload.acked < fwupload.added)
+		{
+			// Keep sending to the tx until it is acked
+			DebugPrintf(2, "PadResend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
+		}
+		else
+		{
+			fwupload.need_ack = false; // All done
+			DebugPrintf(2, "StopUpload\r\n");
+			uint8_t data16[16] {};
+			uint32_t ack_to = fwupload.file_length; // Finished
+			memcpy(&data16[0], &ack_to, 4); // Assume endianness matches
+			mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
+		}
         sem->give();
     }
 }
@@ -673,7 +704,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		}
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 		nextChannel(1);
-		DebugPrintf(2, "T");
+//		DebugPrintf(2, "T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
 	{
@@ -685,7 +716,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		// We have received a packet
 		uint8_t rxstd = 0;
 //		DebugPrintf(2, "R%ld,%ld\r\n", when, synctm.sync_time_us);
-		DebugPrintf(2, "R");
+//		DebugPrintf(2, "R");
 		// Which pipe (address) have we received this packet on?
 		if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
 		{
@@ -744,12 +775,14 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	{
 		if (get_telem_enable()) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
 		{
-			hal.scheduler->delay_microseconds(100); // delay to give the (remote) tx a chance to switch to receive mode
 			// Send the telemetry reply to the controller
 			beken.Strobe(BK_FLUSH_TX); // flush Tx
 			beken.ClearAckOverflow();
 			bool txDfu = UpdateTxData();
-			beken.pktDataTx.channel = syncch.channel;
+			if (txDfu)
+				beken.pktDataDfu.channel = syncch.channel;
+			else
+				beken.pktDataTx.channel = syncch.channel;
 			if (beken.fcc.disable_crc_mode)
 			{
 				// Only disable the CRC on reception, not transmission, so the connection remains.
@@ -757,10 +790,11 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 				beken.SetCrcMode(false);
 			}
 			beken.SwitchToTxMode();
+			hal.scheduler->delay_microseconds(100); // delay to give the (remote) tx a chance to switch to receive mode
 			if (txDfu)
-				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataDfu, PACKET_LENGTH_TX_DFU);
+				beken.SendPacket(BK_W_TX_PAYLOAD_NOACK_CMD, (uint8_t *)&beken.pktDataDfu, PACKET_LENGTH_TX_DFU);
 			else
-				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+				beken.SendPacket(BK_W_TX_PAYLOAD_NOACK_CMD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
 		}
 		else // Try to still work when telemetry is disabled
 		{

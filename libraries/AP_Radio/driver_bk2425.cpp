@@ -207,8 +207,10 @@ void Radio_Beken::WriteFifo(const uint8_t *dpbuffer, uint8_t len)
 // --------------------------------------------------------------------
 void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
 {
-	uint8_t tx[len+1];
-    uint8_t rx[len+1];
+//	uint8_t tx[len+1];
+//  uint8_t rx[len+1];
+	uint8_t tx[32+1]; // Avoid variable length arrays (new feature)
+	uint8_t rx[32+1];
     memset(tx, 0, len+1);
     memset(rx, 0, len+1);
 	tx[0] = address;
@@ -219,8 +221,10 @@ void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
 // --------------------------------------------------------------------
 void Radio_Beken::WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t len)
 {
-	uint8_t tx[len+1];
-    uint8_t rx[len+1];
+//	uint8_t tx[len+1];
+//  uint8_t rx[len+1];
+	uint8_t tx[32+1]; // Avoid variable length arrays (new feature)
+	uint8_t rx[32+1];
     memset(rx, 0, len+1);
 	tx[0] = address;
 	memcpy(&tx[1], data, len);
@@ -675,7 +679,7 @@ bool Radio_Beken::SendPacket(uint8_t type, ///< WR_TX_PLOAD or W_TX_PAYLOAD_NOAC
 	uint8_t fifo_sta = ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 	bool returnValue = ClearAckOverflow();
 
-	if (!(fifo_sta & BK_FIFO_STATUS_TX_FULL)) // if not full, send data
+	if (fifo_sta & BK_FIFO_STATUS_TX_EMPTY) // if not full, send data
 	{
 		numTxPackets++;
 		WriteRegisterMulti(type, pbuf, len); // Writes data to buffer A0,B0,A8
