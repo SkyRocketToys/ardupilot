@@ -347,9 +347,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 {
     uint32_t ofs=0;
     memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
-//  Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
-    printf("\r\ngot data96 of len %u from chan %u at offset %u (%d %d %d %d)\r\n",
-		m.len, chan, unsigned(ofs), m.data[4], m.data[5], m.data[6], m.data[7]);
+	Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
     if (sem->take_nonblocking()) {
         fwupload.chan = chan;
         fwupload.need_ack = false;
@@ -360,7 +358,6 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 		}
 		if (ofs != fwupload.added)
 		{
-			printf("f");
 			fwupload.need_ack = true; // We want more data
 		}
 		else
@@ -372,8 +369,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 			} else {
 				// sending a chunk of firmware OTA upload
 				fwupload.fw_type = TELEM_FW;
-				fwupload.queue(&m.data[4], MIN(m.len-4, 92)); // This might fail if mavlink sends it too fast to me
-				printf("F%d(%c%c%c%c%c%c) ", ofs, m.data[4], m.data[5], m.data[6], m.data[7], m.data[8], m.data[9]);
+				fwupload.queue(&m.data[4], MIN(m.len-4, 92)); // This might fail if mavlink sends it too fast to me, in which case it will retry later
 			}
 		}
         sem->give();
@@ -414,7 +410,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 		if (fwupload.sent > fwupload.acked)
 		{
 			// Resend the last tx packet until it is acknowledged
-			DebugPrintf(3, "resend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
+			DebugPrintf(4, "resend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
 		}
 		else
 		{
@@ -425,7 +421,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 			tx->address_lo = addr & 0xff;
 			tx->address_hi = (addr >> 8);
 			fwupload.dequeue(&tx->data[0], SZ_DFU);
-			DebugPrintf(3, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
+			DebugPrintf(4, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
 			if (fwupload.free_length() >= 96)
 			{
 				fwupload.need_ack = true; // Request a new mavlink packet
@@ -477,17 +473,17 @@ void AP_Radio_beken::check_fw_ack(void)
 			{
 				fwupload.queue(&data16[0], 16-(fwupload.added & 15));
 			}
-			DebugPrintf(2, "Pad to %d\r\n", fwupload.added);
+			DebugPrintf(4, "Pad to %d\r\n", fwupload.added);
 		}
 		else if (fwupload.acked < fwupload.added)
 		{
 			// Keep sending to the tx until it is acked
-			DebugPrintf(2, "PadResend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
+			DebugPrintf(4, "PadResend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
 		}
 		else
 		{
 			fwupload.need_ack = false; // All done
-			DebugPrintf(2, "StopUpload\r\n");
+			DebugPrintf(3, "StopUpload\r\n");
 			uint8_t data16[16] {};
 			uint32_t ack_to = fwupload.file_length; // Finished
 			memcpy(&data16[0], &ack_to, 4); // Assume endianness matches
