@@ -1264,6 +1264,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
             break;
 #endif
 
+#if SOLO_SUPPORT_ENABLED == ENABLED
         /* Solo user presses Fly button */
         case MAV_CMD_SOLO_BTN_FLY_CLICK: {
             result = MAV_RESULT_ACCEPTED;
@@ -1336,6 +1337,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
             }
             break;
         }
+#endif
 
         case MAV_CMD_ACCELCAL_VEHICLE_POS:
             result = MAV_RESULT_FAILED;
