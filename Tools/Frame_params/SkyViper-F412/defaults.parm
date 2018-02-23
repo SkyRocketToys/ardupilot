@@ -238,3 +238,7 @@ THROW_NEXTMODE       5
 
 # enable optical flow
 FLOW_ENABLE          1
+FLOW_POS_X      -0.03
+FLOW_POS_Y      -0.01
+FLOW_FXSCALER    550
+FLOW_FYSCALER    550
