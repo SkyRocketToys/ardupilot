@@ -88,13 +88,14 @@ struct FwUpload {
 	uint8_t pending_data[SZ_BUFFER]; // Pending data (from mavlink packets) circular buffer
 	uint8_t pending_head; // Where mavlink packets are added (relative to pending_data[0])
 	uint8_t pending_tail; // Where DFU packets are taken from (relative to pending_data[0])
+	uint16_t file_length; // The length of the file, six more than the value stored in the first 16 bit word
 
 	// Helper functions	
 	uint8_t pending_length() { return (pending_head - pending_tail) & (SZ_BUFFER-1); }
-	uint8_t free_length() { return SZ_BUFFER - pending_length(); }
+	uint8_t free_length() { return SZ_BUFFER - 1 - pending_length(); } // Do not fill in the last byte in the circular buffer
 	void queue(const uint8_t *pSrc, uint8_t len); // Assumes sufficient room has been checked for
 	void dequeue(uint8_t *pDst, uint8_t len); // Assumes sufficient data has been checked for
-	void reset() { added = sent = acked = 0; pending_head = pending_tail = 0; need_ack = false; }
+	void reset() { file_length = 0x3906; added = sent = acked = 0; pending_head = pending_tail = 0; need_ack = false; }
 };
 
 // Main class for receiving (and replying) to Beken radio packets
