@@ -162,19 +162,11 @@ void Radio_Beken::ResetAddress(void)
 	TX_Address[3] = RX0_Address[3] = 0x00;
 	TX_Address[4] = RX0_Address[4] = 0x00;
 	RX0_Address[0] = 0x31;
-#if 0
-	RX1_Address[0] = 0xc1;
-	RX1_Address[1] = 0xc1;
-	RX1_Address[2] = 0xc1;
-	RX1_Address[3] = 0xc1;
-	RX1_Address[4] = 0xc1;
-#else
 	RX1_Address[0] = 0x32;
 	RX1_Address[1] = 0x99;
 	RX1_Address[2] = 0x59;
 	RX1_Address[3] = 0xC6;
 	RX1_Address[4] = 0x2D;
-#endif
 }
 
 // --------------------------------------------------------------------
@@ -182,35 +174,10 @@ void Radio_Beken::ResetAddress(void)
 // --------------------------------------------------------------------
 
 // --------------------------------------------------------------------
-void Radio_Beken::ReadFifo(uint8_t *dpbuffer, uint8_t len)
-{
-	uint8_t tx[len+1];
-    uint8_t rx[len+1];
-    memset(tx, 0, len+1);
-    memset(rx, 0, len+1);
-	tx[0] = BK_RD_RX_PLOAD;
-    (void)dev->transfer_fullduplex(tx, rx, len+1);
-    memcpy(dpbuffer, &rx[1], len);
-}
-
-// --------------------------------------------------------------------
-void Radio_Beken::WriteFifo(const uint8_t *dpbuffer, uint8_t len)
-{
-	uint8_t tx[len+1];
-    uint8_t rx[len+1];
-    memset(rx, 0, len+1);
-	tx[0] = BK_WR_TX_PLOAD;
-	memcpy(&tx[1], dpbuffer, len);
-    (void)dev->transfer_fullduplex(tx, rx, len+1);
-}
-
-// --------------------------------------------------------------------
 void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
 {
-//	uint8_t tx[len+1];
-//  uint8_t rx[len+1];
-	uint8_t tx[32+1]; // Avoid variable length arrays (new feature)
-	uint8_t rx[32+1];
+	uint8_t tx[len+1];
+	uint8_t rx[len+1];
     memset(tx, 0, len+1);
     memset(rx, 0, len+1);
 	tx[0] = address;
@@ -221,10 +188,8 @@ void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
 // --------------------------------------------------------------------
 void Radio_Beken::WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t len)
 {
-//	uint8_t tx[len+1];
-//  uint8_t rx[len+1];
-	uint8_t tx[32+1]; // Avoid variable length arrays (new feature)
-	uint8_t rx[32+1];
+	uint8_t tx[len+1];
+	uint8_t rx[len+1];
     memset(rx, 0, len+1);
 	tx[0] = address;
 	memcpy(&tx[1], data, len);
@@ -490,8 +455,6 @@ bool Radio_Beken::Reset(void)
 void Radio_Beken::DelayCE(void)
 {
     hal.scheduler->delay_microseconds(50);
-//  for (value = 0; value < 400; ++value)
-//  {	asm volatile("nop"::); }
 }
 
 // ----------------------------------------------------------------------------
@@ -605,8 +568,6 @@ void Radio_Beken::InitBank0Registers(ITX_SPEED spd)
         WriteReg(BK_ACTIVATE_CMD,0x73); // Activate the BK_FEATURE register. (This command must NOT have BK_WRITE_REG set)
     for (i = 22; i >= 21; i--)
         WriteReg((BK_WRITE_REG|Bank0_Reg[i][0]),Bank0_Reg[i][1]);
-//  WriteReg(BK_WRITE_REG|BK_FEATURE, BK_FEATURE_EN_DPL | BK_FEATURE_EN_ACK_PAY | BK_FEATURE_EN_DYN_ACK);
-//  WriteReg(BK_WRITE_REG|BK_DYNPD, 0x3F);
     
     // Set the various 5 byte addresses
     WriteRegisterMulti((BK_WRITE_REG|BK_RX_ADDR_P0),RX0_Address,5); // reg 10 - Rx0 addr
@@ -679,15 +640,11 @@ bool Radio_Beken::SendPacket(uint8_t type, ///< WR_TX_PLOAD or W_TX_PAYLOAD_NOAC
 	uint8_t fifo_sta = ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 	bool returnValue = ClearAckOverflow();
 
-	if (fifo_sta & BK_FIFO_STATUS_TX_EMPTY) // if not full, send data
+	if (!(fifo_sta & BK_FIFO_STATUS_TX_FULL)) // if not full, send data
 	{
 		numTxPackets++;
 		WriteRegisterMulti(type, pbuf, len); // Writes data to buffer A0,B0,A8
 		BEKEN_CE_HIGH(); // Wait until FIFO has the data before sending it.
-	}
-	else
-	{
-//		printf("@"); // Failed to send because full
 	}
 	return returnValue;
 }

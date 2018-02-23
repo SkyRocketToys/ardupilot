@@ -361,8 +361,6 @@ public:
     }
 
 	// Raw SPI access functions
-    void ReadFifo(uint8_t *dpbuffer, uint8_t len);
-    void WriteFifo(const uint8_t *dpbuffer, uint8_t len);
     void ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len);
     void WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8_t len);
 
