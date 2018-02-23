@@ -96,6 +96,15 @@ def ap_library(bld, library, vehicle):
 
     src = library_dir.ant_glob(wildcard)
 
+    # hwdef.dat can specify that some library files not be compiled:
+    for define in bld.env:
+        m = re.match("STUB_FILE_OUT_(.*)", define)
+        if m is not None:
+            filename = m.group(1)
+            filename += ".cpp"
+            my_re = re.compile(r'.*/libraries/.*/%s' % filename)
+            src = filter(lambda v: not my_re.match(v.abspath()), src)
+
     if not common_tg:
         kw = dict(bld.env.AP_LIBRARIES_OBJECTS_KW)
         kw['features'] = kw.get('features', []) + ['ap_library_object']
@@ -129,7 +138,10 @@ def process_ap_libraries(self):
     libraries = Utils.to_list(getattr(self, 'ap_libraries', []))
     vehicle = getattr(self, 'ap_vehicle', None)
 
+    libraries.append('AP_Stub')
     for l in libraries:
+        if "STUB_OUT_%s" % l in self.env:
+            continue
         self.use.append(_common_tgen_name(l))
         if vehicle:
             self.use.append(_vehicle_tgen_name(l, vehicle))
