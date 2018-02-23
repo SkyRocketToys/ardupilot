@@ -143,3 +143,9 @@ define HAL_I2C_CLEAR_BUS
 define HAL_GPIO_A_LED_PIN -1
 define HAL_GPIO_B_LED_PIN -1
 define HAL_GPIO_C_LED_PIN -1
+
+# reduce RTOS overhead for this board - it is low on CPU
+define CH_DBG_SYSTEM_STATE_CHECK FALSE
+define CH_DBG_ENABLE_CHECKS FALSE
+define CH_DBG_ENABLE_ASSERTS FALSE
+define CH_DBG_ENABLE_STACK_CHECK FALSE
