@@ -258,6 +258,7 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
 
         // Check for 0 value PID's - some items can / should be 0 and as such are not checked.
         // If the ATC_RAT_*_FF is non zero then the corresponding ATC_RAT_* PIDS can be 0.
+#if PREARM_PID_CHECKS_ENABLED == ENABLED
         if (is_zero(copter.pos_control->get_pos_xy_p().kP())) {
             parameter_checks_pid_warning_message(display_failure, "PSC_POSXY_P");
             return false;
@@ -307,6 +308,7 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
             parameter_checks_pid_warning_message(display_failure, "ATC_ANG_YAW_P");
             return false;
         }
+#endif
     }
 
     return true;

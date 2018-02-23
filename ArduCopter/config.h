@@ -268,6 +268,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Optionally-compiled prearm checks:
+#ifndef PREARM_PID_CHECKS_ENABLED
+# define PREARM_PID_CHECKS_ENABLED ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // Auto mode - allows vehicle to trace waypoints and perform automated actions
 #ifndef MODE_AUTO_ENABLED
 # define MODE_AUTO_ENABLED ENABLED
