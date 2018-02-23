@@ -166,13 +166,15 @@ uint8_t AP_Radio_cc2500::num_channels(void)
         pwm_channels[chan-1] = tx_pps;
         chan_count = MAX(chan_count, chan);
     }
+    pwm_channels[11] = (stats.recv_packets % 1000);
+    chan_count = MAX(chan_count, 12);
     
     if (now - last_pps_ms > 1000) {
         last_pps_ms = now;
         t_status.pps = stats.recv_packets - last_stats.recv_packets;
         last_stats = stats;
         if (lost != 0 || timeouts != 0) {
-            Debug(3,"lost=%u timeouts=%u TS=%u\n",
+            Debug(timeouts!=0?2:3,"lost=%u timeouts=%u TS=%u\n",
                   unsigned(lost), unsigned(timeouts), sizeof(struct telem_packet_cc2500));
         }
         lost=0;
@@ -332,7 +334,7 @@ void AP_Radio_cc2500::radio_init(void)
     // set default autobind power to suit the cc2500
     AP_Param::set_default_by_name("BRD_RADIO_ABLVL", 75);
 
-    chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
 
 }
 
@@ -350,7 +352,7 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     (void)arg;
     //we are called from ISR context
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
@@ -706,7 +708,7 @@ void AP_Radio_cc2500::irq_handler(void)
         ccLen != sizeof(autobind_packet_cc2500)+2) {
         cc2500.Strobe(CC2500_SFRX);
         cc2500.Strobe(CC2500_SRX);
-        Debug(3, "bad len %u\n", ccLen);
+        Debug(4, "bad len %u\n", ccLen);
         return;
     }
     
@@ -725,7 +727,7 @@ void AP_Radio_cc2500::irq_handler(void)
     }
 
     if (!check_crc(ccLen, packet)) {
-        Debug(3, "bad CRC ccLen=%u\n", ccLen);
+        Debug(4, "bad CRC ccLen=%u\n", ccLen);
         return;
     }
     
@@ -782,7 +784,7 @@ void AP_Radio_cc2500::irq_handler(void)
             stats.recv_packets++;
 
             packet_timer = irq_time_us;
-            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+1), trigger_timeout_event, nullptr);
+            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
         
             cc2500.Strobe(CC2500_SIDLE);
             if (get_telem_enable()) {
@@ -861,8 +863,9 @@ void AP_Radio_cc2500::irq_timeout(void)
             search_count = 0;
         } else {
             nextChannel(chanskip);
-            // to keep the timeouts 1ms behind the expected time we
-            // need to set the timeout to the inter-packet delay again now
+            // to keep the timeouts a constant time behind the
+            // expected time we need to set the timeout to the
+            // inter-packet delay again now
             chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS), trigger_timeout_event, nullptr);
             lost++;
         }
