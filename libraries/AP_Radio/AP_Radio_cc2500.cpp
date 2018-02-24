@@ -866,11 +866,11 @@ void AP_Radio_cc2500::irq_timeout(void)
             protocolState = STATE_SEARCH;
             search_count = 0;
         } else {
-            nextChannel(chanskip);
             // to keep the timeouts a constant time behind the
             // expected time we need to set the timeout to the
             // inter-packet delay again now
             chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS), trigger_timeout_event, nullptr);
+            nextChannel(chanskip);
             lost++;
         }
         break;
