@@ -57,6 +57,7 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 #define NUM_CHANNELS 23
 #define MAX_CHANNEL_NUMBER 0xEB
 #define INTER_PACKET_MS 8
+#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+3)
 #endif
 
 #define AUTOBIND_CHANNEL 100
@@ -203,18 +204,18 @@ bool AP_Radio_cc2500::send(const uint8_t *pkt, uint16_t len)
 const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
     {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
-    {CC2500_18_MCSM0,    0x18}, // XOSC expire 64, cal on IDLE -> TX or RX
+    {CC2500_18_MCSM0,    0x08}, // XOSC expire 64, cal never
     {CC2500_06_PKTLEN,   0x1E}, // packet length 30
     {CC2500_07_PKTCTRL1, 0x04}, // enable RSSI+LQI, no addr check, no autoflush, PQT=0
-    {CC2500_08_PKTCTRL0, 0x01}, // var length mode, no CRC, FIFO enable, no whitening
+    {CC2500_08_PKTCTRL0, 0x41}, // var length mode, no CRC, FIFO enable, whitening on
     {CC2500_3E_PATABLE,  0xFF}, // set max power
     {CC2500_0B_FSCTRL1,  0x0A}, // IF=253.90625kHz assuming 26MHz crystal
     {CC2500_0C_FSCTRL0,  0x00}, // freqoffs = 0
     {CC2500_0D_FREQ2,    0x5C}, // freq control high
     {CC2500_0E_FREQ1,    0x76}, // freq control middle
     {CC2500_0F_FREQ0,    0x27}, // freq control low
-    {CC2500_10_MDMCFG4,  0x7B}, // data rate control
-    {CC2500_11_MDMCFG3,  0x61}, // data rate control
+    {CC2500_10_MDMCFG4,  0x4B}, // data rate control, filter bandwidth 406kHz
+    {CC2500_11_MDMCFG3,  0x61}, // data rate 70.0kbaud
     {CC2500_12_MDMCFG2,  0x13}, // 30/32 sync word bits, no manchester, GFSK, DC filter enabled
     {CC2500_13_MDMCFG1,  0x23}, // chan spacing exponent 3, preamble 4 bytes, FEC disabled
     {CC2500_14_MDMCFG0,  0x7A}, // chan spacing 299.926757kHz for 26MHz crystal
@@ -294,17 +295,6 @@ void AP_Radio_cc2500::radio_init(void)
     }
     cc2500.Strobe(CC2500_SIDLE);	// Go to idle...
 
-    for (uint8_t c=0;c<0xFF;c++) {
-        //calibrate all channels
-        cc2500.Strobe(CC2500_SIDLE);
-        cc2500.WriteRegCheck(CC2500_0A_CHANNR, c);
-        cc2500.Strobe(CC2500_SCAL);
-        hal.scheduler->delay_microseconds(2000);
-        calData[c][0] = cc2500.ReadReg(CC2500_23_FSCAL3);
-        calData[c][1] = cc2500.ReadReg(CC2500_24_FSCAL2);
-        calData[c][2] = cc2500.ReadReg(CC2500_25_FSCAL1);
-    }
-
     hal.scheduler->delay_microseconds(10*1000);
     
     // setup handler for rising edge of IRQ pin
@@ -321,7 +311,6 @@ void AP_Radio_cc2500::radio_init(void)
     } else {
         listLength = NUM_CHANNELS;
         bindOffset = 0;
-        cc2500.WriteRegCheck(CC2500_09_ADDR, 0);
         setup_hopping_table_SRT();
     }
     // we go straight into search, and rely on autobind
@@ -334,7 +323,7 @@ void AP_Radio_cc2500::radio_init(void)
     // set default autobind power to suit the cc2500
     AP_Param::set_default_by_name("BRD_RADIO_ABLVL", 75);
 
-    chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
+    chVTSet(&timeout_vt, MS2ST(INTER_PACKET_INITIAL_MS), trigger_timeout_event, nullptr);
 
 }
 
@@ -352,18 +341,30 @@ void AP_Radio_cc2500::trigger_timeout_event(void *arg)
     (void)arg;
     //we are called from ISR context
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
+    chVTSetI(&timeout_vt, MS2ST(INTER_PACKET_INITIAL_MS), trigger_timeout_event, nullptr);
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
 
 void AP_Radio_cc2500::start_recv_bind(void)
 {
-    protocolState = STATE_BIND_TUNING;
     chan_count = 0;
     packet_timer = AP_HAL::micros();
     chEvtSignal(_irq_handler_ctx, EVT_BIND);
     Debug(1,"Starting bind\n");
+
+    // clear the current bind information
+    bindTxId[0] = 1;
+    bindTxId[1] = 1;
+
+    setup_hopping_table_SRT();
+    
+    initialiseData(0);
+    protocolState = STATE_SEARCH;
+    packet_timer = AP_HAL::micros();
+    stats.recv_packets = 0;
+    chanskip = 1;
+    nextChannel(1);
 }
 
 // handle a data96 mavlink packet for fw upload
@@ -567,7 +568,7 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
     uint8_t i;
     uint8_t wifi_chan = t_status.wifi_chan;
     uint8_t cc_wifi_mid, cc_wifi_low, cc_wifi_high;
-    const uint8_t wifi_separation = 50;
+    const uint8_t wifi_separation = 65;
 
     if (wifi_chan == 0 || wifi_chan > 14) {
         wifi_chan = 9;
@@ -623,6 +624,11 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
 bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
 {
     const struct autobind_packet_cc2500 *pkt = (const struct autobind_packet_cc2500 *)packet;
+    if (stats.recv_packets != 0) {
+        // don't process autobind packets once we're connected
+        Debug(4,"autobind discard\n");
+        return false;
+    }
     if (pkt->length != sizeof(struct autobind_packet_cc2500)-1 ||
         pkt->magic1 != 0xC5 ||
         pkt->magic2 != 0xA2 ||
@@ -650,8 +656,6 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
     // as best guess
     bindOffset = 0;
     listLength = NUM_CHANNELS;
-
-    cc2500.WriteRegCheck(CC2500_09_ADDR, bindTxId[0]);
 
     setup_hopping_table_SRT();
 
@@ -784,7 +788,7 @@ void AP_Radio_cc2500::irq_handler(void)
             stats.recv_packets++;
 
             packet_timer = irq_time_us;
-            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS+3), trigger_timeout_event, nullptr);
+            chVTSet(&timeout_vt, MS2ST(INTER_PACKET_INITIAL_MS), trigger_timeout_event, nullptr);
         
             cc2500.Strobe(CC2500_SIDLE);
             if (get_telem_enable()) {
@@ -799,7 +803,7 @@ void AP_Radio_cc2500::irq_handler(void)
             // we can safely sleep here as we have a dedicated thread for radio processing. We need to sleep
             // for enough time for the packet to be fully transmitted
             cc2500.unlock_bus();
-            hal.scheduler->delay_microseconds(3100);
+            hal.scheduler->delay_microseconds(3300);
             cc2500.lock_bus();
         
             nextChannel(chanskip);
@@ -852,7 +856,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
         
-        if (now - packet_timer > 50*INTER_PACKET_MS*1000UL) {
+        if (now - packet_timer > 25*INTER_PACKET_MS*1000UL) {
             Debug(3,"searching %u\n", unsigned(now - packet_timer));
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);
@@ -879,8 +883,10 @@ void AP_Radio_cc2500::irq_timeout(void)
             (AP_HAL::micros() - packet_timer) > get_autobind_time() * 1000UL*1000UL &&
             (search_count & 1) == 0) {
             // try for an autobind packet every 2nd packet, waiting 3 packet delays
-            setChannel(AUTOBIND_CHANNEL);
-            cc2500.WriteRegCheck(CC2500_09_ADDR, 0);
+            static uint32_t cc;
+            Debug(4,"ab recv %u", cc);
+            cc++;
+            setChannelRX(AUTOBIND_CHANNEL);
             chVTSet(&timeout_vt, MS2ST(30), trigger_timeout_event, nullptr);
         } else {
             // shift by one channel at a time when searching
@@ -948,21 +954,15 @@ void AP_Radio_cc2500::initTuneRx(void)
     best_bindOffset = bindOffset;
     cc2500.WriteReg(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
     //cc2500.WriteReg(CC2500_07_PKTCTRL1, 0x0C);
-    cc2500.WriteReg(CC2500_18_MCSM0, 0x8);
+    //cc2500.WriteReg(CC2500_18_MCSM0, 0x8);
 
-    cc2500.Strobe(CC2500_SIDLE);
-    cc2500.WriteReg(CC2500_23_FSCAL3, calData[0][0]);
-    cc2500.WriteReg(CC2500_24_FSCAL2, calData[0][1]);
-    cc2500.WriteReg(CC2500_25_FSCAL1, calData[0][2]);
-    cc2500.WriteReg(CC2500_0A_CHANNR, 0);
-    cc2500.Strobe(CC2500_SFRX);
-    cc2500.Strobe(CC2500_SRX);
+    setChannelRX(0);
 }
 
 void AP_Radio_cc2500::initialiseData(uint8_t adr)
 {
     cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, bindOffset);
-    cc2500.WriteRegCheck(CC2500_18_MCSM0, 0x8);
+    //cc2500.WriteRegCheck(CC2500_18_MCSM0, 0x8);
     //cc2500.WriteRegCheck(CC2500_07_PKTCTRL1, 0x0D); // address check, no broadcast, autoflush, status enable
     cc2500.WriteRegCheck(CC2500_19_FOCCFG, 0x16);
     hal.scheduler->delay_microseconds(10*1000);
@@ -970,12 +970,7 @@ void AP_Radio_cc2500::initialiseData(uint8_t adr)
 
 void AP_Radio_cc2500::initGetBind(void)
 {
-    cc2500.Strobe(CC2500_SIDLE);
-    cc2500.WriteReg(CC2500_23_FSCAL3, calData[0][0]);
-    cc2500.WriteReg(CC2500_24_FSCAL2, calData[0][1]);
-    cc2500.WriteReg(CC2500_25_FSCAL1, calData[0][2]);
-    cc2500.WriteReg(CC2500_0A_CHANNR, 0);
-    cc2500.Strobe(CC2500_SFRX);
+    setChannelRX(0);
     hal.scheduler->delay_microseconds(20); // waiting flush FIFO
 
     cc2500.Strobe(CC2500_SRX);
@@ -1059,17 +1054,25 @@ bool AP_Radio_cc2500::getBindData(uint8_t ccLen, uint8_t *packet)
 void AP_Radio_cc2500::setChannel(uint8_t channel)
 {
     cc2500.Strobe(CC2500_SIDLE);
-    cc2500.WriteReg(CC2500_23_FSCAL3, calData[channel][0]);
-    cc2500.WriteReg(CC2500_24_FSCAL2, calData[channel][1]);
-    cc2500.WriteReg(CC2500_25_FSCAL1, calData[channel][2]);
     cc2500.WriteReg(CC2500_0A_CHANNR, channel);
-    cc2500.Strobe(CC2500_SRX);
+    // manually recalibrate the PLL for the new channel. This
+    // allows for temperature change and voltage fluctuation on
+    // the flight board
+    cc2500.Strobe(CC2500_SCAL);
+    hal.scheduler->delay_microseconds(730);
+}
+
+void AP_Radio_cc2500::setChannelRX(uint8_t channel)
+{
+    setChannel(channel);
+    cc2500.Strobe(CC2500_SFRX);
+    cc2500.Strobe(CC2500_SRX);    
 }
 
 void AP_Radio_cc2500::nextChannel(uint8_t skip)
 {
     channr = (channr + skip) % listLength;
-    setChannel(bindHopData[channr]);
+    setChannelRX(bindHopData[channr]);
 }
 
 void AP_Radio_cc2500::parse_frSkyX(const uint8_t *packet)
@@ -1146,7 +1149,7 @@ void AP_Radio_cc2500::save_bind_info(void)
     info.bindTxId[0] = bindTxId[0];
     info.bindTxId[1] = bindTxId[1];
     info.bindOffset = bindOffset;
-    info.listLength = listLength;
+    info.wifi_chan = t_status.wifi_chan;
     memcpy(info.bindHopData, bindHopData, sizeof(info.bindHopData));
     bind_storage.write_block(0, &info, sizeof(info));
 }
@@ -1167,10 +1170,9 @@ bool AP_Radio_cc2500::load_bind_info(void)
     bindTxId[0] = info.bindTxId[0];
     bindTxId[1] = info.bindTxId[1];
     bindOffset = info.bindOffset;
-    listLength = info.listLength;
+    listLength = NUM_CHANNELS;
+    t_status.wifi_chan = info.wifi_chan;
     memcpy(bindHopData, info.bindHopData, sizeof(bindHopData));
-
-    cc2500.WriteRegCheck(CC2500_09_ADDR, bindTxId[0]);
 
     setup_hopping_table_SRT();
 
@@ -1272,6 +1274,7 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
 
     if (last_wifi_channel != t_status.wifi_chan) {
         setup_hopping_table_SRT();
+        save_bind_info();
     }
 }
 

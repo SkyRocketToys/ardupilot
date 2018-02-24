@@ -96,7 +96,6 @@ private:
 
     Radio_CC2500 cc2500;
 
-    uint8_t calData[255][3];
     uint8_t bindTxId[2];
     int8_t  bindOffset;
     uint8_t bindHopData[47];
@@ -129,6 +128,7 @@ private:
     bool getBindData(uint8_t ccLen, uint8_t *packet);
     bool check_best_LQI(void);
     void setChannel(uint8_t channel);
+    void setChannelRX(uint8_t channel);
     void nextChannel(uint8_t skip);
 
     void parse_frSkyX(const uint8_t *packet);
@@ -142,12 +142,12 @@ private:
     void irq_timeout(void);
 
     // bind structure saved to storage
-    static const uint16_t bind_magic = 0x120a;
+    static const uint16_t bind_magic = 0x120c;
     struct PACKED bind_info {
         uint16_t magic;
         uint8_t bindTxId[2];
         int8_t  bindOffset;
-        uint8_t listLength;
+        uint8_t wifi_chan;
         uint8_t bindHopData[47];
     };
     
