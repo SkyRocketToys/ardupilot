@@ -58,11 +58,12 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 #else
 #define NUM_CHANNELS 23
 #define MAX_CHANNEL_NUMBER 0xEB
-#define INTER_PACKET_MS 8
-#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+2)
+#define INTER_PACKET_MS 9
+#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+5)
 #define PACKET_SENT_DELAY_US 3000
 #endif
 
+#define SEARCH_START_PKTS 40
 #define AUTOBIND_CHANNEL 100
 
 /*
@@ -863,7 +864,7 @@ void AP_Radio_cc2500::irq_timeout(void)
     case STATE_DATA: {
         uint32_t now = AP_HAL::micros();
         
-        if (now - packet_timer > 25*INTER_PACKET_MS*1000UL) {
+        if (now - packet_timer > SEARCH_START_PKTS*INTER_PACKET_MS*1000UL) {
             Debug(3,"searching %u\n", unsigned(now - packet_timer));
             cc2500.Strobe(CC2500_SIDLE);
             cc2500.Strobe(CC2500_SFRX);
