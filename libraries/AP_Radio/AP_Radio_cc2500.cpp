@@ -53,11 +53,14 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 #define NUM_CHANNELS 47
 #define MAX_CHANNEL_NUMBER 0xEB
 #define INTER_PACKET_MS 9
+#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+2)
+#define PACKET_SENT_DELAY_US 3300
 #else
 #define NUM_CHANNELS 23
 #define MAX_CHANNEL_NUMBER 0xEB
 #define INTER_PACKET_MS 8
-#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+3)
+#define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+2)
+#define PACKET_SENT_DELAY_US 3000
 #endif
 
 #define AUTOBIND_CHANNEL 100
@@ -205,19 +208,19 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
     {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
     {CC2500_18_MCSM0,    0x08}, // XOSC expire 64, cal never
-    {CC2500_06_PKTLEN,   0x1E}, // packet length 30
-    {CC2500_07_PKTCTRL1, 0x04}, // enable RSSI+LQI, no addr check, no autoflush, PQT=0
-    {CC2500_08_PKTCTRL0, 0x41}, // var length mode, no CRC, FIFO enable, whitening on
-    {CC2500_3E_PATABLE,  0xFF}, // set max power
+    {CC2500_06_PKTLEN,   0x10}, // packet length 16
+    {CC2500_07_PKTCTRL1, 0x0C}, // enable RSSI+LQI, no addr check, CRC autoflush, PQT=0
+    {CC2500_08_PKTCTRL0, 0x44}, // fixed length mode, CRC, FIFO enable, whitening
+    {CC2500_3E_PATABLE,  0xFF}, // initially max power
     {CC2500_0B_FSCTRL1,  0x0A}, // IF=253.90625kHz assuming 26MHz crystal
     {CC2500_0C_FSCTRL0,  0x00}, // freqoffs = 0
     {CC2500_0D_FREQ2,    0x5C}, // freq control high
     {CC2500_0E_FREQ1,    0x76}, // freq control middle
     {CC2500_0F_FREQ0,    0x27}, // freq control low
-    {CC2500_10_MDMCFG4,  0x4B}, // data rate control, filter bandwidth 406kHz
-    {CC2500_11_MDMCFG3,  0x61}, // data rate 70.0kbaud
+    {CC2500_10_MDMCFG4,  0x8C}, // filter bandwidth 203kHz
+    {CC2500_11_MDMCFG3,  0x2F}, // data rate 120kbaud
     {CC2500_12_MDMCFG2,  0x13}, // 30/32 sync word bits, no manchester, GFSK, DC filter enabled
-    {CC2500_13_MDMCFG1,  0x23}, // chan spacing exponent 3, preamble 4 bytes, FEC disabled
+    {CC2500_13_MDMCFG1,  0xA3}, // chan spacing exponent 3, preamble 4 bytes, FEC enabled
     {CC2500_14_MDMCFG0,  0x7A}, // chan spacing 299.926757kHz for 26MHz crystal
     {CC2500_15_DEVIATN,  0x51}, // modem deviation 25.128906kHz for 26MHz crystal
     {CC2500_19_FOCCFG,   0x16}, // frequency offset compensation
@@ -352,19 +355,6 @@ void AP_Radio_cc2500::start_recv_bind(void)
     packet_timer = AP_HAL::micros();
     chEvtSignal(_irq_handler_ctx, EVT_BIND);
     Debug(1,"Starting bind\n");
-
-    // clear the current bind information
-    bindTxId[0] = 1;
-    bindTxId[1] = 1;
-
-    setup_hopping_table_SRT();
-    
-    initialiseData(0);
-    protocolState = STATE_SEARCH;
-    packet_timer = AP_HAL::micros();
-    stats.recv_packets = 0;
-    chanskip = 1;
-    nextChannel(1);
 }
 
 // handle a data96 mavlink packet for fw upload
@@ -634,12 +624,24 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
         pkt->magic2 != 0xA2 ||
         pkt->txid[0] != uint8_t(~pkt->txid_inverse[0]) ||
         pkt->txid[1] != uint8_t(~pkt->txid_inverse[1])) {
-        Debug(3, "AB len=%u elen=%u m1=%02x m1=%02x 0x%x 0x%x 0x%x 0x%x\n",
+        Debug(3, "AB len=%u elen=%u m1=0x%02x m2=0x%02x 0x%02x:0x%02x 0x%02x:0x%02x\n",
               pkt->length, sizeof(struct autobind_packet_cc2500)-1, pkt->magic1, pkt->magic2,
-              pkt->txid[0], pkt->txid[1], ~pkt->txid_inverse[0], ~pkt->txid_inverse[1]);
+              pkt->txid[0], pkt->txid[1], uint8_t(~pkt->txid_inverse[0]), uint8_t(~pkt->txid_inverse[1]));
         // not a valid autobind packet
         return false;
     }
+    for (uint8_t i=0; i<sizeof(pkt->pad); i++) {
+        if (pkt->pad[i] != i+1) {
+            Debug(3, "AB pad[%u]=%u\n", i, pkt->pad[i]);
+            return false;
+        }
+    }
+    uint16_t lcrc = calc_crc(packet,sizeof(*pkt)-2);
+    if ((lcrc>>8)!=pkt->crc[0] || (lcrc&0x00FF)!=pkt->crc[1]) {
+        Debug(3, "AB bad CRC\n");
+        return false;
+    }
+
     uint8_t rssi_raw = packet[sizeof(struct autobind_packet_cc2500)];
     uint8_t rssi_dbm = map_RSSI_to_dBm(rssi_raw);
 
@@ -656,6 +658,7 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
     // as best guess
     bindOffset = 0;
     listLength = NUM_CHANNELS;
+    t_status.wifi_chan = pkt->wifi_chan;
 
     setup_hopping_table_SRT();
 
@@ -712,7 +715,9 @@ void AP_Radio_cc2500::irq_handler(void)
         ccLen != sizeof(autobind_packet_cc2500)+2) {
         cc2500.Strobe(CC2500_SFRX);
         cc2500.Strobe(CC2500_SRX);
-        Debug(4, "bad len %u\n", ccLen);
+        Debug(4, "bad len %u SRT=%u AB=%u\n", ccLen,
+              sizeof(srt_packet)+2,
+              sizeof(autobind_packet_cc2500)+2);
         return;
     }
     
@@ -772,8 +777,9 @@ void AP_Radio_cc2500::irq_handler(void)
             ok = handle_D16_packet(packet);
         } else if (ccLen == sizeof(srt_packet)+2) {
             ok = handle_SRT_packet(packet);
-        } else if (ccLen == sizeof(autobind_packet_cc2500)+2) {
-            ok = handle_autobind_packet(packet);
+            if (!ok) {
+                ok = handle_autobind_packet(packet);
+            }
         }
         if (ok) {
             // get RSSI value from status byte
@@ -798,13 +804,14 @@ void AP_Radio_cc2500::irq_handler(void)
                 } else {
                     send_SRT_telemetry();
                 }
-            }
         
-            // we can safely sleep here as we have a dedicated thread for radio processing. We need to sleep
-            // for enough time for the packet to be fully transmitted
-            cc2500.unlock_bus();
-            hal.scheduler->delay_microseconds(3300);
-            cc2500.lock_bus();
+                // now we sleep for enough time for the packet to be
+                // transmitted. We can safely sleep here as we have a
+                // dedicated thread for radio processing.
+                cc2500.unlock_bus();
+                hal.scheduler->delay_microseconds(PACKET_SENT_DELAY_US);
+                cc2500.lock_bus();
+            }
         
             nextChannel(chanskip);
         }
@@ -935,7 +942,17 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
             }
             break;
         case EVT_BIND:
-            radio_instance->initTuneRx();
+            // clear the current bind information
+            radio_instance->bindTxId[0] = 1;
+            radio_instance->bindTxId[1] = 1;
+
+            radio_instance->setup_hopping_table_SRT();
+            
+            radio_instance->protocolState = STATE_SEARCH;
+            radio_instance->packet_timer = AP_HAL::micros();
+            radio_instance->stats.recv_packets = 0;
+            radio_instance->chanskip = 1;
+            radio_instance->nextChannel(1);
             break;
         default:
             break;
@@ -1125,9 +1142,8 @@ bool AP_Radio_cc2500::check_crc(uint8_t ccLen, uint8_t *packet)
 {
     if (ccLen == sizeof(srt_packet)+2 ||
         ccLen == sizeof(autobind_packet_cc2500)+2) {
-        // SRT packet
-        uint16_t lcrc = calc_crc(&packet[0],(ccLen-4));
-        return ((lcrc >>8)==packet[ccLen-4] && (lcrc&0x00FF)==packet[ccLen-3]);
+        // using hardware CRC
+        return true;
     } else if (ccLen == 32) {
         // D16 packet
         uint16_t lcrc = calc_crc(&packet[3],(ccLen-7));
@@ -1258,10 +1274,6 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
     }
     pkt.txid[0] = bindTxId[0];
     pkt.txid[1] = bindTxId[1];
-
-    uint16_t lcrc = calc_crc((const uint8_t *)&pkt, sizeof(pkt)-2);
-    pkt.crc[0] = lcrc>>8;
-    pkt.crc[1] = lcrc&0xFF;
 
     cc2500.Strobe(CC2500_SIDLE);
     cc2500.Strobe(CC2500_SFTX);
