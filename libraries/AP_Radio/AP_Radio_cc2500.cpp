@@ -1251,10 +1251,10 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
     t_status.tx_max = get_tx_max_power();
     t_status.note_adjust = get_tx_buzzer_adjust();
 
-    // send fw update packet for 1/4 of packets if any data pending
+    // send fw update packet for 7/8 of packets if any data pending
     if (fwupload.length != 0 &&
         fwupload.length > fwupload.acked &&
-        ((fwupload.counter++ & 0x03) == 0) &&
+        ((fwupload.counter++ & 0x07) != 0) &&
         sem->take_nonblocking()) {
         pkt.type = fwupload.fw_type;
         pkt.payload.fw.seq = fwupload.sequence;
