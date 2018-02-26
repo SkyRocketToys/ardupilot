@@ -4,8 +4,10 @@
 MOT_PWM_TYPE 3
 MOT_PWM_MIN 1000
 MOT_PWM_MAX 2000
-RC_SPEED 16000
 #TERRAIN_ENABLE 0
+
+# RC_SPEED at 4kHz for minimal radio interference
+RC_SPEED 4000
 
 # toy mode setup
 TMODE_ENABLE 2
