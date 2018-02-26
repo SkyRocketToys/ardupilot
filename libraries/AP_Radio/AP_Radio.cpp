@@ -110,7 +110,7 @@ const AP_Param::GroupInfo AP_Radio::var_info[] = {
     // @Description: Set transmitter maximum transmit power (from 1 to 8)
     // @Range: 1 8
     // @User: Advanced
-    AP_GROUPINFO("_TXMAX",  14, AP_Radio, tx_max_power, 4),
+    AP_GROUPINFO("_TXMAX",  14, AP_Radio, tx_max_power, 8),
 
     // @Param: _BZOFS
     // @DisplayName: Transmitter buzzer adjustment
