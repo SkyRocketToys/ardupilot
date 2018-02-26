@@ -325,7 +325,7 @@ void AP_Radio_cc2500::radio_init(void)
     nextChannel(1);
 
     // set default autobind power to suit the cc2500
-    AP_Param::set_default_by_name("BRD_RADIO_ABLVL", 75);
+    AP_Param::set_default_by_name("BRD_RADIO_ABLVL", 90);
 
     chVTSet(&timeout_vt, MS2ST(INTER_PACKET_INITIAL_MS), trigger_timeout_event, nullptr);
 
