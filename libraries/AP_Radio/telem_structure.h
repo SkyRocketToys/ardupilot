@@ -35,7 +35,7 @@ struct PACKED telem_firmware {
     uint8_t seq;
     uint8_t len;
     uint16_t offset;
-    uint8_t data[8];
+    uint8_t data[4];
 };
 
 /*
@@ -59,7 +59,7 @@ struct PACKED telem_packet_cc2500 {
     uint8_t type;
     uint8_t txid[2];
     union {
-        uint8_t pkt[12];
+        uint8_t pkt[9];
         struct telem_status status;
         struct telem_firmware fw;
     } payload;
@@ -75,7 +75,7 @@ struct PACKED autobind_packet_cc2500 {
     uint8_t txid[2];
     uint8_t txid_inverse[2];
     uint8_t wifi_chan;
-    uint8_t pad[6]; // pad to 16 bytes for fixed packet length
+    uint8_t pad[3]; // pad to 13 bytes for fixed packet length
     uint8_t crc[2];
 };
 
@@ -112,5 +112,4 @@ struct PACKED srt_packet {
     uint8_t buttons;    // see channels.h
     uint8_t channr;
     uint8_t chanskip;
-    uint8_t pad[3];     // pad to 16 bytes for fixed packet length
 };

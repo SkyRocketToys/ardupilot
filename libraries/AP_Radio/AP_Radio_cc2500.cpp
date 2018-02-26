@@ -60,7 +60,7 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 #define MAX_CHANNEL_NUMBER 0xEB
 #define INTER_PACKET_MS 9
 #define INTER_PACKET_INITIAL_MS (INTER_PACKET_MS+5)
-#define PACKET_SENT_DELAY_US 3000
+#define PACKET_SENT_DELAY_US 2800
 #endif
 
 #define SEARCH_START_PKTS 40
@@ -209,7 +209,7 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
     {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
     {CC2500_18_MCSM0,    0x08}, // XOSC expire 64, cal never
-    {CC2500_06_PKTLEN,   0x10}, // packet length 16
+    {CC2500_06_PKTLEN,   0x0D}, // packet length 13
     {CC2500_07_PKTCTRL1, 0x0C}, // enable RSSI+LQI, no addr check, CRC autoflush, PQT=0
     {CC2500_08_PKTCTRL0, 0x44}, // fixed length mode, CRC, FIFO enable, whitening
     {CC2500_3E_PATABLE,  0xFF}, // initially max power
@@ -1259,7 +1259,8 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
         pkt.type = fwupload.fw_type;
         pkt.payload.fw.seq = fwupload.sequence;
         uint32_t len = fwupload.length>fwupload.acked?fwupload.length - fwupload.acked:0;
-        pkt.payload.fw.len = len<=8?len:8;
+        const uint8_t maxlen = sizeof(pkt.payload.fw.data);
+        pkt.payload.fw.len = len<=maxlen?len:maxlen;
         pkt.payload.fw.offset = fwupload.offset+fwupload.acked;
         memcpy(&pkt.payload.fw.data[0], &fwupload.pending_data[fwupload.acked], pkt.payload.fw.len);
         fwupload.len = pkt.payload.fw.len;
