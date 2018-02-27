@@ -207,6 +207,7 @@ private:
 
     // check sending of fw upload ack
     void check_fw_ack(void);
+    void map_stick_mode(uint16_t *channels);
 };
 
 

@@ -447,14 +447,22 @@ bool AP_Radio_cc2500::handle_SRT_packet(const uint8_t *packet)
         // only support version 1 so far
         return false;
     }
-    pwm_channels[0] = pkt->chan1 + 1000 + ((pkt->chan_high&0xC0)<<2);
-    pwm_channels[1] = pkt->chan2 + 1000 + ((pkt->chan_high&0x30)<<4);
-    pwm_channels[2] = pkt->chan3 + 1000 + ((pkt->chan_high&0x0C)<<6);
-    pwm_channels[3] = pkt->chan4 + 1000 + ((pkt->chan_high&0x03)<<8);
-    // we map the buttons onto two PWM channels for ease of integration with ArduPilot
-    pwm_channels[4] = 1000 + (pkt->buttons & 0x7) * 100;
-    pwm_channels[5] = 1000 + (pkt->buttons >> 3) * 100;
+    uint16_t chan_new[CC2500_MAX_PWM_CHANNELS];
+    memcpy(chan_new, pwm_channels, sizeof(pwm_channels));
 
+    chan_new[0] = pkt->chan1 + 1000 + ((pkt->chan_high&0xC0)<<2);
+    chan_new[1] = pkt->chan2 + 1000 + ((pkt->chan_high&0x30)<<4);
+    chan_new[2] = pkt->chan3 + 1000 + ((pkt->chan_high&0x0C)<<6);
+    chan_new[3] = pkt->chan4 + 1000 + ((pkt->chan_high&0x03)<<8);
+    // we map the buttons onto two PWM channels for ease of integration with ArduPilot
+    chan_new[4] = 1000 + (pkt->buttons & 0x7) * 100;
+    chan_new[5] = 1000 + (pkt->buttons >> 3) * 100;
+
+    // cope with mode1/mode2
+    map_stick_mode(chan_new);
+
+    memcpy(pwm_channels, chan_new, sizeof(pwm_channels));
+    
     uint8_t data = pkt->data;
     /*
       decode special data field
@@ -1306,6 +1314,46 @@ void AP_Radio_cc2500::check_fw_ack(void)
         mavlink_msg_data16_send(fwupload.chan, 42, 4, data16);
         Debug(4,"sent ack DATA16\n");
         sem->give();
+    }
+}
+
+/*
+  support all 4 rc input modes by swapping channels.
+ */
+void AP_Radio_cc2500::map_stick_mode(uint16_t *channels)
+{
+    switch (get_stick_mode()) {
+    case 1: {
+        // mode1
+        uint16_t tmp = channels[1];
+        channels[1] = 3000 - channels[2];
+        channels[2] = 3000 - tmp;
+        break;
+    }
+
+    case 3: {
+        // mode3
+        uint16_t tmp = channels[1];
+        channels[1] = 3000 - channels[2];
+        channels[2] = 3000 - tmp;
+        tmp = channels[0];
+        channels[0] = channels[3];
+        channels[3] = tmp;
+        break;
+    }
+
+    case 4: {
+        // mode4
+        uint16_t tmp = channels[0];
+        channels[0] = channels[3];
+        channels[3] = tmp;
+        break;
+    }
+        
+    case 2:
+    default:
+        // nothing to do, transmitter is natively mode2
+        break;
     }
 }
 
