@@ -151,27 +151,38 @@ AP_Radio::AP_Radio(void)
 bool AP_Radio::init(void)
 {
     switch (radio_type) {
+#if (not defined AP_RADIO_CYRF6936 || AP_RADIO_CYRF6936)
     case RADIO_TYPE_CYRF6936:
         driver = new AP_Radio_cypress(*this);
         break;
+#endif
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+#if (not defined AP_RADIO_CC2500 || AP_RADIO_CC2500)
     case RADIO_TYPE_CC2500:
         driver = new AP_Radio_cc2500(*this);
         break;
 #endif
+#endif
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
+#if (not defined AP_RADIO_BK2425 || AP_RADIO_BK2425)
     case RADIO_TYPE_BK2425:
         driver = new AP_Radio_beken(*this);
         break;
 #endif
+#endif
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
     case RADIO_TYPE_AUTO:
         // auto-detect between cc2500 and beken radios
+#if (not defined AP_RADIO_CC2500 || AP_RADIO_CC2500)
         if (AP_Radio_cc2500::probe()) {
             driver = new AP_Radio_cc2500(*this);
-        } else {
+        }
+#endif
+#if (not defined AP_RADIO_BK2425 || AP_RADIO_BK2425)
+        if (driver == nullptr) {
             driver = new AP_Radio_beken(*this);
         }
+#endif
         break;
 #endif
     default:
