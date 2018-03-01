@@ -317,6 +317,14 @@ void AP_Radio_cc2500::radio_init(void)
         bindOffset = 0;
         setup_hopping_table_SRT();
     }
+
+    uint8_t factory_test = get_factory_test();
+    if (factory_test != 0) {
+        bindTxId[0] = uint8_t(factory_test * 17);
+        bindTxId[1] = uint8_t(~bindTxId[0]);
+        setup_hopping_table_SRT();
+    }
+    
     // we go straight into search, and rely on autobind
     initialiseData(0);
     protocolState = STATE_SEARCH;
@@ -622,6 +630,10 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
  */
 bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
 {
+    if (get_factory_test() != 0) {
+        // no autobind in factory test mode
+        return false;
+    }
     const struct autobind_packet_cc2500 *pkt = (const struct autobind_packet_cc2500 *)packet;
     if (stats.recv_packets != 0) {
         // don't process autobind packets once we're connected
@@ -919,6 +931,7 @@ void AP_Radio_cc2500::irq_timeout(void)
         search_count++;
         if (stats.recv_packets == 0 &&
             get_autobind_time() != 0 &&
+            get_factory_test() == 0 &&
             (AP_HAL::micros() - packet_timer) > get_autobind_time() * 1000UL*1000UL &&
             (search_count & 1) == 0) {
             // try for an autobind packet every 2nd packet, waiting 3 packet delays
