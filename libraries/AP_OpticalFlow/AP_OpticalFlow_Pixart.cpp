@@ -172,6 +172,10 @@ bool AP_OpticalFlow_Pixart::setup_sensor(void)
     integral.last_frame_us = AP_HAL::micros();
 
     _dev->register_periodic_callback(2000, FUNCTOR_BIND_MEMBER(&AP_OpticalFlow_Pixart::timer, void));
+
+    // call update() so device_id gets populated
+    update();
+    
     return true;
 
 failed:
