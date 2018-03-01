@@ -890,6 +890,15 @@ AP_InertialSensor::detect_backends(void)
                                              HAL_INS_DEFAULT_A_ROTATION));
 #elif HAL_INS_DEFAULT == HAL_INS_ICM20789_SPI
     ADD_BACKEND(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device("icm20789")));
+#elif HAL_INS_DEFAULT == HAL_INS_SKYVIPER_F412
+    // a 20789 could be either on SPI or I2C
+    _fast_sampling_mask.set_default(1);
+    ADD_BACKEND(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device("icm20789")));
+    if (_backend_count == 0) {
+        _fast_sampling_mask.set_default(0);
+        ADD_BACKEND(AP_InertialSensor_Invensense::probe(*this, hal.i2c_mgr->get_device(HAL_INS_MPU60x0_I2C_BUS, HAL_INS_MPU60x0_I2C_ADDR),
+                                                        HAL_INS_DEFAULT_ROTATION));
+    }
 #elif HAL_INS_DEFAULT == HAL_INS_NONE
     // no INS device
 #else
