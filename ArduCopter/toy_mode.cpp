@@ -28,17 +28,17 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _MODE1
     // @DisplayName: Tmode first mode
-    // @Description: This is the initial mode when the vehicle is first turned on. This mode is assumed to not require GPS
+    // @Description: This is the initial mode when the vehicle is first turned on.
     // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,22:FlowHold
     // @User: Standard
-    AP_GROUPINFO("_MODE1", 2, ToyMode, primary_mode[0], ALT_HOLD),
+    AP_GROUPINFO("_MODE1", 2, ToyMode, primary_mode[0], LOITER),
 
     // @Param: _MODE2
     // @DisplayName: Tmode second mode
-    // @Description: This is the secondary mode. This mode is assumed to require GPS
+    // @Description: This is the secondary mode.
     // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,22:FlowHold
     // @User: Standard
-    AP_GROUPINFO("_MODE2", 3, ToyMode, primary_mode[1], LOITER),
+    AP_GROUPINFO("_MODE2", 3, ToyMode, primary_mode[1], ALT_HOLD),
 
     // @Param: _ACTION1
     // @DisplayName: Tmode action 1
@@ -205,6 +205,16 @@ void ToyMode::update()
     
     if (!done_first_update) {
         done_first_update = true;
+
+        /*
+          fixup default primary mode. A frame with a flow sensor should default to FLOWHOLD as primary mode.
+         */
+        if (copter.optflow.device_id() != 0) {
+            if (!primary_mode[0].configured_in_storage()) {
+                primary_mode[0].set(FLOWHOLD);
+            }
+        }
+        
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
     }
