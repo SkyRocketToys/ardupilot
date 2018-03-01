@@ -542,6 +542,17 @@ void AP_Baro::init(void)
         ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
                                             std::move(hal.i2c_mgr->get_device(HAL_BARO_20789_I2C_BUS, HAL_BARO_20789_I2C_ADDR_PRESS)),
                                             std::move(hal.spi->get_device("icm20789"))));
+#elif HAL_BARO_DEFAULT == HAL_BARO_SKYVIPER_F412
+        // the baro is a 20789 on either SPI or I2C
+        ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
+                                            std::move(hal.i2c_mgr->get_device(HAL_BARO_20789_I2C_BUS, HAL_BARO_20789_I2C_ADDR_PRESS)),
+                                            std::move(hal.spi->get_device("icm20789"))));
+        if (_num_drivers == 0) {
+            // try on I2C
+            ADD_BACKEND(AP_Baro_ICM20789::probe(*this,
+                                                std::move(hal.i2c_mgr->get_device(HAL_BARO_20789_I2C_BUS, HAL_BARO_20789_I2C_ADDR_PRESS)),
+                                                std::move(hal.i2c_mgr->get_device(HAL_BARO_20789_I2C_BUS, HAL_BARO_20789_I2C_ADDR_ICM))));
+        }
 #elif HAL_BARO_DEFAULT == HAL_BARO_LPS22H_SPI
     ADD_BACKEND(AP_Baro_LPS2XH::probe(*this,
                                       std::move(hal.spi->get_device(HAL_BARO_LPS22H_NAME))));

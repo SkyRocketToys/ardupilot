@@ -104,6 +104,12 @@ bool AP_Baro_ICM20789::imu_spi_init(void)
     uint8_t whoami = 0;
     uint8_t v;
 
+    dev_imu->read_registers(MPUREG_WHOAMI, &whoami, 1);
+    if (whoami != MPU_WHOAMI_ICM20789 && whoami != MPU_WHOAMI_ICM20789_R1) {
+        dev_imu->get_semaphore()->give();
+        return false;
+    }
+
     dev_imu->read_registers(MPUREG_USER_CTRL, &v, 1);
     dev_imu->write_register(MPUREG_PWR_MGMT_1, BIT_PWR_MGMT_1_CLK_XGYRO);
 
@@ -119,8 +125,6 @@ bool AP_Baro_ICM20789::imu_spi_init(void)
     dev_imu->write_register(MPUREG_FIFO_EN, 0x00);
     dev_imu->write_register(MPUREG_PWR_MGMT_1,
                             BIT_PWR_MGMT_1_SLEEP | BIT_PWR_MGMT_1_CLK_XGYRO);
-
-    dev_imu->read_registers(MPUREG_WHOAMI, &whoami, 1);
 
     // wait for sensor to settle
     hal.scheduler->delay(100);
@@ -180,11 +184,11 @@ bool AP_Baro_ICM20789::init()
     if (dev_imu->bus_type() != AP_HAL::Device::BUS_TYPE_I2C) {
         if (!imu_spi_init()) {
             debug("ICM20789: failed to initialise IMU SPI device\n");
-            return false;
+            goto failed;
         }
     } else if (!imu_i2c_init()) {
         debug("ICM20789: failed to initialise IMU I2C device\n");
-        return false;
+        goto failed;
     }
 
     if (!send_cmd16(CMD_SOFT_RESET)) {
