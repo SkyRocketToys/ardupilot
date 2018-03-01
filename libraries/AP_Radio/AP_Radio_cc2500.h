@@ -197,6 +197,7 @@ private:
     uint32_t last_pps_ms;
     uint8_t tx_rssi;
     uint8_t tx_pps;
+    uint8_t last_fcc_chan;
 
     bool handle_D16_packet(const uint8_t *packet);
     bool handle_SRT_packet(const uint8_t *packet);
@@ -208,6 +209,7 @@ private:
     // check sending of fw upload ack
     void check_fw_ack(void);
     void map_stick_mode(uint16_t *channels);
+    void set_fcc_channel(void);
 };
 
 

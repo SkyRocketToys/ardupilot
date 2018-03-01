@@ -46,7 +46,7 @@ uint32_t AP_Radio_cc2500::irq_time_us;
 
   For D16 protocol we select 47 channels from a max of 235 channels
 
-  For SRT protocol we select 23 channels from a max of 233 channels,
+  For SRT protocol we select 23 channels from a max of 235 channels,
   and avoid channels near to the WiFi channel of the Sonix video board
  */
 #if USE_D16_FORMAT
@@ -704,7 +704,7 @@ void AP_Radio_cc2500::irq_handler(void)
     } while (!matched);
 
     if (ccLen & 0x80) {
-        Debug(3,"Fifo overflow %02x\n", ccLen);
+        Debug(6,"Fifo overflow %02x\n", ccLen);
         // RX FIFO overflow
         cc2500.Strobe(CC2500_SFRX);
         cc2500.Strobe(CC2500_SRX);
@@ -838,14 +838,37 @@ void AP_Radio_cc2500::irq_handler(void)
     }
 }
 
+/*
+  setup for the 6 possible FCC channel values (3 normal, 3 CW)
+ */
+void AP_Radio_cc2500::set_fcc_channel(void)
+{
+    uint8_t chan = MAX_CHANNEL_NUMBER/2;
+    switch (get_fcc_test()) {
+    case 1:
+    case 4:
+        chan = 0;
+        break;
+    case 2:
+    case 5:
+        chan = MAX_CHANNEL_NUMBER/2;
+        break;
+    case 3:
+    case 6:
+        chan = MAX_CHANNEL_NUMBER-1;
+        break;
+    }
+    setChannel(chan);
+}
+
 // handle timeout IRQ
 void AP_Radio_cc2500::irq_timeout(void)
 {
     if (get_fcc_test() != 0 && protocolState != STATE_FCCTEST) {
         protocolState = STATE_FCCTEST;
-        Debug(1,"Starting FCCTEST %d\n", get_fcc_test());
-        setChannel((labs(get_fcc_test())-1) * 10);
-        send_D16_telemetry();
+        last_fcc_chan = 0;
+        set_fcc_channel();
+        send_SRT_telemetry();
     }
     
     switch (protocolState) {
@@ -914,11 +937,18 @@ void AP_Radio_cc2500::irq_timeout(void)
         if (get_fcc_test() == 0) {
             protocolState = STATE_DATA;
             Debug(1,"Ending FCCTEST\n");
-        } else {
-            setChannel((labs(get_fcc_test())-1) * 10);
         }
+        // send every 9ms
+        chVTSet(&timeout_vt, MS2ST(INTER_PACKET_MS), trigger_timeout_event, nullptr);
         cc2500.SetPower(get_transmit_power());
-        send_D16_telemetry();
+        if (get_fcc_test() < 4 || last_fcc_chan != get_fcc_test()) {
+            set_fcc_channel();
+            send_SRT_telemetry();
+        }
+        if (last_fcc_chan != get_fcc_test() && get_fcc_test() != 0) {
+            Debug(1,"Starting FCCTEST %u at power %u\n", get_fcc_test(), get_transmit_power());
+        }
+        last_fcc_chan = get_fcc_test();
         break;
     }
 
@@ -1230,9 +1260,9 @@ void AP_Radio_cc2500::send_D16_telemetry(void)
 
     cc2500.Strobe(CC2500_SIDLE);
     cc2500.Strobe(CC2500_SFTX);
-    if (get_fcc_test() >= 0) {
-        // in negative FCC test modes we don't write to the FIFO, which gives
-        // continuous transmission
+    if (get_fcc_test() <= 3) {
+        // in CW FCC test modes we don't write to the FIFO, which
+        // gives continuous transmission
         cc2500.WriteFifo(frame, sizeof(frame));
     }
     cc2500.Strobe(CC2500_STX);
@@ -1287,8 +1317,8 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
 
     cc2500.Strobe(CC2500_SIDLE);
     cc2500.Strobe(CC2500_SFTX);
-    if (get_fcc_test() >= 0) {
-        // in negative FCC test modes we don't write to the FIFO, which gives
+    if (get_fcc_test() <= 3) {
+        // in CW FCC test modes we don't write to the FIFO, which gives
         // continuous transmission
         cc2500.WriteFifo((const uint8_t *)&pkt, sizeof(pkt));
     }
