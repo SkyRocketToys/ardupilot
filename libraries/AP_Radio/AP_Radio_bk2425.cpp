@@ -530,6 +530,9 @@ void AP_Radio_beken::map_stick_mode(void)
         // nothing to do, transmitter is natively mode2
         break;
     }
+
+    // reverse pitch input to match ArduPilot default
+    pwm_channels[1] = 3000 - pwm_channels[1];
 }
 
 // ----------------------------------------------------------------------------
