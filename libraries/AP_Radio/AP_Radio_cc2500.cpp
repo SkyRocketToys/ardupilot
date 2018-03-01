@@ -279,6 +279,25 @@ const uint16_t CRCTable[] = {
 };
 
 /*
+  static probe function for radio auto-detect
+ */
+bool AP_Radio_cc2500::probe(void)
+{
+    auto dev = hal.spi->get_device("cc2500");
+    if (!dev->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
+        return false;
+    }
+    uint8_t r1=0, r2=0;
+    if (!dev->read_registers(CC2500_30_PARTNUM | CC2500_READ_BURST | CC2500_READ_SINGLE, &r1, 1) || r1 != 0x80 ||
+        !dev->read_registers(CC2500_31_VERSION | CC2500_READ_BURST | CC2500_READ_SINGLE, &r2, 1) || r2 != 0x03) {
+        dev->get_semaphore()->give();
+        return false;
+    }
+    dev->get_semaphore()->give();
+    return true;
+}
+
+/*
   initialise the radio
  */
 void AP_Radio_cc2500::radio_init(void)

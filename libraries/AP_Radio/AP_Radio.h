@@ -72,6 +72,7 @@ public:
         RADIO_TYPE_CYRF6936=1,
         RADIO_TYPE_CC2500=2,
         RADIO_TYPE_BK2425=3,
+        RADIO_TYPE_AUTO=100,
     };
     
     enum ap_radio_protocol {
