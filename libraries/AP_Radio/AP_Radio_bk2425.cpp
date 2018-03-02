@@ -320,7 +320,7 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
     //we are called from ISR context
 	next_timeout_us += delta_timeout_us;
 	last_timeout_us = AP_HAL::micros();
-	if (int32_t(next_timeout_us - last_timeout_us) < 500) // Too late for this one
+	if (int32_t(next_timeout_us - last_timeout_us) < 300) // Too late for this one
 		next_timeout_us = last_timeout_us + delta_timeout_us;
 	uint32_t delta = US2ST(next_timeout_us - last_timeout_us);
 
@@ -688,21 +688,23 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			(BK_STATUS_RX_DR | BK_STATUS_TX_DS | BK_STATUS_MAX_RT)); // clear RX_DR or TX_DS or MAX_RT interrupt flag
         return;
     }
-    
+	DEBUG1_HIGH();
+	
 	// Determine which state fired the interrupt
+	bool bNext = false;
+	bool bRx = false;
 	uint8_t bk_sta = beken.ReadStatus();
 	if (bk_sta & BK_STATUS_TX_DS)
 	{
 		// Packet was sent towards the Tx board
 		synctm.tx_time_us = when;
 //		stats.sentPacketCount++;
+		beken.SwitchToIdleMode();
 		if (beken.fcc.disable_crc_mode && !beken.fcc.disable_crc)
 		{
-			beken.SwitchToIdleMode();
 			beken.SetCrcMode(true);
 		}
-		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
-		nextChannel(1);
+		bNext = bRx = true;
 //		DebugPrintf(2, "T");
 	}
 	if (bk_sta & BK_STATUS_MAX_RT)
@@ -729,6 +731,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		{
 			stats.recv_errors++;
 		}
+		bNext = true;
 		
 		uint8_t len, fifo_sta;
 		uint8_t packet[32];
@@ -741,8 +744,8 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			{
 				bReply = true;
 				synctm.Rx(when);
-//				printf("%d ", when + synctm.sync_time_us + 3000 - next_switch_us);
-				next_switch_us = when + synctm.sync_time_us + 3000; // Switch channels if we miss the next packet
+//				printf("R%d ", when - next_switch_us);
+				next_switch_us = when + synctm.sync_time_us + 2000; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
 //				DebugPrintf(3, "Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
@@ -774,6 +777,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	{
 		if (get_telem_enable()) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
 		{
+			bNext = bRx = false;
 			// Send the telemetry reply to the controller
 			beken.Strobe(BK_FLUSH_TX); // flush Tx
 			beken.ClearAckOverflow();
@@ -789,7 +793,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 				beken.SetCrcMode(false);
 			}
 			beken.SwitchToTxMode();
-			hal.scheduler->delay_microseconds(100); // delay to give the (remote) tx a chance to switch to receive mode
+			hal.scheduler->delay_microseconds(200); // delay to give the (remote) tx a chance to switch to receive mode
 			if (txDfu)
 				beken.SendPacket(BK_W_TX_PAYLOAD_NOACK_CMD, (uint8_t *)&beken.pktDataDfu, PACKET_LENGTH_TX_DFU);
 			else
@@ -797,9 +801,14 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		}
 		else // Try to still work when telemetry is disabled
 		{
-			nextChannel(1);
+			bNext = true;
 		}
 	}
+	if (bNext)
+		nextChannel(1);
+	if (bRx)
+		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
+	DEBUG1_LOW();
 }	
 
 // ----------------------------------------------------------------------------
@@ -935,14 +944,15 @@ void AP_Radio_beken::irq_timeout(void)
 		}
 		else
 		{
+//			DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
 			DebugPrintf(2, "c");
 		}
 		{
 			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 			if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
 			{
-				DebugPrintf(2, "#");
-				radio_instance->irq_handler(AP_HAL::micros());
+				DebugPrintf(2, "#"); // We have received a packet, but the interrupt was not triggered!
+				radio_instance->irq_handler(next_switch_us); // Use this broken time
 			}
 			else
 			{
@@ -955,11 +965,13 @@ void AP_Radio_beken::irq_timeout(void)
 			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
 			DebugPrintf(2, "j");
 		}
-		if (!beken.WasRxMode())
-		{
-			beken.SwitchToRxMode();
-		}
-		nextChannel(1);
+	//	if (!beken.WasRxMode())
+	//	{
+	//		beken.SwitchToRxMode();
+	//	}
+		beken.SwitchToIdleMode();
+		nextChannel(1); // Switch to the next channel
+		beken.SwitchToRxMode();
 		beken.ClearAckOverflow();
 	}
 }
