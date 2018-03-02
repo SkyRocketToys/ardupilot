@@ -133,7 +133,7 @@ private:
     void nextChannel(uint8_t skip);
     uint16_t calc_crc(uint8_t *data, uint8_t len);
     void irq_handler(uint32_t when);
-    void irq_timeout(void);
+    void irq_timeout(uint32_t when);
     void save_bind_info(void);
     bool load_bind_info(void);
 	void UpdateFccScan(void);
@@ -146,12 +146,9 @@ private:
     static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
-    static uint32_t irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts
-    static uint32_t irq_when_us; // Time the Beken IRQ was last triggered, in the handler thread (copied from irq_time_us)
-    static uint32_t last_timeout_us; // Time the timeout was last triggered (copied from irq_time_us via irq_when_us)
-    static uint32_t next_timeout_us; // Time the next timeout is due to be triggered
-    static uint32_t delta_timeout_us; // Desired delta between timeouts (1000us). Faster than the actual timing, since at the time we retrigger a timer interrupt we have insufficient information.
-    static uint32_t next_switch_us; // Time when we next want to switch radio channels
+    static uint32_t isr_irq_time_us; // Time the Beken IRQ was last triggered, in the handler interrupts (in microseconds)
+    static uint32_t isr_timeout_time_us; // Time the timeout was last triggered (copied from irq_time_us via irq_when_us) (in microseconds)
+    static uint32_t next_switch_us; // Time when we next want to switch radio channels (in microseconds)
     static uint32_t bind_time_ms; // Rough time in ms (milliseconds) when the last BIND command was received
 
 	// Class data
@@ -165,7 +162,7 @@ private:
 
     Radio_Beken beken; // The low level class for communicating to the Beken chip 
 	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
-    SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
+    static SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
     bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
 	FwUpload fwupload; // Support OTA upload
 

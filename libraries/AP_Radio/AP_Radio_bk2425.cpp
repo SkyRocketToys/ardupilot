@@ -34,14 +34,12 @@ AP_Radio_beken *AP_Radio_beken::radio_instance;
 thread_t *AP_Radio_beken::_irq_handler_ctx;
 virtual_timer_t AP_Radio_beken::timeout_vt;
 // See variable definitions in AP_Radio_bk2425.h for comments
-uint32_t AP_Radio_beken::irq_time_us;
-uint32_t AP_Radio_beken::irq_when_us;
-uint32_t AP_Radio_beken::last_timeout_us;
-uint32_t AP_Radio_beken::next_timeout_us;
-uint32_t AP_Radio_beken::delta_timeout_us = 1000;
+uint32_t AP_Radio_beken::isr_irq_time_us;
+uint32_t AP_Radio_beken::isr_timeout_time_us;
 uint32_t AP_Radio_beken::next_switch_us;
 uint32_t AP_Radio_beken::bind_time_ms;
-
+SyncTiming AP_Radio_beken::synctm; // Let the IRQ see the interpacket timing
+    
 // -----------------------------------------------------------------------------
 // We have received a packet
 // Sort out our timing relative to the tx to avoid clock drift
@@ -300,32 +298,30 @@ void AP_Radio_beken::radio_init(void)
 
 	beken.EnableCarrierDetect(true); // For autobinding
 
+    isr_irq_time_us = isr_timeout_time_us = AP_HAL::micros();
+    next_switch_us = isr_irq_time_us + 10000;
     chVTSet(&timeout_vt, MS2ST(10), trigger_timeout_event, nullptr); // Initial timeout?
     if (3 <= get_debug_level())
 		beken.DumpRegisters();
 }
 
+// ----------------------------------------------------------------------------
 void AP_Radio_beken::trigger_irq_radio_event()
 {
     //we are called from ISR context
     chSysLockFromISR();
-    irq_time_us = AP_HAL::micros();
+    isr_irq_time_us = AP_HAL::micros();
     chEvtSignalI(_irq_handler_ctx, EVT_IRQ);
     chSysUnlockFromISR();
 }
 
+// ----------------------------------------------------------------------------
 void AP_Radio_beken::trigger_timeout_event(void *arg)
 {
     (void)arg;
     //we are called from ISR context
-	next_timeout_us += delta_timeout_us;
-	last_timeout_us = AP_HAL::micros();
-	if (int32_t(next_timeout_us - last_timeout_us) < 300) // Too late for this one
-		next_timeout_us = last_timeout_us + delta_timeout_us;
-	uint32_t delta = US2ST(next_timeout_us - last_timeout_us);
-
+	isr_timeout_time_us = AP_HAL::micros();
     chSysLockFromISR();
-    chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 1 ms
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
 }
@@ -696,6 +692,12 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	uint8_t bk_sta = beken.ReadStatus();
 	if (bk_sta & BK_STATUS_TX_DS)
 	{
+		DEBUG1_LOW();
+		DEBUG1_HIGH();
+		DEBUG1_LOW();
+		DEBUG1_HIGH();
+		DEBUG1_LOW();
+		DEBUG1_HIGH();
 		// Packet was sent towards the Tx board
 		synctm.tx_time_us = when;
 //		stats.sentPacketCount++;
@@ -714,6 +716,10 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	bool bReply = false;
 	if (bk_sta & BK_STATUS_RX_DR)
 	{
+		DEBUG1_LOW();
+		DEBUG1_HIGH();
+		DEBUG1_LOW();
+		DEBUG1_HIGH();
 		// We have received a packet
 		uint8_t rxstd = 0;
 //		DebugPrintf(2, "R%ld,%ld\r\n", when, synctm.sync_time_us);
@@ -745,7 +751,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 				bReply = true;
 				synctm.Rx(when);
 //				printf("R%d ", when - next_switch_us);
-				next_switch_us = when + synctm.sync_time_us + 2000; // Switch channels if we miss the next packet
+				next_switch_us = when + synctm.sync_time_us + 2500; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
 //				DebugPrintf(3, "Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
@@ -775,6 +781,13 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	beken.WriteReg((BK_WRITE_REG|BK_STATUS), (BK_STATUS_MAX_RT | BK_STATUS_TX_DS | BK_STATUS_RX_DR));
 	if (bReply)
 	{
+		uint32_t now = AP_HAL::micros();
+		uint32_t delta = 1800 + (next_switch_us - now); // Do not use US2ST since that will overflow 32 bits. Assume CH_CFG_ST_FREQUENCY=1MHz
+		chSysLock();
+		chVTResetI(&timeout_vt); // Stop the normal timeout
+		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout after 7.5ms
+		chSysUnlock();
+		
 		if (get_telem_enable()) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
 		{
 			bNext = bRx = false;
@@ -805,15 +818,19 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		}
 	}
 	if (bNext)
+	{
+		DEBUG2_HIGH();
+		DEBUG2_LOW();
 		nextChannel(1);
+	}
 	if (bRx)
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
 	DEBUG1_LOW();
 }	
 
 // ----------------------------------------------------------------------------
-// handle timeout IRQ (called every ms)
-void AP_Radio_beken::irq_timeout(void)
+// handle timeout IRQ (called when we need to switch channels)
+void AP_Radio_beken::irq_timeout(uint32_t when)
 {
 	if (!beken.bkReady) // We are reinitialising the chip in the main thread
 	{
@@ -933,10 +950,9 @@ void AP_Radio_beken::irq_timeout(void)
 	}
 
 	// Normal modes - we have timed out for channel hopping
-	if (last_timeout_us >= next_switch_us) // We can swap channels now
 	{
 		int32_t d = synctm.sync_time_us; // Time between packets, e.g. 5100 us
-		uint32_t dt = last_timeout_us - synctm.rx_time_us;
+		uint32_t dt = when - synctm.rx_time_us;
 		if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
 		{
 			d *= 4;
@@ -959,20 +975,26 @@ void AP_Radio_beken::irq_timeout(void)
 				next_switch_us += d; // Switch channels if we miss the next packet
 			}
 		}
-		int32_t ss = int32_t(next_switch_us - last_timeout_us);
+		int32_t ss = int32_t(next_switch_us - when);
 		if (ss < 1000) // Not enough time
 		{
-			next_switch_us = last_timeout_us + d; // Switch channels if we miss the next packet
+			next_switch_us = when + d; // Switch channels if we miss the next packet
 			DebugPrintf(2, "j");
 		}
-	//	if (!beken.WasRxMode())
-	//	{
-	//		beken.SwitchToRxMode();
-	//	}
 		beken.SwitchToIdleMode();
 		nextChannel(1); // Switch to the next channel
 		beken.SwitchToRxMode();
 		beken.ClearAckOverflow();
+
+		// Ask for another timeout
+		uint32_t now = AP_HAL::micros();
+		if (int32_t(next_switch_us - when) < 300) // Too late for this one
+			next_switch_us = now + synctm.sync_time_us;
+		uint32_t delta = (next_switch_us - now); // Do not use US2ST since that will overflow 32 bits. Assume CH_CFG_ST_FREQUENCY=1MHz
+
+		chSysLock();
+		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 5 ms
+		chSysUnlock();
 	}
 }
 
@@ -988,16 +1010,15 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
 			_irq_handler_ctx->name = "RadioBeken"; // Only useful to be done once but here is done often
 
         radio_instance->beken.lock_bus();
-        irq_when_us = irq_time_us; // Get the time of the event
         switch(evt) {
         case EVT_IRQ:
             if (radio_instance->beken.fcc.fcc_mode != 0) {
                 DebugPrintf(3, "IRQ FCC\n");
             }
-            radio_instance->irq_handler(irq_when_us);
+            radio_instance->irq_handler(isr_irq_time_us);
             break;
         case EVT_TIMEOUT:
-			radio_instance->irq_timeout();
+			radio_instance->irq_timeout(isr_timeout_time_us);
             break;
         case EVT_BIND: // The user has clicked on the "Start Bind" button on the web interface
 			DebugPrintf(2, "\r\nBtnStartBind\r\n");
@@ -1080,6 +1101,7 @@ bool AP_Radio_beken::load_bind_info(void)
 // Step through the channels
 void SyncChannel::NextChannel(void)
 {
+	DEBUG2_HIGH();
 	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
 		// We are in the factory test modes. Keep the channel as is.
@@ -1099,6 +1121,9 @@ void SyncChannel::NextChannel(void)
 		channel = (channel + 1) % CHANNEL_COUNT_LOGICAL;
 		channel += table * CHANNEL_COUNT_LOGICAL;
 	}
+	DEBUG2_LOW();
+	DEBUG2_HIGH();
+	DEBUG2_LOW();
 }
 
 // If we have not received any packets for ages, try a WiFi table that covers all frequencies

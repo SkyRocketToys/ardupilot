@@ -321,6 +321,8 @@ enum {
 #define BEKEN_PA_LOW()      (palClearLine(HAL_GPIO_PIN_RADIO_PA_CTL)) // (hal.gpio->write(HAL_CHIBIOS_GPIO_RADIO_PA_CTL, 0))
 #define DEBUG1_HIGH()       (palSetLine(HAL_GPIO_PIN_DEBUG1))
 #define DEBUG1_LOW()        (palClearLine(HAL_GPIO_PIN_DEBUG1))
+#define DEBUG2_HIGH()       (palSetLine(HAL_GPIO_PIN_DEBUG2))
+#define DEBUG2_LOW()        (palClearLine(HAL_GPIO_PIN_DEBUG2))
 #else
 #error This configuration is not supported.
 #endif
