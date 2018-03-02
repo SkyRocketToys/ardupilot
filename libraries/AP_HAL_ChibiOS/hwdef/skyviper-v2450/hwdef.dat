@@ -53,5 +53,7 @@ DMA_NOSHARE SPI2_*
 undef PA1
 PA1 UART4_RX UART4 NODMA
 
-env DEFINES CHIBIOS_SHORT_BOARD_NAME="SRT-v2450GPS"
+# short name for use by system ID string
+define CHIBIOS_SHORT_BOARD_NAME "SRT-v2450GPS"
+
 env DEFAULT_PARAMETERS '../../Tools/Frame_params/SkyViper-2450GPS/defaults.parm'
