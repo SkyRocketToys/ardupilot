@@ -751,7 +751,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 				bReply = true;
 				synctm.Rx(when);
 //				printf("R%d ", when - next_switch_us);
-				next_switch_us = when + synctm.sync_time_us + 2500; // Switch channels if we miss the next packet
+				next_switch_us = when + synctm.sync_time_us + 1500; // Switch channels if we miss the next packet
 				// This includes short packets (e.g. where no telemetry was sent)
 				beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
 //				DebugPrintf(3, "Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
@@ -782,10 +782,10 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	if (bReply)
 	{
 		uint32_t now = AP_HAL::micros();
-		uint32_t delta = 1800 + (next_switch_us - now); // Do not use US2ST since that will overflow 32 bits. Assume CH_CFG_ST_FREQUENCY=1MHz
+		uint32_t delta = US2ST64(800 + next_switch_us - now); // Do not use US2ST since that will overflow 32 bits
 		chSysLock();
 		chVTResetI(&timeout_vt); // Stop the normal timeout
-		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout after 7.5ms
+		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout after 7ms
 		chSysUnlock();
 		
 		if (get_telem_enable()) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
@@ -990,7 +990,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 		uint32_t now = AP_HAL::micros();
 		if (int32_t(next_switch_us - when) < 300) // Too late for this one
 			next_switch_us = now + synctm.sync_time_us;
-		uint32_t delta = (next_switch_us - now); // Do not use US2ST since that will overflow 32 bits. Assume CH_CFG_ST_FREQUENCY=1MHz
+		uint32_t delta = US2ST64(next_switch_us - now); // Do not use US2ST since that will overflow 32 bits.
 
 		chSysLock();
 		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 5 ms
