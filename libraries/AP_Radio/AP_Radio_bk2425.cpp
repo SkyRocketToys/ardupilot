@@ -440,6 +440,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 		tx->flight_mode = t_status.flight_mode;
 		tx->wifi = t_status.wifi_chan + (24 * t_status.tx_max);
 		tx->note_adjust = t_status.note_adjust;
+		tx->hopping = adaptive.hopping; // Tell the tx what we want to use
 		return false;
     }
 	
@@ -540,6 +541,7 @@ void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 	syncch.SetChannel(rx->channel);
 	if (get_factory_test() == 0) // Final check that we are not in factory mode
 	{
+		syncch.SetHopping(0, rx->u.bind.hopping);
 		beken.SetAddresses(&rx->u.bind.bind_address[0]);
 		Debug(3, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
 			rx->u.bind.bind_address[1], rx->u.bind.bind_address[2],
@@ -566,6 +568,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				already_bound = true; // Do not autobind to a different tx unless we power off
 // test rssi	beken.EnableCarrierDetect(false); // Save 1ma of power
 			}
+			adaptive.Get(rx->channel); // Give the good news to the adaptive logic
 			// Put the data into the control values (assuming mode2)
 			pwm_channels[0] = 1000 + rx->u.ctrl.roll     + (uint16_t(rx->u.ctrl.msb & 0xC0) << 2); // Roll
 			pwm_channels[1] = 1000 + rx->u.ctrl.pitch    + (uint16_t(rx->u.ctrl.msb & 0x30) << 4); // Pitch
@@ -609,6 +612,13 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 						syncch.SetCountdown(rx->u.ctrl.data_value_lo+1, rx->u.ctrl.data_value_hi);
 						DebugPrintf(2, "(%d) ", rx->u.ctrl.data_value_lo);
 					}
+				}
+				break;
+			case BK_INFO_HOPPING:
+				if (get_factory_test() == 0)
+				{
+					syncch.SetHopping(rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
+					DebugPrintf(2, "[%d] ", rx->u.ctrl.data_value_lo);
 				}
 				break;
 			default:
@@ -962,6 +972,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 		{
 //			DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
 			DebugPrintf(2, "c");
+			adaptive.Miss(syncch.channel);
 		}
 		{
 			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
@@ -1035,8 +1046,9 @@ void AP_Radio_beken::setChannel(uint8_t channel)
 	beken.SetChannel(channel);
 }
 
-const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL+CHANNEL_COUNT_TEST] = {
-#if 0 // Single frequency mode
+const uint8_t bindHopData[256] = {
+#if 0 // Support single frequency mode (no channel hopping)
+	// Normal frequencies
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Normal
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 1,2,3,4,5
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 6
@@ -1044,7 +1056,18 @@ const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL+CHANNEL_COUNT
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 8
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 9,10,11
 	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Test mode channels
-#else // Normal mode
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Reserved
+	// Alternative frequencies
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Normal
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 1,2,3,4,5
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 6
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 7
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 8
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Wifi channel 9,10,11
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Test mode channels
+	23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23, // Reserved
+#else // Frequency hopping
+	// Normal frequencies
 	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,45, // Normal
 	57,62,67,72,58,63,68,59, 64,69,60,65,70,61,66,71, // Wifi channel 1,2,3,4,5
 	62,10,67,72,63,68,11,64, 69,60,65,70,12,61,66,71, // Wifi channel 6
@@ -1052,6 +1075,16 @@ const uint8_t bindHopData[CHANNEL_NUM_TABLES*CHANNEL_COUNT_LOGICAL+CHANNEL_COUNT
 	10,70,15,20,11,71,16,21, 12,17,22,72,13,18,14,19, // Wifi channel 8
 	10,15,20,25,11,16,21,12, 17,22,13,18,23,14,19,24, // Wifi channel 9,10,11
 	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,43, // Test mode channels
+	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,43, // Reserved
+	// Alternative frequencies
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Normal
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Wifi channel 1,2,3,4,5
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Wifi channel 6
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Wifi channel 7
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Wifi channel 8
+	15,10,62,21,67,44,41,38, 52,56,47,57,30,35,41,14, // Wifi channel 9,10,11
+	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,43, // Test mode channels (as normal)
+	46,41,31,52,36,13,72,69, 21,56,16,26,61,66,10,43, // Reserved (as normal)
 #endif
 };
 
@@ -1097,11 +1130,18 @@ bool AP_Radio_beken::load_bind_info(void)
 
     return true;
 }
+// ----------------------------------------------------------------------------
+// Which bits correspond to each channel within a table, for adaptive frequencies
+static const uint8_t channel_bit_table[CHANNEL_COUNT_LOGICAL] = {
+	0x01, 0, 0x02, 0, 0x04, 0, 0x08, 0,
+	0x10, 0, 0x20, 0, 0x40, 0, 0x80, 0
+};
 
 // Step through the channels
 void SyncChannel::NextChannel(void)
 {
 	DEBUG2_HIGH();
+	channel &= 0x7f;
 	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
 		// We are in the factory test modes. Keep the channel as is.
@@ -1117,9 +1157,20 @@ void SyncChannel::NextChannel(void)
 				return;
 			}
 		}
+		else if (hopping_countdown != countdown_invalid)
+		{
+			if (--hopping_countdown == 0)
+			{
+				hopping_current = hopping_wanted;
+				hopping_countdown = countdown_invalid;
+			}
+		}
 		uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
 		channel = (channel + 1) % CHANNEL_COUNT_LOGICAL;
 		channel += table * CHANNEL_COUNT_LOGICAL;
+		// Support adaptive frequency hopping
+		if (hopping_current & channel_bit_table[channel % CHANNEL_COUNT_LOGICAL])
+			channel |= 0x80;
 	}
 	DEBUG2_LOW();
 	DEBUG2_HIGH();
@@ -1129,6 +1180,7 @@ void SyncChannel::NextChannel(void)
 // If we have not received any packets for ages, try a WiFi table that covers all frequencies
 void SyncChannel::SafeTable(void)
 {
+	channel &= 0x7f;
 	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
 		// We are in the factory test modes. Keep the channel as is.
@@ -1143,6 +1195,32 @@ void SyncChannel::SafeTable(void)
 		}
 	}
 }
+
+// We have received a packet on this channel
+void SyncAdaptive::Get(uint8_t channel)
+{
+	uint8_t f = bindHopData[channel];
+	rx[f]++;
+}
+
+enum { ADAPT_THRESHOLD = 100 }; // Missed packets threshold for adapting the hopping
+
+// We have missed a packet on this channel. Consider adapting.
+void SyncAdaptive::Miss(uint8_t channel)
+{
+	uint8_t f1 = bindHopData[channel];
+    missed[f1]++;
+	uint8_t f2 = bindHopData[channel ^ 0x80];
+    int32_t delta1 = missed[f1] - rx[f1];
+    int32_t delta2 = missed[f2] - rx[f2];
+    if (delta1 > delta2 + ADAPT_THRESHOLD)
+    {
+		// Ok consider swapping this channel
+		hopping ^= channel_bit_table[channel % CHANNEL_COUNT_LOGICAL];
+	}
+}
+
+
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
 

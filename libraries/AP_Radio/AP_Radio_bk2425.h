@@ -62,17 +62,36 @@ struct SyncChannel {
     uint8_t channel; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     uint8_t countdown; // How many packet slots until a pending table change occurs?
     uint8_t countdown_chan; // Which channel do we jump to when the table change happens?
+    uint8_t hopping_current; // Which alternative channels are we on now
+    uint8_t hopping_wanted; //  Which alternative channels will we be on when Tx changes over?
+    uint8_t hopping_countdown; // How many packet slots until a pending table change occurs?
     SyncChannel() : // Constructor to setup sensible initial conditions
 		channel(0),
 		countdown(countdown_invalid),
-		countdown_chan(0)
+		countdown_chan(0),
+		hopping_current(0),
+		hopping_wanted(0),
+		hopping_countdown(countdown_invalid)
 		{}
     void SetChannel(uint8_t chan) // We have received a packet describing the current channel index
     { channel = chan; }
     void SetCountdown(uint8_t cnt, uint8_t nextCh) // We receive a countdown to a non-normal channel change in the future
     { countdown = cnt; countdown_chan = nextCh; }
+    void SetHopping(uint8_t cnt, uint8_t nextHopping) // We receive a countdown to a change in the adaptive table in the future/now
+    { hopping_countdown = cnt; hopping_wanted = nextHopping; if (cnt == 0) hopping_current = nextHopping; }
     void NextChannel(void); // Step through the channels normally (taking countdowns into account)
     void SafeTable(void); // Give up on this WiFi table as packets have not been received
+};
+
+// This helper struct determines which physical channels are better
+struct SyncAdaptive {
+    uint32_t missed[CHANNEL_FCC_HIGH]; // Missed
+    uint32_t rx[CHANNEL_FCC_HIGH]; // Received
+    uint8_t hopping; // Currently wanted hopping state. Send this to the tx.
+    SyncAdaptive() // Constructor to setup sensible initial conditions
+		{}
+	void Miss(uint8_t channel);
+	void Get(uint8_t channel);
 };
 
 // Support OTA upload. Assumes that mavlink offsets go from zero upwards contiguously
@@ -165,6 +184,7 @@ private:
     static SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
     bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
 	FwUpload fwupload; // Support OTA upload
+	SyncAdaptive adaptive; // Support adaptive hopping
 
     // Bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;

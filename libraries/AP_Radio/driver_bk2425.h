@@ -70,6 +70,7 @@ enum BK_INFO_TYPE_E {
 	BK_INFO_PPS = 8,
 	BK_INFO_BATTERY = 9,
 	BK_INFO_COUNTDOWN = 10,
+	BK_INFO_HOPPING = 11,
 	BK_INFO_MAX
 };
 typedef uint8_t BK_INFO_TYPE;
@@ -122,6 +123,7 @@ typedef struct packetDataDrone_s {
 	uint8_t flight_mode; ///< 8:
 	uint8_t wifi; ///< 9: Wifi channel + 24 * tx power.
 	uint8_t note_adjust; ///< 10: note adjust for the tx buzzer (should this be sent so often?)
+	uint8_t hopping; ///< 11: The adapative hopping byte we want to use
 } packetFormatTx;
 
 typedef struct packetDataDfu_s {
