@@ -1172,7 +1172,7 @@ void SyncChannel::NextChannel(void)
 			{
 				hopping_current = hopping_wanted;
 				hopping_countdown = countdown_invalid;
-				printf("{Use %d} ", hopping_current);
+//				printf("{Use %d} ", hopping_current);
 			}
 		}
 		uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
@@ -1238,7 +1238,7 @@ void SyncAdaptive::Miss(uint8_t channel)
 			if (hopping != oh) // Have we changed?
 			{
 				missed[f2] = rx[f2] = 0; // Reset the values
-				printf("{%d->%d:%d} ", f1+2400, f2+2400, hopping);
+//				printf("{%d->%d:%d} ", f1+2400, f2+2400, hopping);
 			}
 		}
 	}
