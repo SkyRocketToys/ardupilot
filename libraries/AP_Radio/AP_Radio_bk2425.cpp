@@ -440,7 +440,13 @@ bool AP_Radio_beken::UpdateTxData(void)
 		tx->flight_mode = t_status.flight_mode;
 		tx->wifi = t_status.wifi_chan + (24 * t_status.tx_max);
 		tx->note_adjust = t_status.note_adjust;
-		tx->hopping = adaptive.hopping; // Tell the tx what we want to use
+		// CPM bodge - use "Radio Protocol>0" to mean "Adaptive Frequency hopping disabled"
+		// This should move to a different parameter.
+		// Also the thresholds for swapping should move to be parameters.
+		if (get_protocol())
+			tx->hopping = 0; // Adaptive frequency hopping disabled
+		else
+			tx->hopping = adaptive.hopping; // Tell the tx what we want to use
 		return false;
     }
 	
@@ -541,6 +547,7 @@ void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 	syncch.SetChannel(rx->channel);
 	if (get_factory_test() == 0) // Final check that we are not in factory mode
 	{
+		adaptive.Invalidate();
 		syncch.SetHopping(0, rx->u.bind.hopping);
 		beken.SetAddresses(&rx->u.bind.bind_address[0]);
 		Debug(3, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
@@ -610,6 +617,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 					if (rx->u.ctrl.data_value_lo)
 					{
 						syncch.SetCountdown(rx->u.ctrl.data_value_lo+1, rx->u.ctrl.data_value_hi);
+						adaptive.Invalidate();
 						DebugPrintf(2, "(%d) ", rx->u.ctrl.data_value_lo);
 					}
 				}
@@ -618,7 +626,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				if (get_factory_test() == 0)
 				{
 					syncch.SetHopping(rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
-					DebugPrintf(2, "[%d] ", rx->u.ctrl.data_value_lo);
+//					DebugPrintf(2, "[%d] ", rx->u.ctrl.data_value_lo);
 				}
 				break;
 			default:
@@ -1154,6 +1162,7 @@ void SyncChannel::NextChannel(void)
 			{
 				channel = countdown_chan;
 				countdown = countdown_invalid;
+				hopping_current = hopping_wanted = 0;
 				return;
 			}
 		}
@@ -1163,6 +1172,7 @@ void SyncChannel::NextChannel(void)
 			{
 				hopping_current = hopping_wanted;
 				hopping_countdown = countdown_invalid;
+				printf("{Use %d} ", hopping_current);
 			}
 		}
 		uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
@@ -1203,7 +1213,7 @@ void SyncAdaptive::Get(uint8_t channel)
 	rx[f]++;
 }
 
-enum { ADAPT_THRESHOLD = 100 }; // Missed packets threshold for adapting the hopping
+enum { ADAPT_THRESHOLD = 50 }; // Missed packets threshold for adapting the hopping
 
 // We have missed a packet on this channel. Consider adapting.
 void SyncAdaptive::Miss(uint8_t channel)
@@ -1213,10 +1223,24 @@ void SyncAdaptive::Miss(uint8_t channel)
 	uint8_t f2 = bindHopData[channel ^ 0x80];
     int32_t delta1 = missed[f1] - rx[f1];
     int32_t delta2 = missed[f2] - rx[f2];
-    if (delta1 > delta2 + ADAPT_THRESHOLD)
+    if ((delta1 > ADAPT_THRESHOLD) && // Worse than 50% reception on this channel
+		(delta1 > delta2))
     {
 		// Ok consider swapping this channel
-		hopping ^= channel_bit_table[channel % CHANNEL_COUNT_LOGICAL];
+		uint8_t bit = channel_bit_table[channel % CHANNEL_COUNT_LOGICAL];
+		if (bit) // Is an even packet
+		{
+			uint8_t oh = hopping;
+			if (channel & 0x80) // Swap back from alternative
+				hopping &= ~bit;
+			else // Swap to alternative
+				hopping |= bit;
+			if (hopping != oh) // Have we changed?
+			{
+				missed[f2] = rx[f2] = 0; // Reset the values
+				printf("{%d->%d:%d} ", f1+2400, f2+2400, hopping);
+			}
+		}
 	}
 }
 

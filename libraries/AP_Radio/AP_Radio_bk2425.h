@@ -85,13 +85,15 @@ struct SyncChannel {
 
 // This helper struct determines which physical channels are better
 struct SyncAdaptive {
-    uint32_t missed[CHANNEL_FCC_HIGH]; // Missed
-    uint32_t rx[CHANNEL_FCC_HIGH]; // Received
+    uint32_t missed[CHANNEL_FCC_HIGH+1]; // Missed
+    uint32_t rx[CHANNEL_FCC_HIGH+1]; // Received
     uint8_t hopping; // Currently wanted hopping state. Send this to the tx.
-    SyncAdaptive() // Constructor to setup sensible initial conditions
+    SyncAdaptive() : // Constructor to setup sensible initial conditions
+		hopping(0)
 		{}
 	void Miss(uint8_t channel);
 	void Get(uint8_t channel);
+	void Invalidate() { hopping = 0; } // e.g. if we have jumped tables
 };
 
 // Support OTA upload. Assumes that mavlink offsets go from zero upwards contiguously
