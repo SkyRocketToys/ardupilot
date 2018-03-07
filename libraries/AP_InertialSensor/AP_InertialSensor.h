@@ -300,6 +300,7 @@ public:
         // Parameters
         AP_Int16 _required_count;
         AP_Int8 _sensor_mask;
+        AP_Int8 _batch_raw;
         // end Parameters
 
     private:
@@ -324,8 +325,8 @@ public:
         uint32_t last_sent_ms;
 
         // all samples are multiplied by this
-        static const uint16_t multiplier_accel = INT16_MAX/radians(2000);
-        static const uint16_t multiplier_gyro = INT16_MAX/(16*GRAVITY_MSS);
+        static const uint16_t multiplier_accel = INT16_MAX/(26*GRAVITY_MSS);
+        static const uint16_t multiplier_gyro = INT16_MAX/radians(2000);
         uint16_t multiplier = multiplier_accel;
 
         // push blocks to DataFlash at regular intervals.  each
@@ -336,7 +337,7 @@ public:
         // you are running a on an FMU with three IMUs then you
         // will loop back around to the first sensor after about
         // twenty seconds.
-        const uint8_t push_interval_ms = 100;
+        const uint8_t push_interval_ms = 20;
         const uint16_t samples_per_msg = 32;
 
         const AP_InertialSensor &_imu;
