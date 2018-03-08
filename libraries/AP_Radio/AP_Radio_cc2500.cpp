@@ -513,6 +513,10 @@ bool AP_Radio_cc2500::handle_SRT_packet(const uint8_t *packet)
         break;
     case PKTYPE_TELEM_PPS:
         tx_pps = data;
+        if (!have_tx_pps) {
+            check_double_bind();
+        }
+        have_tx_pps = true;
         break;
     case PKTYPE_BL_VERSION:
         // unused so far for cc2500
@@ -842,7 +846,12 @@ void AP_Radio_cc2500::irq_handler(void)
                 if (ccLen == 32 || get_protocol() == AP_Radio::PROTOCOL_D16) {
                     send_D16_telemetry();
                 } else {
-                    send_SRT_telemetry();
+                    if (have_tx_pps) {
+                        /* we don't start sending telemetry until we have the tx_pps rate. This allows us
+                           to reliably detect double-bind, where one TX is bound to multiple RX
+                        */
+                        send_SRT_telemetry();
+                    }
                 }
         
                 // now we sleep for enough time for the packet to be
@@ -1360,6 +1369,8 @@ void AP_Radio_cc2500::send_SRT_telemetry(void)
         setup_hopping_table_SRT();
         save_bind_info();
     }
+
+    telem_send_count++;
 }
 
 /*
@@ -1417,6 +1428,34 @@ void AP_Radio_cc2500::map_stick_mode(uint16_t *channels)
         // nothing to do, transmitter is natively mode2
         break;
     }
+}
+
+/*
+  check if we are the 2nd RX bound to this TX
+ */
+void AP_Radio_cc2500::check_double_bind(void)
+{
+    if (tx_pps <= telem_send_count ||
+        get_autobind_time() == 0) {
+        return;
+    }
+    // the TX has received more telemetry packets in the last second
+    // than we have ever sent. There must be another RX sending
+    // telemetry packets. We will reset our mfg_id and go back waiting
+    // for a new bind packet, hopefully with the right TX
+    Debug(1,"Double-bind detected\n");
+
+    // clear the current bind information
+    radio_instance->bindTxId[0] = 1;
+    radio_instance->bindTxId[1] = 1;
+    
+    radio_instance->setup_hopping_table_SRT();
+            
+    radio_instance->protocolState = STATE_SEARCH;
+    radio_instance->packet_timer = AP_HAL::micros();
+    radio_instance->stats.recv_packets = 0;
+    radio_instance->chanskip = 1;
+    radio_instance->nextChannel(1);
 }
 
 #endif // HAL_RCINPUT_WITH_AP_RADIO
