@@ -50,11 +50,22 @@ void GCS_MAVLINK::handle_device_op_read(mavlink_message_t *msg)
         retcode = 3;
         goto fail;        
     }
+#ifdef DEVOP_READ_SINGLE_REGISTERS
+    // set this override to read one byte at a time
+    for (uint8_t i=0; i<packet.count; i++) {
+        if (!dev->read_registers(packet.regstart+i, &data[i], 1)) {
+            retcode = 4;
+            dev->get_semaphore()->give();
+            goto fail;
+        }
+    }
+#else
     if (!dev->read_registers(packet.regstart, data, packet.count)) {
         retcode = 4;
         dev->get_semaphore()->give();
         goto fail;
     }
+#endif
     dev->get_semaphore()->give();
     mavlink_msg_device_op_read_reply_send(
         chan,
