@@ -373,6 +373,7 @@ bool AP_InertialSensor_Invensense::_data_ready()
 void AP_InertialSensor_Invensense::_poll_data()
 {
     _read_fifo();
+    _update_DLPF_cutoffs();
 }
 
 bool AP_InertialSensor_Invensense::_accumulate(uint8_t *samples, uint8_t n_samples)
@@ -625,7 +626,7 @@ void AP_InertialSensor_Invensense::_register_write(uint8_t reg, uint8_t val, boo
 }
 
 /*
-  set the DLPF filter frequency. Assumes caller has taken semaphore
+  set the software filter frequency. Assumes caller has taken semaphore
  */
 void AP_InertialSensor_Invensense::_set_filter_register(void)
 {
@@ -674,7 +675,7 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
         // this gives us 8kHz sampling on gyros and 4kHz on accels
         config |= BITS_DLPF_CFG_256HZ_NOLPF2;
     } else {
-        // limit to 1kHz if not on SPI
+        // default to 188Hz
         config |= BITS_DLPF_CFG_188HZ;
     }
 
@@ -690,6 +691,73 @@ void AP_InertialSensor_Invensense::_set_filter_register(void)
             _register_write(ICMREG_ACCEL_CONFIG2, ICM_ACC_DLPF_CFG_218HZ | (fifo_size<<6), true);
         }
     }
+    _update_DLPF_cutoffs();
+}
+
+
+/*
+  adjust in-sensor DLPF cutoffs
+ */
+void AP_InertialSensor_Invensense::_update_DLPF_cutoffs(void)
+{
+    uint16_t gyro_cutoff = _gyro_DLPF_cutoff();
+    uint16_t accel_cutoff = _accel_DLPF_cutoff();
+    if (_last_accel_dlpf == accel_cutoff &&
+        _last_gyro_dlpf == gyro_cutoff) {
+        // no change
+        return;
+    }
+    if (_fast_sampling) {
+        // no DLPF enabled with fast sampling
+        return;
+    }
+    uint8_t config = _register_read(MPUREG_CONFIG) & ~BITS_DLPF_CFG_MASK;
+
+    if (gyro_cutoff <= 0 || gyro_cutoff >= 188) {
+        // default to 188Hz
+        config |= BITS_DLPF_CFG_188HZ;
+    } else if (gyro_cutoff >= 98) {
+        config |= BITS_DLPF_CFG_98HZ;
+    } else if (gyro_cutoff >= 42) {
+        config |= BITS_DLPF_CFG_42HZ;
+    } else if (gyro_cutoff >= 20) {
+        config |= BITS_DLPF_CFG_20HZ;
+    } else if (gyro_cutoff >= 10) {
+        config |= BITS_DLPF_CFG_10HZ;
+    } else {
+        config |= BITS_DLPF_CFG_5HZ;
+    }
+    _register_write(MPUREG_CONFIG, config, true);
+    _last_gyro_dlpf = gyro_cutoff;
+
+    if (_mpu_type == Invensense_MPU6000) {
+        // nothing to do for accel config
+        _last_accel_dlpf = accel_cutoff;
+        return;
+    }
+
+    config = _register_read(ICMREG_ACCEL_CONFIG2) & ~BITS_DLPF_CFG_MASK;
+
+    if (accel_cutoff <= 0) {
+        // default to 218Hz
+        config |= ICM_ACC_DLPF_CFG_218HZ;
+    } else if (accel_cutoff >= 420) {
+        config |= ICM_ACC_DLPF_CFG_420HZ;
+    } else if (accel_cutoff >= 218) {
+        config |= ICM_ACC_DLPF_CFG_218HZ;
+    } else if (accel_cutoff >= 99) {
+        config |= ICM_ACC_DLPF_CFG_99HZ;
+    } else if (accel_cutoff >= 44) {
+        config |= ICM_ACC_DLPF_CFG_44HZ;
+    } else if (accel_cutoff >= 21) {
+        config |= ICM_ACC_DLPF_CFG_21HZ;
+    } else if (accel_cutoff >= 10) {
+        config |= ICM_ACC_DLPF_CFG_10HZ;
+    } else {
+        config |= ICM_ACC_DLPF_CFG_5HZ;
+    }
+    _register_write(ICMREG_ACCEL_CONFIG2, config, true);
+    _last_accel_dlpf = accel_cutoff;
 }
 
 /*

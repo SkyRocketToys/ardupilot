@@ -193,6 +193,12 @@ protected:
     // return the default filter frequency in Hz for the sample rate
     uint8_t _gyro_filter_cutoff(void) const { return _imu._gyro_filter_cutoff; }
 
+    // return the default DLPF filter frequency in Hz for the sample rate
+    uint8_t _accel_DLPF_cutoff(void) const { return _imu._accel_dlpf_hz; }
+
+    // return the default filter frequency in Hz for the sample rate
+    uint8_t _gyro_DLPF_cutoff(void) const { return _imu._gyro_dlpf_hz; }
+    
     // return the requested sample rate in Hz
     uint16_t get_sample_rate_hz(void) const;
 

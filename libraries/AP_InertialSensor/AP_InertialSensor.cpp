@@ -444,6 +444,22 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] = {
     // @Values: 1:FirstIMUOnly,3:FirstAndSecondIMU,7:FirstSecondAndThirdIMU,127:AllIMUs
     // @Bitmask: 0:FirstIMU,1:SecondIMU,2:ThirdIMU
     AP_GROUPINFO("ENABLE_MASK",  40, AP_InertialSensor, _enable_mask, 0x7F),
+
+    // @Param: GYRO_DLPF
+    // @DisplayName: Gyro DLPF cutoff
+    // @Description: Cutoff frequency for in-sensor gyro DLPF when supported
+    // @Units: Hz
+    // @Range: 0 256
+    // @User: Advanced
+    AP_GROUPINFO("GYRO_DLPF", 41, AP_InertialSensor, _gyro_dlpf_hz,  0),
+
+    // @Param: ACCEL_DLPF
+    // @DisplayName: Accel DLPF cutoff
+    // @Description: Cutoff frequency for in-sensor accel DLPF when supported
+    // @Units: Hz
+    // @Range: 0 256
+    // @User: Advanced
+    AP_GROUPINFO("ACCEL_DLPF", 42, AP_InertialSensor, _accel_dlpf_hz,  0),
     
     /*
       NOTE: parameter indexes have gaps above. When adding new

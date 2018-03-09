@@ -455,6 +455,10 @@ private:
     AP_Int8     _gyro_filter_cutoff;
     AP_Int8     _gyro_cal_timing;
 
+    // DLPF cutoff frequencies
+    AP_Int16    _accel_dlpf_hz;
+    AP_Int16    _gyro_dlpf_hz;
+    
     // use for attitude, velocity, position estimates
     AP_Int8     _use[INS_MAX_INSTANCES];
 

@@ -76,6 +76,7 @@ private:
     bool _check_whoami();
 
     void _set_filter_register(void);
+    void _update_DLPF_cutoffs(void);
     void _fifo_reset();
     bool _has_auxiliary_bus();
 
@@ -147,6 +148,9 @@ private:
         LowPassFilterVector3f accel_filter{4000, 188};
         LowPassFilterVector3f gyro_filter{8000, 188};
     } _accum;
+
+    uint16_t    _last_accel_dlpf;
+    uint16_t    _last_gyro_dlpf;
 };
 
 class AP_Invensense_AuxiliaryBusSlave : public AuxiliaryBusSlave
