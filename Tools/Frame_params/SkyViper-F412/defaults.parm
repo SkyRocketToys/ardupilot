@@ -6,8 +6,9 @@ MOT_PWM_MIN 1000
 MOT_PWM_MAX 2000
 #TERRAIN_ENABLE 0
 
-# RC_SPEED at 4kHz for minimal radio interference
-RC_SPEED 4000
+# RC_SPEED at 7.1kHz for minimal radio interference, without
+# being a multiple of IMU sample rate
+RC_SPEED 7100
 
 # toy mode setup
 TMODE_ENABLE 2
@@ -103,7 +104,10 @@ EK3_ENABLE 0
 
 # setup EK2 limits
 EK2_CHECK_SCALE 120
-EK2_ALT_M_NSE 2.0
+EK2_ALT_M_NSE 0.5
+EK2_HGT_I_GATE 1000
+EK2_ABIAS_P_NSE 0.01
+
 
 # fence
 FENCE_TYPE      3
