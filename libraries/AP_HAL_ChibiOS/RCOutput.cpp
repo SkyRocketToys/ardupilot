@@ -72,6 +72,9 @@ void RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
         freq_hz = 400;
     }
 
+    // prevent setting for disabled channels
+    chmask &= (1U<<total_channels)-1;
+    
 #if HAL_WITH_IO_MCU
     if (AP_BoardConfig::io_enabled()) {
         iomcu.set_freq(chmask, freq_hz);
@@ -149,6 +152,9 @@ void RCOutput::set_default_rate(uint16_t freq_hz)
         iomcu.set_default_rate(freq_hz);
     }
 #endif
+    // calculate mask of channels on FMU which are enabled
+    uint16_t local_mask = (((1U<<total_channels)-1) >> chan_offset);
+    
     for (uint8_t i = 0; i < NUM_GROUPS; i++ ) {
         uint16_t grp_ch_mask = 0;
         for (uint8_t j=0; j<4; j++) {
@@ -156,7 +162,8 @@ void RCOutput::set_default_rate(uint16_t freq_hz)
                 grp_ch_mask |= (1U<<pwm_group_list[i].chan[j]);
             }
         }
-        if (grp_ch_mask & fast_channel_mask) {
+        grp_ch_mask &= local_mask;
+        if ((grp_ch_mask & fast_channel_mask) != 0 || grp_ch_mask == 0) {
             // don't change fast channels
             continue;
         }
