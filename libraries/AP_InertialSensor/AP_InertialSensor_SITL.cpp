@@ -1,6 +1,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_InertialSensor_SITL.h"
 #include <SITL/SITL.h>
+#include <SRV_Channel/SRV_Channel.h>
 #include <stdio.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
@@ -44,6 +45,53 @@ bool AP_InertialSensor_SITL::init_sensor(void)
     hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&AP_InertialSensor_SITL::timer_update, void));
 
     return true;
+}
+
+/*
+  add simulated motor vibration for multicopters. This is based on the following:
+
+   - mid-throttle RPM from SIM_MOT_RPM
+   - mid-throttle amplitude for each motor from SIM_MOT_VIBE
+   - amplitude scales as square of throttle
+   - RPM assumed linear with throttle
+   - harmonics added:
+      at 2x RPM full amplitude
+      at 3x RPM 0.5 amplitude
+      at 4x RPM 0.25 amplitude
+   - sensor clipped at +/- 16g
+*/
+void AP_InertialSensor_SITL::add_motor_vibration(Vector3f &accel)
+{
+    if (sitl->motor_rpm <= 0) {
+        // not configured
+        return;
+    }
+    float now = AP_HAL::micros() * 1.0e-6f;
+    // get scaling from throttle to fundamental in Hz
+    float hz_scale = (sitl->motor_rpm * 2) / 60.0;
+
+    // amplitude at full throttle
+    Vector3f amplitude_full = sitl->motor_vibe.get() * 4.0;
+    
+    for (uint8_t i=0; i<16; i++) {
+        SRV_Channel::Aux_servo_function_t function = SRV_Channels::channel_function(i);
+        if (!SRV_Channel::is_motor(function)) {
+            // only do multicopter motors for now
+            continue;
+        }
+        uint16_t pwm;
+        if (!SRV_Channels::get_output_pwm(function, pwm) || pwm < 1000) {
+            continue;
+        }
+        float throttle = (pwm - 1000) * 0.001;
+        float freq_hz = hz_scale * throttle;
+        float phase = freq_hz * 2 * M_PI * now;
+        Vector3f base_amplitude = amplitude_full * sq(throttle);
+        for (uint8_t axis=0; axis<3; axis++) {
+            float amplitude = sinf(phase) + sinf(phase*2) + sinf(phase*3) * 0.5 + sinf(phase*4) * 0.25 * base_amplitude[axis];
+            accel[axis] += amplitude;
+        }
+    }
 }
 
 /*
@@ -94,6 +142,19 @@ void AP_InertialSensor_SITL::generate_accel(uint8_t instance)
 
     Vector3f accel = Vector3f(xAccel, yAccel, zAccel);
 
+    add_motor_vibration(accel);
+
+    const float clip_limit = 16*GRAVITY_MSS;
+    if (fabsf(accel.x) > clip_limit ||
+        fabsf(accel.y) > clip_limit ||
+        fabsf(accel.z) > clip_limit) {
+        increment_clip_count(accel_instance[instance]);
+        accel.x = constrain_float(accel.x, -clip_limit, clip_limit);
+        accel.y = constrain_float(accel.y, -clip_limit, clip_limit);
+        accel.z = constrain_float(accel.z, -clip_limit, clip_limit);
+    }
+        
+    
     _rotate_and_correct_accel(accel_instance[instance], accel);
     
     _notify_new_accel_raw_sample(accel_instance[instance], accel, AP_HAL::micros64());

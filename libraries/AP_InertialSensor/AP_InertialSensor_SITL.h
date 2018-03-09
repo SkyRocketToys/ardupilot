@@ -25,6 +25,9 @@ private:
     void generate_accel(uint8_t instance);
     void generate_gyro(uint8_t instance);
 
+    // add simulated motor vibration
+    void add_motor_vibration(Vector3f &accel);
+
     SITL::SITL *sitl;
 
     // simulated sensor rates in Hz. This matches a pixhawk1
