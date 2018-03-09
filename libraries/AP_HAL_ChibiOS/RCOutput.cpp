@@ -37,15 +37,20 @@ struct RCOutput::pwm_group RCOutput::pwm_group_list[] = { HAL_PWM_GROUPS };
 
 void RCOutput::init()
 {
+    // disable channels based on BRD_PWM_COUNT
+    uint8_t pwm_count = AP_BoardConfig::get_pwm_count();
+
     for (uint8_t i = 0; i < NUM_GROUPS; i++ ) {
         //Start Pwm groups
         pwmStart(pwm_group_list[i].pwm_drv, &pwm_group_list[i].pwm_cfg);
         for (uint8_t j = 0; j < 4; j++ ) {
-            if (pwm_group_list[i].chan[j] != CHAN_DISABLED) {
+            uint8_t chan = pwm_group_list[i].chan[j];
+            if (chan != CHAN_DISABLED && chan < pwm_count) {
                 total_channels = MAX(total_channels, pwm_group_list[i].chan[j]+1);
             }
         }
     }
+
 #if HAL_WITH_IO_MCU
     if (AP_BoardConfig::io_enabled()) {
         iomcu.init();
