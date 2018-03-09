@@ -145,6 +145,10 @@ public:
     AP_Float adsb_altitude_m;
     AP_Int8  adsb_tx;
 
+    // simulated vibration control
+    AP_Vector3f motor_vibe; // vibration amplitude at mid throttle, m/s/s
+    AP_Float    motor_rpm;  // motor RPM at mid throttle
+
     // Earth magnetic field anomaly
     AP_Vector3f mag_anomaly_ned; // NED anomaly vector at ground level (mGauss)
     AP_Float mag_anomaly_hgt; // height above ground where anomally strength has decayed to 1/8 of the ground level value (m)
