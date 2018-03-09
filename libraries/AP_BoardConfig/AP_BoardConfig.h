@@ -121,7 +121,8 @@ public:
 #if AP_FEATURE_BOARD_DETECT
         return instance?instance->state.pwm_count.get():4;
 #else
-        return 0;
+        // default to 16, which prevents masking in RCOutput
+        return 16;
 #endif
     }
     
