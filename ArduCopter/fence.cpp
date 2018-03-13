@@ -48,6 +48,17 @@ void Copter::fence_check()
         // record clearing of breach
         Log_Write_Error(ERROR_SUBSYSTEM_FAILSAFE_FENCE, ERROR_CODE_ERROR_RESOLVED);
     }
+
+#if TOY_MODE_ENABLED == ENABLED
+    if (g2.toy_mode.enabled() && control_mode == LOITER && !fence.check_destination_within_fence(copter.current_loc)) {
+        // in toy mode we unconditionally RTL when we are in LOITER
+        // mode outside the fence. This covers a case where the user
+        // enters LOITER mode outside the fence after the fence was
+        // disabled in ALT_HOLD mode
+        set_mode(RTL, MODE_REASON_FENCE_BREACH);
+    }
+#endif
+
 }
 
 // fence_send_mavlink_status - send fence status to ground station
