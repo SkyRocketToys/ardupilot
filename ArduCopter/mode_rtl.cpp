@@ -126,6 +126,72 @@ void Copter::ModeRTL::return_start()
     set_auto_yaw_mode(copter.get_default_auto_yaw_mode(true));
 }
 
+
+/*
+  input pilot stick mixing during RTL
+ */
+void Copter::ModeRTL::stick_mixing(float &nav_roll, float &nav_pitch, float &target_climb_rate)
+{
+#if RTL_STICK_MIXING == ENABLED
+    if (copter.failsafe.radio) {
+        // don't stick mix when no RC input
+        return;
+    }
+
+    if (!copter.fence.check_destination_within_fence(copter.current_loc)) {
+        // don't allow stick mixing when outside fence
+        if (pilot_steering) {
+            pilot_steering = false;
+            return_start();
+        }
+        return;
+    }
+    const int16_t roll_in = channel_roll->get_control_in();
+    const int16_t pitch_in = channel_pitch->get_control_in();
+    const int16_t throttle_in = channel_throttle->get_control_in();
+    if (roll_in || pitch_in || throttle_in > 700) {
+        pilot_steering = true;
+    } else {
+        if (pilot_steering) {
+            hal.console->printf("RTL shift origin\n");
+            return_start();
+        }
+        pilot_steering = false;
+        return;
+    }
+
+    // get pilot desired lean angles, using alt_hold angle limits
+    float pilot_roll, pilot_pitch;
+    float angle_limit = attitude_control->get_althold_lean_angle_max();
+
+    get_pilot_desired_lean_angles(roll_in, pitch_in, pilot_roll, pilot_pitch,
+                                  angle_limit);
+
+    if (pilot_roll > 0.5 * angle_limit) {
+        pilot_roll = (3*pilot_roll - angle_limit);
+    } else if (pilot_roll < -0.5*angle_limit) {
+        pilot_roll = (3*pilot_roll + angle_limit);
+    }
+    nav_roll += pilot_roll;
+    nav_roll = constrain_float(nav_roll, -angle_limit, angle_limit);
+
+    if (pilot_pitch > 0.5*angle_limit) {
+        pilot_pitch = (3*pilot_pitch - angle_limit);
+    } else if (pilot_pitch < -0.5f) {
+        pilot_pitch = (3*pilot_pitch + angle_limit);
+    }
+    nav_pitch += pilot_pitch;
+    nav_pitch = constrain_float(nav_pitch, -angle_limit, angle_limit);
+
+    if (throttle_in > 700) {
+        // allow pilot to climb over objects in RTL, then resume normal flight on release
+        target_climb_rate = get_pilot_desired_climb_rate(throttle_in);
+        target_climb_rate = constrain_float(target_climb_rate, -g2.pilot_speed_dn, g.pilot_speed_up);
+    }
+    
+#endif
+}
+
 // rtl_climb_return_run - implements the initial climb, return home and descent portions of RTL which all rely on the wp controller
 //      called by rtl_run at 100hz or more
 void Copter::ModeRTL::climb_return_run()
@@ -150,19 +216,32 @@ void Copter::ModeRTL::climb_return_run()
     // set motors to full range
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
+    float old_alt_target = pos_control->get_pos_target().z;
+    float nav_roll = wp_nav->get_roll();
+    float nav_pitch = wp_nav->get_pitch();
+    float target_climb_rate = 0;
+    
+    stick_mixing(nav_roll, nav_pitch, target_climb_rate);
+
     // run waypoint controller
     copter.failsafe_terrain_set_status(wp_nav->update_wpnav());
 
+    if (target_climb_rate > 0) {
+        Vector3f target = pos_control->get_pos_target();
+        target.z = old_alt_target + target_climb_rate * G_Dt;
+        pos_control->set_pos_target(target);
+    }
+    
     // call z-axis position controller (wpnav should have already updated it's alt target)
     pos_control->update_z_controller();
 
     // call attitude controller
     if (copter.auto_yaw_mode == AUTO_YAW_HOLD) {
         // roll & pitch from waypoint controller, yaw rate from pilot
-        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), target_yaw_rate, get_smoothing_gain());
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(nav_roll, nav_pitch, target_yaw_rate, get_smoothing_gain());
     }else{
         // roll, pitch from waypoint controller, yaw heading from auto_heading()
-        attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
+        attitude_control->input_euler_angle_roll_pitch_yaw(nav_roll, nav_pitch, get_auto_heading(),true, get_smoothing_gain());
     }
 
     // check if we've completed this stage of RTL
@@ -451,6 +530,9 @@ void Copter::ModeRTL::compute_return_target(bool terrain_following_allowed)
     // set returned target alt to new target_alt
     rtl_path.return_target.set_alt_cm(target_alt, rtl_path.terrain_used ? Location_Class::ALT_FRAME_ABOVE_TERRAIN : Location_Class::ALT_FRAME_ABOVE_HOME);
 
+    // ensure we do not descend unless above fence
+    rtl_path.return_target.alt = MAX(rtl_path.return_target.alt, curr_alt);
+
 #if AC_FENCE == ENABLED
     // ensure not above fence altitude if alt fence is enabled
     // Note: because the rtl_path.climb_target's altitude is simply copied from the return_target's altitude,
@@ -468,9 +550,6 @@ void Copter::ModeRTL::compute_return_target(bool terrain_following_allowed)
         }
     }
 #endif
-
-    // ensure we do not descend
-    rtl_path.return_target.alt = MAX(rtl_path.return_target.alt, curr_alt);
 }
 
 uint32_t Copter::ModeRTL::wp_distance() const

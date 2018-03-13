@@ -905,6 +905,7 @@ private:
 
     void climb_start();
     void return_start();
+    void stick_mixing(float &nav_roll, float &nav_pitch, float &target_climb_rate);
     void climb_return_run();
     void loiterathome_start();
     void loiterathome_run();
@@ -913,7 +914,8 @@ private:
 
     // RTL
     RTLState _state = RTL_InitialClimb;  // records state of rtl (initial climb, returning home, etc)
-    bool _state_complete = false; // set to true if the current state is completed
+    bool pilot_steering : 1; // set to true if pilot input to RTL is enabled
+    bool _state_complete : 1; // set to true if the current state is completed
 
     struct {
         // NEU w/ Z element alt-above-ekf-origin unless use_terrain is true in which case Z element is alt-above-terrain
