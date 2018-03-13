@@ -172,6 +172,13 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_LOAD_TYPE", 21, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
 #endif
+
+    // @Param: _GPS_BTN
+    // @DisplayName: GPS button action
+    // @Description: This is the action taken for the GPS button
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest
+    // @User: Standard
+    AP_GROUPINFO("_GPS_BTN", 22, ToyMode, actions[9], ACTION_MODE_RTL),
    
     AP_GROUPEND
 };
@@ -235,6 +242,7 @@ void ToyMode::update()
     bool right_action_button = false;
     bool power_button = false;
     bool mode_button_change = false;
+    bool gps_button = false;
     
     uint16_t ch5_in = hal.rcin->read(CH_5);
     uint16_t ch6_in = hal.rcin->read(CH_6);
@@ -273,6 +281,7 @@ void ToyMode::update()
         uint8_t ch6_bits = (ch6_in>1000)?uint8_t((ch6_in-1000)/100):0;
         mode_button = (ch5_bits & 1) != 0;
         right_button = (ch5_bits & 2) != 0;
+        gps_button = (ch5_bits & 4) != 0;
         right_action_button = (ch6_bits & 1) != 0;
         left_action_button = (ch6_bits & 2) != 0;
         power_button = (ch6_bits & 4) != 0;
@@ -288,9 +297,11 @@ void ToyMode::update()
         action_input = 2;
     } else if (power_button) {
         action_input = 3;
+    } else if (gps_button) {
+        action_input = 10;
     }
     
-    if (action_input != 0 && mode_button) {
+    if (action_input != 0 && mode_button && action_input < 7) {
         // combined button actions
         action_input += 3;
         mode_press_counter = 0;

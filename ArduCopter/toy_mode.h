@@ -107,7 +107,7 @@ private:
     bool done_first_update;
     AP_Int8 enable;
     AP_Int8 primary_mode[2];
-    AP_Int8 actions[9];
+    AP_Int8 actions[10];
     AP_Int8 trim_auto;
     AP_Int16 flags;
 
