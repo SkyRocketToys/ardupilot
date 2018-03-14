@@ -454,7 +454,9 @@ bool Radio_Beken::Reset(void)
 // This can be called from within the interrupt response thread
 void Radio_Beken::DelayCE(void)
 {
+	DEBUG1_LOW();
     hal.scheduler->delay_microseconds(50);
+	DEBUG1_HIGH();
 }
 
 // ----------------------------------------------------------------------------
