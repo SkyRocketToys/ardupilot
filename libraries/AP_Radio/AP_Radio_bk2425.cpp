@@ -351,6 +351,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
         {
 			fwupload.reset();
 			fwupload.file_length = ((uint16_t(m.data[4]) << 8) | (m.data[5])) + 6; // Add the header to the length
+			fwupload.file_length_round = (fwupload.file_length + 0x7f) & ~0x7f; // Round up to multiple of 128
 		}
 		if (ofs != fwupload.added)
 		{
@@ -396,9 +397,30 @@ void AP_Radio_beken::update_SRT_telemetry(void)
 // Returns true for DFU, false for telemetry
 bool AP_Radio_beken::UpdateTxData(void)
 {
+    // send reboot command if appropriate
+    fwupload.counter++;
+    if ((fwupload.rx_reboot ||
+		((fwupload.acked >= fwupload.file_length_round) &&
+		(fwupload.rx_ack) &&
+        ((fwupload.counter & 0x01) != 0) && // Avoid starvation of telemetry
+		(fwupload.acked >= 0x1000))) && // Sanity check
+        sem->take_nonblocking()) // Is the other threads busy with fwupload data?
+	{
+		fwupload.rx_ack = false;
+		fwupload.rx_reboot = true;
+		// Tell the Tx to reboot
+		packetFormatDfu* tx = &beken.pktDataDfu;
+		tx->packetType = BK_PKT_TYPE_DFU;
+		uint16_t addr = 0x0002; // Command to reboot
+		tx->address_lo = addr & 0xff;
+		tx->address_hi = (addr >> 8);
+		DebugPrintf(2, "reboot %u %u\r\n", fwupload.acked, fwupload.file_length_round);
+        sem->give();
+        return true;
+	}
     // send firmware update packet for 7/8 of packets if any data pending
-    if ((fwupload.added >= (fwupload.acked + SZ_DFU)) && // Do we have a new packet to upload?
-        ((fwupload.counter++ & 0x07) != 0) && // Avoid starvation of telemetry
+	else if ((fwupload.added >= (fwupload.acked + SZ_DFU)) && // Do we have a new packet to upload?
+        ((fwupload.counter & 0x07) != 0) && // Avoid starvation of telemetry
         sem->take_nonblocking()) // Is the other threads busy with fwupload data?
 	{
 		// Send DFU packet
@@ -412,13 +434,24 @@ bool AP_Radio_beken::UpdateTxData(void)
 		{
 			// Send firmware update packet
 			tx->packetType = BK_PKT_TYPE_DFU;
-		//	tx->channel;
 			uint16_t addr = fwupload.sent;
 			tx->address_lo = addr & 0xff;
 			tx->address_hi = (addr >> 8);
 			fwupload.dequeue(&tx->data[0], SZ_DFU);
 			DebugPrintf(4, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
-			if (fwupload.free_length() >= 96)
+		#if 0
+			if ((fwupload.added >= fwupload.file_length) &&
+				(fwupload.added < fwupload.file_length_round) &&
+				(fwupload.free_length() > SZ_DFU))
+			{
+				static const uint8_t s_dfu_padding[SZ_DFU] = {
+					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+				fwupload.queue(s_dfu_padding, SZ_DFU);
+			}
+			else
+		#endif
+			if (fwupload.free_length() > 96)
 			{
 				fwupload.need_ack = true; // Request a new mavlink packet
 			}
@@ -430,7 +463,6 @@ bool AP_Radio_beken::UpdateTxData(void)
 		packetFormatTx* tx = &beken.pktDataTx;
 		update_SRT_telemetry();
 		tx->packetType = BK_PKT_TYPE_TELEMETRY; ///< The packet type
-	//	tx->channel;
 		tx->pps = t_status.pps;
 		tx->flags = t_status.flags;
 		tx->droneid[0] = myDroneId[0];
@@ -594,7 +626,17 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 					ofs <<= 8;
 					ofs |= rx->u.ctrl.data_value_lo;
 					if (ofs == fwupload.acked + SZ_DFU)
+					{
 						fwupload.acked = ofs;
+					}
+					if ((ofs == fwupload.acked) && (ofs > 0))
+					{
+						fwupload.rx_ack = true;
+					}
+					if ((ofs == 0) && fwupload.rx_reboot)
+					{
+						fwupload.reset();
+					}
 				}
 				break;
 			case BK_INFO_FW_CRC_LO: break;

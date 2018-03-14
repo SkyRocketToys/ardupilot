@@ -106,17 +106,20 @@ struct FwUpload {
 	uint32_t added;  // The number of bytes added to the queue
 	uint32_t sent;   // The number of bytes sent to the tx
 	uint32_t acked;  // The number of bytes acked by the tx
+	bool rx_ack;     // True each time we receive a non-zero ack from the tx
+	bool rx_reboot;  // True when we are in the rebooting process
 	uint8_t pending_data[SZ_BUFFER]; // Pending data (from mavlink packets) circular buffer
 	uint8_t pending_head; // Where mavlink packets are added (relative to pending_data[0])
 	uint8_t pending_tail; // Where DFU packets are taken from (relative to pending_data[0])
 	uint16_t file_length; // The length of the file, six more than the value stored in the first 16 bit word
+	uint16_t file_length_round; // file_length rounded up to 0x80
 
 	// Helper functions	
 	uint8_t pending_length() { return (pending_head - pending_tail) & (SZ_BUFFER-1); }
 	uint8_t free_length() { return SZ_BUFFER - 1 - pending_length(); } // Do not fill in the last byte in the circular buffer
 	void queue(const uint8_t *pSrc, uint8_t len); // Assumes sufficient room has been checked for
 	void dequeue(uint8_t *pDst, uint8_t len); // Assumes sufficient data has been checked for
-	void reset() { file_length = 0x3906; added = sent = acked = 0; pending_head = pending_tail = 0; need_ack = false; }
+	void reset() { file_length = 0x3906; file_length_round = 0x3980; added = sent = acked = 0; pending_head = pending_tail = 0; rx_reboot = rx_ack = need_ack = false; }
 };
 
 // Main class for receiving (and replying) to Beken radio packets
