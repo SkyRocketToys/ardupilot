@@ -309,10 +309,12 @@ void AP_Radio_beken::radio_init(void)
 void AP_Radio_beken::trigger_irq_radio_event()
 {
     //we are called from ISR context
+	DEBUG2_HIGH();
     chSysLockFromISR();
     isr_irq_time_us = AP_HAL::micros();
     chEvtSignalI(_irq_handler_ctx, EVT_IRQ);
     chSysUnlockFromISR();
+	DEBUG2_LOW();
 }
 
 // ----------------------------------------------------------------------------
@@ -320,10 +322,14 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
 {
     (void)arg;
     //we are called from ISR context
+	DEBUG2_HIGH();
+	DEBUG2_LOW();
+	DEBUG2_HIGH();
 	isr_timeout_time_us = AP_HAL::micros();
     chSysLockFromISR();
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
+	DEBUG2_LOW();
 }
 
 // ----------------------------------------------------------------------------
@@ -439,18 +445,6 @@ bool AP_Radio_beken::UpdateTxData(void)
 			tx->address_hi = (addr >> 8);
 			fwupload.dequeue(&tx->data[0], SZ_DFU);
 			DebugPrintf(4, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
-		#if 0
-			if ((fwupload.added >= fwupload.file_length) &&
-				(fwupload.added < fwupload.file_length_round) &&
-				(fwupload.free_length() > SZ_DFU))
-			{
-				static const uint8_t s_dfu_padding[SZ_DFU] = {
-					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
-					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-				fwupload.queue(s_dfu_padding, SZ_DFU);
-			}
-			else
-		#endif
 			if (fwupload.free_length() > 96)
 			{
 				fwupload.need_ack = true; // Request a new mavlink packet
@@ -749,7 +743,6 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 			(BK_STATUS_RX_DR | BK_STATUS_TX_DS | BK_STATUS_MAX_RT)); // clear RX_DR or TX_DS or MAX_RT interrupt flag
         return;
     }
-	DEBUG1_HIGH();
 	
 	// Determine which state fired the interrupt
 	bool bNext = false;
@@ -871,7 +864,9 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 				beken.SetCrcMode(false);
 			}
 			beken.SwitchToTxMode();
+			DEBUG1_LOW();
 			hal.scheduler->delay_microseconds(200); // delay to give the (remote) tx a chance to switch to receive mode
+			DEBUG1_HIGH();
 			if (txDfu)
 				beken.SendPacket(BK_W_TX_PAYLOAD_NOACK_CMD, (uint8_t *)&beken.pktDataDfu, PACKET_LENGTH_TX_DFU);
 			else
@@ -884,13 +879,10 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 	}
 	if (bNext)
 	{
-		DEBUG2_HIGH();
-		DEBUG2_LOW();
 		nextChannel(1);
 	}
 	if (bRx)
 		beken.SwitchToRxMode(); // Prepare to receive next packet (on the next channel)
-	DEBUG1_LOW();
 }	
 
 // ----------------------------------------------------------------------------
@@ -901,6 +893,16 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 	{
 		return;
 	}
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
 
 	static uint8_t check_params_timer = 0;
 	if (++check_params_timer >= 10) // We don't need to test the parameter logic every ms.
@@ -1033,8 +1035,12 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
 			if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
 			{
+				DEBUG1_LOW();
+				DEBUG1_HIGH();
 				DebugPrintf(2, "#"); // We have received a packet, but the interrupt was not triggered!
 				radio_instance->irq_handler(next_switch_us); // Use this broken time
+				DEBUG1_LOW();
+				DEBUG1_HIGH();
 			}
 			else
 			{
@@ -1071,7 +1077,9 @@ void AP_Radio_beken::irq_handler_thd(void *arg)
 {
     (void) arg;
     while(true) {
+		DEBUG1_LOW();
         eventmask_t evt = chEvtWaitAny(ALL_EVENTS);
+		DEBUG1_HIGH();
         if (_irq_handler_ctx != nullptr) // Sanity check
 			_irq_handler_ctx->name = "RadioBeken"; // Only useful to be done once but here is done often
 
@@ -1219,7 +1227,6 @@ static const uint8_t channel_bit_table[CHANNEL_COUNT_LOGICAL] = {
 // Step through the channels
 void SyncChannel::NextChannel(void)
 {
-	DEBUG2_HIGH();
 	channel &= 0x7f;
 	if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
 	{
@@ -1253,9 +1260,6 @@ void SyncChannel::NextChannel(void)
 		if (hopping_current & channel_bit_table[channel % CHANNEL_COUNT_LOGICAL])
 			channel |= 0x80;
 	}
-	DEBUG2_LOW();
-	DEBUG2_HIGH();
-	DEBUG2_LOW();
 }
 
 // If we have not received any packets for ages, try a WiFi table that covers all frequencies
