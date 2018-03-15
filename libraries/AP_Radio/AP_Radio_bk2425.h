@@ -165,6 +165,7 @@ private:
 	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
 	void update_SRT_telemetry(void);
 	void check_fw_ack(void);
+    void check_double_bind(void); // check for double binding
    
     // Static data, for interrupt support
     static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
@@ -202,7 +203,9 @@ private:
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
 	uint8_t tx_pps; // Last telemetry PPS received from Tx
-    
+    bool have_tx_pps; // True when tx_pss has been received
+    uint32_t telem_send_count; // How many telemetry packets have i sent?
+
     // Parameters
     ITX_SPEED spd; // Speed of radio modulation.
     uint8_t myDroneId[4]; // CRC of the flight boards UUID, to inform the tx

@@ -473,6 +473,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 			tx->hopping = 0; // Adaptive frequency hopping disabled
 		else
 			tx->hopping = adaptive.hopping; // Tell the tx what we want to use
+	    telem_send_count++;
 		return false;
     }
 	
@@ -640,6 +641,10 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			case BK_INFO_MODEL: break;
 			case BK_INFO_PPS:
 				tx_pps = rx->u.ctrl.data_value_lo; // Remember pps from tx
+				if (!have_tx_pps) {
+					check_double_bind();
+				}
+				have_tx_pps = true;
 				break;
 			case BK_INFO_BATTERY:
 				// "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display
@@ -690,7 +695,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		}
 		break;
 		
-	case BK_PKT_TYPE_BIND_MANUAL: // Sent by the tx for a few seconds after power-up when
+	case BK_PKT_TYPE_BIND_MANUAL: // Sent by the tx for a few seconds after power-up when a button is held down
 		if (rxaddr == 1)
 		{
 			if (bind_time_ms == 0) // We have never receiving a binding click
@@ -841,7 +846,7 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout after 7ms
 		chSysUnlock();
 		
-		if (get_telem_enable()) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
+		if (get_telem_enable() && have_tx_pps) // Note that the user can disable telemetry, but the transmitter will be less functional in this case.
 		{
 			bNext = bRx = false;
 			// Send the telemetry reply to the controller
@@ -1188,6 +1193,30 @@ bool AP_Radio_beken::load_bind_info(void)
 
     return true;
 }
+
+// ----------------------------------------------------------------------------
+// check if we are the 2nd RX bound to this TX
+void AP_Radio_beken::check_double_bind(void)
+{
+    if (tx_pps <= telem_send_count || // Has the tx been receiving telemetry from someone else already?
+        get_autobind_time() == 0) { // Have we disabled autobinding? We can always bind to our manually bound drone.
+        return;
+    }
+    // the TX has received more telemetry packets in the last second
+    // than we have ever sent. There must be another RX sending
+    // telemetry packets. We will reset our mfg_id and go back waiting
+    // for a new bind packet, hopefully with the right TX
+    Debug(1,"Double-bind detected\n");
+
+    // clear the current bind information
+    // with luck we will connect to another tx
+	beken.SwitchToIdleMode();
+    beken.SetFactoryMode(0); // Reset the tx address
+	adaptive.Invalidate();
+	syncch.SetHopping(0,0);
+    stats.recv_packets = 0;
+}
+
 // ----------------------------------------------------------------------------
 // Which bits correspond to each channel within a table, for adaptive frequencies
 static const uint8_t channel_bit_table[CHANNEL_COUNT_LOGICAL] = {
