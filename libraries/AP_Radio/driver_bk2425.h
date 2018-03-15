@@ -10,7 +10,7 @@
 
 #if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 
-#define SUPPORT_BK_DEBUG_PINS 1 // 0=UART6 is for GPS, 1=UART6 is debug gpio
+#define SUPPORT_BK_DEBUG_PINS 0 // 0=UART6 is for GPS, 1=UART6 is debug gpio
 #define TX_SPEED 250u // Default transmit speed in kilobits per second.
 
 /** Channel hopping parameters. Values are in MHz from 2400Mhz. */
