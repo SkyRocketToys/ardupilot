@@ -13,12 +13,14 @@ void Copter::crash_check()
     // return immediately if disarmed, or crash checking disabled
     if (!motors->armed() || ap.land_complete || g.fs_crash_check == 0) {
         crash.counter = 0;
+        crash.reset_reason = RESET_REASON_LANDED;
         return;
     }
 
     // return immediately if we are not in an angle stabilize flight mode or we are flipping
     if (control_mode == ACRO || control_mode == FLIP || control_mode == SPORT) {
         crash.counter = 0;
+        crash.reset_reason = RESET_REASON_MODE;
         return;
     }
 
@@ -32,6 +34,7 @@ void Copter::crash_check()
     if (land_accel_ef_filter.get().length() >= CRASH_CHECK_ACCEL_MAX &&
         angle_error_deg < 1.5*CRASH_CHECK_ANGLE_DEVIATION_DEG) {
         crash.counter = 0;
+        crash.reset_reason = RESET_REASON_ACCEL;
         return;
     }
 
@@ -74,14 +77,24 @@ void Copter::crash_check()
         if (motors->limit.throttle_upper) {
             flags |= 2;
         }
-        DataFlash_Class::instance()->Log_Write("CCHK", "TimeUS,Count,FCRt,AErr,SThr,Flags", "QHfffB",
-                                               AP_HAL::micros64(),
-                                               crash.counter, (double)crash.filtered_climb_rate,
-                                               (double)angle_error_deg, (double)scaled_throttle, flags);
+        DataFlash_Class::instance()->Log_Write(
+            "CCHK",
+            "TimeUS,Count,FCRt,AErr,SThr,Flags,RR",
+            "QHfffBB",
+            AP_HAL::micros64(),
+            crash.counter,
+            (double)crash.filtered_climb_rate,
+            (double)angle_error_deg,
+            (double)scaled_throttle,
+            flags,
+            (uint8_t)crash.reset_reason
+            );
+        crash.reset_reason = RESET_REASON_NONE;
     }
 
     if (!angle_error && !climb_rate_error && !controls_saturated) {
         crash.counter = 0;
+        crash.reset_reason = RESET_REASON_NOERRORS;
         return;
     }
 
@@ -97,6 +110,7 @@ void Copter::crash_check()
             gcs().send_text(MAV_SEVERITY_EMERGENCY,"Crash: obstruction landing");
             set_mode(LAND, MODE_REASON_OBSTRUCTION);
             crash.counter = 0;
+            crash.reset_reason = RESET_REASON_OBSLANDING;
             crash.last_trigger_ms = now;
             return;
         }

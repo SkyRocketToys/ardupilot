@@ -622,11 +622,20 @@ private:
     } gndeffect_state;
 
     // crash checking
+    enum reset_reason_t {
+        RESET_REASON_NONE       = 0,
+        RESET_REASON_MODE       = 1,
+        RESET_REASON_LANDED     = 2,
+        RESET_REASON_ACCEL      = 3,
+        RESET_REASON_NOERRORS   = 4,
+        RESET_REASON_OBSLANDING = 5,
+    };
     struct {
         uint16_t counter;
         float filtered_climb_rate;
         uint32_t last_trigger_ms;
         uint32_t last_log;
+        reset_reason_t reset_reason;
     } crash;
 
     // set when we are upgrading parameters from 3.4
