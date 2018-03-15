@@ -198,14 +198,72 @@ bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
     return true;
 }
 
+#define SUPPORT_FAST_SPI 2 // (can be 0,1,2) CPM try using polling method
+
 bool SPIDevice::transfer_fullduplex(const uint8_t *send, uint8_t *recv, uint32_t len)
 {
+	uint8_t buf[len];
+
     bus.semaphore.assert_owner();
-    uint8_t buf[len];
-    memcpy(buf, send, len);
-    do_transfer(buf, buf, len);
-    memcpy(recv, buf, len);
-    return true;
+	memcpy(buf, send, len);
+#if SUPPORT_FAST_SPI
+	if (device_desc.bus == 0) // SPI1 for Beken radio
+	{
+		// CPM: For debugging, try sending a byte directly instead of via DMA
+		if (len <= 6)
+		{
+		#if SUPPORT_FAST_SPI==2
+			// Faster SPI method. We are aiming for 3us to transfer 2 bytes, but this is 7-23us
+			SPIDriver* spip = spi_devices[device_desc.bus].driver;
+
+		//	bus.dma_handle->lock(); // DMA not used
+			spiAcquireBus(spip); /* Acquire mutex representing ownership of the bus.    */
+			if (spip->state == SPI_STOP)
+			{
+				bus.spicfg.end_cb = nullptr;
+				bus.spicfg.ssport = PAL_PORT(device_desc.pal_line);
+				bus.spicfg.sspad = PAL_PAD(device_desc.pal_line);
+				bus.spicfg.cr1 = (uint16_t)(freq_flag | device_desc.mode);
+				bus.spicfg.cr2 = 0;
+				spip->config = &bus.spicfg;
+				rccEnableSPI1(FALSE); // (device_desc.bus == 0) Turn on the power to the SPI bus
+			}
+			spip->spi->CR1  = 0;
+			spip->spi->CR1  = spip->config->cr1 | SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;
+			spip->spi->CR2  = spip->config->cr2 | SPI_CR2_SSOE;
+			spip->spi->CR1 |= SPI_CR1_SPE;
+			spip->state = SPI_READY;
+			bus.spi_started = true;
+			spi_lld_select(spip); // Selects the chip select line
+		//	cs_forced = true;
+
+			for (uint8_t i = 0; i < len; ++i)
+				recv[i] = spi_lld_polled_exchange(spip, buf[i]);
+
+			spi_lld_unselect(spip); // Release the chip select line
+			spiReleaseBus(spip); // Releases the mutex
+		//	cs_forced = false;
+		//	bus.dma_handle->unlock(); // DMA not used
+			// Does NOT turn off the power to the SPI bus, or set the status to stopped
+		#else
+			// Do the actual transfer quickly, but faff about with allocating and releasing (unused) DMA resources
+			// Takes about 23us to transfer 2 bytes
+			bool old_cs_forced = cs_forced;
+			if (!set_chip_select(true)) {
+				return false;
+			}
+			for (uint8_t i = 0; i < len; ++i)
+				recv[i] = spi_lld_polled_exchange(spi_devices[device_desc.bus].driver, buf[i]);
+			set_chip_select(old_cs_forced);
+		#endif
+			return true;
+		}
+	}
+#endif
+	// Original SPI method. Takes about 40us to transfer 2 bytes
+	do_transfer(buf, buf, len);
+	memcpy(recv, buf, len);
+	return true;
 }
 
 AP_HAL::Semaphore *SPIDevice::get_semaphore()
