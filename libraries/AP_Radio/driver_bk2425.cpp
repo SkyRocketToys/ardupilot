@@ -10,7 +10,7 @@
 #include <AP_HAL_ChibiOS/AP_HAL_ChibiOS.h>
 using namespace ChibiOS; 
 
-#pragma GCC optimize("O0")
+//#pragma GCC optimize("O0")
 
 extern const AP_HAL::HAL& hal;
 
@@ -181,7 +181,9 @@ void Radio_Beken::ReadRegisterMulti(uint8_t address, uint8_t *data, uint8_t len)
     memset(tx, 0, len+1);
     memset(rx, 0, len+1);
 	tx[0] = address;
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(tx, rx, len+1);
+	DEBUG2_LOW();
     memcpy(data, &rx[1], len);
 }
 
@@ -193,7 +195,9 @@ void Radio_Beken::WriteRegisterMulti(uint8_t address, const uint8_t *data, uint8
     memset(rx, 0, len+1);
 	tx[0] = address;
 	memcpy(&tx[1], data, len);
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(tx, rx, len+1);
+	DEBUG2_LOW();
 }
 
 // --------------------------------------------------------------------
@@ -205,7 +209,9 @@ uint8_t Radio_Beken::ReadStatus(void)
 {
 	uint8_t tx = BK_NOP;
     uint8_t rx = 0;
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(&tx, &rx, 1);
+	DEBUG2_LOW();
     return rx; // Status
 }
 
@@ -217,7 +223,9 @@ uint8_t Radio_Beken::ReadReg(uint8_t reg)
     memset(tx, 0, 2);
     memset(rx, 0, 2);
 	tx[0] = reg | BK_READ_REG;
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(tx, rx, 2);
+	DEBUG2_LOW();
     return rx[1];
 }
 
@@ -226,7 +234,9 @@ uint8_t Radio_Beken::Strobe(uint8_t address)
 {
 	uint8_t tx = address;
     uint8_t rx = 0;
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(&tx, &rx, 1);
+	DEBUG2_LOW();
     return rx; // Status
 }
 
@@ -241,7 +251,9 @@ void Radio_Beken::SetRBank(uint8_t bank) // 1:Bank1 0:Bank0
         uint8_t rx[2];
         tx[0] = BK_ACTIVATE_CMD;
         tx[1] = 0x53;
+		DEBUG2_HIGH();
 		(void)dev->transfer_fullduplex(&tx[0], &rx[0], 2);
+		DEBUG2_LOW();
     }
 }
 
@@ -253,7 +265,9 @@ void Radio_Beken::WriteReg(uint8_t address, uint8_t data)
     memset(rx, 0, 2);
 	tx[0] = address; // done by caller | BK_WRITE_REG;
 	tx[1] = data;
+	DEBUG2_HIGH();
     (void)dev->transfer_fullduplex(tx, rx, 2);
+	DEBUG2_LOW();
 }
 
 // --------------------------------------------------------------------
