@@ -56,6 +56,9 @@ protected:
 
     // get ADDR parameter value
     uint8_t get_address(void) const { return frontend._address; }
+
+    // check if image view enabled
+    bool get_image_view(void) const { return frontend._image_view != 0; }
     
     // semaphore for access to shared frontend data
     AP_HAL::Semaphore *_sem;

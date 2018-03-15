@@ -50,12 +50,20 @@ private:
         uint32_t sum_us;
         Vector2f gyro;
     } integral;
+
+    const uint16_t image_width = 35;
+    const uint16_t image_height = 35;
+    const uint16_t image_size = image_width * image_height;
+    uint8_t *image_data;
     
     static const uint8_t srom_data[];
     static const uint8_t srom_id;
     static const RegData init_data_3900[];
     static const RegData init_data_3901_1[];
     static const RegData init_data_3901_2[];
+    static const RegData enter_frame_capture[];
+    static const RegData exit_frame_capture[];
+    
     const float flow_pixel_scaling = 1.26e-3;
 
     // setup sensor
@@ -63,14 +71,19 @@ private:
     
     void reg_write(uint8_t reg, uint8_t value);
     uint8_t reg_read(uint8_t reg);
+    uint8_t reg_read_fast(uint8_t reg);
     int16_t reg_read16s(uint8_t reg);
     uint16_t reg_read16u(uint8_t reg);
 
     void srom_download(void);
     void load_configuration(const RegData *init_data, uint16_t n);
+    void load_configuration_unchecked(const RegData *init_data, uint16_t n);
 
     void timer(void);
     void motion_burst(void);
+    void raw_frame_capture(void);
+
+    uint32_t last_frame_capture_ms;
 
     uint32_t last_burst_us;
     uint32_t last_update_ms;

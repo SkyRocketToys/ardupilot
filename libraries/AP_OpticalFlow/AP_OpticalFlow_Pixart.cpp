@@ -21,6 +21,8 @@
  */
 
 #include <AP_HAL/AP_HAL.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
+#include <GCS_MAVLink/GCS.h>
 #include <AP_Math/edc.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <utility>
@@ -69,6 +71,7 @@ extern const AP_HAL::HAL& hal;
 #define PIXART_REG_MOT_BURST2  0x16
 #define PIXART_REG_SROM_BURST  0x62
 #define PIXART_REG_RAW_BURST   0x64
+#define PIXART_REG_RAW_GRAB2   0x58
 
 // writing to registers needs this flag
 #define PIXART_WRITE_FLAG      0x80
@@ -209,6 +212,18 @@ uint8_t AP_OpticalFlow_Pixart::reg_read(uint8_t reg)
     return v;
 }
 
+// read from an 8 bit register, fast operation
+uint8_t AP_OpticalFlow_Pixart::reg_read_fast(uint8_t reg)
+{
+    uint8_t v = 0;
+    _dev->set_chip_select(true);
+    _dev->transfer(&reg, 1, nullptr, 0);
+    hal.scheduler->delay_microseconds(15);
+    _dev->transfer(nullptr, 0, &v, 1);
+    _dev->set_chip_select(false);
+    return v;
+}
+
 // read from a 16 bit unsigned register
 uint16_t AP_OpticalFlow_Pixart::reg_read16u(uint8_t reg)
 {
@@ -251,6 +266,9 @@ void AP_OpticalFlow_Pixart::srom_download(void)
     hal.scheduler->delay_microseconds(160);
 }
 
+/*
+  load a set of registers, validating and retrying
+ */
 void AP_OpticalFlow_Pixart::load_configuration(const RegData *init_data, uint16_t n)
 {
     for (uint16_t i = 0; i < n; i++) {
@@ -263,6 +281,16 @@ void AP_OpticalFlow_Pixart::load_configuration(const RegData *init_data, uint16_
             }
             //debug("reg[%u:%02x] 0x%02x 0x%02x\n", (unsigned)i, (unsigned)init_data[i].reg, (unsigned)init_data[i].value, (unsigned)v);
         }
+    }
+}
+
+/*
+  load a set of registers, unvalidated
+ */
+void AP_OpticalFlow_Pixart::load_configuration_unchecked(const RegData *init_data, uint16_t n)
+{
+    for (uint16_t i = 0; i < n; i++) {
+        reg_write(init_data[i].reg, init_data[i].value);
     }
 }
 
@@ -296,6 +324,13 @@ void AP_OpticalFlow_Pixart::timer(void)
     if (AP_HAL::micros() - last_burst_us < 500) {
         return;
     }
+
+    if (get_image_view()) {
+        // we are in image viewing mode
+        raw_frame_capture();
+        return;
+    }
+    
     motion_burst();
     last_burst_us = AP_HAL::micros();
 
@@ -333,6 +368,64 @@ void AP_OpticalFlow_Pixart::timer(void)
         sum_x = sum_y = 0;
     }
 #endif
+}
+
+/*
+  capture a raw image frame
+ */
+void AP_OpticalFlow_Pixart::raw_frame_capture(void)
+{
+    // load two frame capture mode start register sequences
+    load_configuration_unchecked(enter_frame_capture, ARRAY_SIZE(enter_frame_capture));
+
+    if (!image_data) {
+        image_data = (uint8_t *)hal.util->malloc_type(image_size, AP_HAL::Util::MEM_DMA_SAFE);
+        if (!image_data) {
+            return;
+        }
+    }
+    memset(image_data, 0, image_size);
+
+    mavlink_msg_data_transmission_handshake_send(
+        MAVLINK_COMM_1,
+        MAVLINK_DATA_STREAM_IMG_RAW8U,
+        image_size, image_width, image_height,
+        image_size / 253 + 1,
+        253,
+        100);
+    
+    uint16_t img_offset = 0;
+    uint16_t img_seq = 0;
+    
+    while (img_offset < image_size) {
+        uint8_t v = reg_read_fast(PIXART_REG_RAW_GRAB2);
+        switch (v >> 6) {
+        case 0:
+        case 3:
+            break;
+        case 1:
+            image_data[img_offset] |= (v&0x3F)<<2;
+            break;
+        case 2:
+            image_data[img_offset] |= (v&0x0C)>>2;
+            img_offset++;
+            if (img_offset % 253 == 0 || img_offset == image_size) {
+                mavlink_msg_encapsulated_data_send(MAVLINK_COMM_1, img_seq, &image_data[img_seq*253]);
+                img_seq++;
+            }
+            break;
+        }
+    }
+
+    // load two frame capture mode start register sequences
+    load_configuration_unchecked(exit_frame_capture, ARRAY_SIZE(exit_frame_capture));
+
+    // reset sensor
+    reg_write(PIXART_REG_POWER_RST, 0x5A);
+    hal.scheduler->delay(50);
+    load_configuration_unchecked(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
+    hal.scheduler->delay(100);
+    load_configuration_unchecked(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
 }
 
 // update - read latest values from sensor and fill in x,y and totals.

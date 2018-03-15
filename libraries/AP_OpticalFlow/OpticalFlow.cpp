@@ -64,6 +64,13 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Range: 0 127
     // @User: Advanced
     AP_GROUPINFO("_ADDR", 5,  OpticalFlow, _address,   0),
+
+    // @Param: _IMAGE_VIEW
+    // @DisplayName: Enable viewing of flow camera images
+    // @Description: When this is enabled normal flow operation is disabled and instead images from the flow camera are sent, if supported by the driver. This parameter is automatically reset to 0 on startup
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Advanced
+    AP_GROUPINFO("_IMAGE_VIEW", 6,  OpticalFlow, _image_view,   0),
     
     AP_GROUPEND
 };
@@ -87,7 +94,8 @@ void OpticalFlow::init(void)
     if (!_enabled) {
         return;
     }
-
+    _image_view.set(0);
+    
     if (!backend) {
 #if AP_FEATURE_BOARD_DETECT
         if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK ||
