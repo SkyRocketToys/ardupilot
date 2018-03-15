@@ -3,7 +3,7 @@
  */
 #include <AP_HAL/AP_HAL.h>
 
-#pragma GCC optimize("O0")
+//#pragma GCC optimize("O0")
 
 #if defined(HAL_RCINPUT_WITH_AP_RADIO) && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
 
@@ -309,12 +309,12 @@ void AP_Radio_beken::radio_init(void)
 void AP_Radio_beken::trigger_irq_radio_event()
 {
     //we are called from ISR context
-	DEBUG2_HIGH();
+//	DEBUG2_HIGH();
     chSysLockFromISR();
     isr_irq_time_us = AP_HAL::micros();
     chEvtSignalI(_irq_handler_ctx, EVT_IRQ);
     chSysUnlockFromISR();
-	DEBUG2_LOW();
+//	DEBUG2_LOW();
 }
 
 // ----------------------------------------------------------------------------
@@ -322,14 +322,14 @@ void AP_Radio_beken::trigger_timeout_event(void *arg)
 {
     (void)arg;
     //we are called from ISR context
-	DEBUG2_HIGH();
-	DEBUG2_LOW();
-	DEBUG2_HIGH();
+//	DEBUG2_HIGH();
+//	DEBUG2_LOW();
+//	DEBUG2_HIGH();
 	isr_timeout_time_us = AP_HAL::micros();
     chSysLockFromISR();
     chEvtSignalI(_irq_handler_ctx, EVT_TIMEOUT);
     chSysUnlockFromISR();
-	DEBUG2_LOW();
+//	DEBUG2_LOW();
 }
 
 // ----------------------------------------------------------------------------
