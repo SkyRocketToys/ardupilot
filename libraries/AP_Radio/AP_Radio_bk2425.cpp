@@ -889,81 +889,61 @@ void AP_Radio_beken::irq_handler(uint32_t when)
 // handle timeout IRQ (called when we need to switch channels)
 void AP_Radio_beken::irq_timeout(uint32_t when)
 {
-	if (!beken.bkReady) // We are reinitialising the chip in the main thread
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	DEBUG1_LOW();
+	DEBUG1_HIGH();
+	
+	if (beken.bkReady) // We are not reinitialising the chip in the main thread
 	{
-		return;
-	}
-	DEBUG1_LOW();
-	DEBUG1_HIGH();
-	DEBUG1_LOW();
-	DEBUG1_HIGH();
-	DEBUG1_LOW();
-	DEBUG1_HIGH();
-	DEBUG1_LOW();
-	DEBUG1_HIGH();
-	DEBUG1_LOW();
-	DEBUG1_HIGH();
-
-	static uint8_t check_params_timer = 0;
-	if (++check_params_timer >= 10) // We don't need to test the parameter logic every ms.
-	{
-		check_params_timer = 0;
-		// Set the transmission power
-		uint8_t pwr = get_transmit_power();
-		if (pwr != beken.fcc.power + 1)
+		static uint8_t check_params_timer = 0;
+		if (++check_params_timer >= 10) // We don't need to test the parameter logic every ms.
 		{
-			if ((pwr > 0) && (pwr <= 8))
+			// Every 50ms get here
+			check_params_timer = 0;
+			// Set the transmission power
+			uint8_t pwr = get_transmit_power();
+			if (pwr != beken.fcc.power + 1)
 			{
-				beken.SwitchToIdleMode();
-				beken.SetPower(pwr-1);
-			}
-		}
-		
-		// Set CRC mode
-		uint8_t crc = get_disable_crc();
-		if (crc != beken.fcc.disable_crc_mode)
-		{
-			beken.SwitchToIdleMode();
-			beken.SetCrcMode(crc);
-			beken.fcc.disable_crc_mode = crc;
-		}
-
-		// Do we need to change our factory test mode?
-		uint8_t factory = get_factory_test();
-		if (factory != beken.fcc.factory_mode)
-		{
-			beken.SwitchToIdleMode();
-			// Set frequency
-			syncch.channel = factory ? (factory-1) + CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES : 0;
-			// Set address
-			beken.SetFactoryMode(factory);
-		}
-		
-		// Do we need to change our fcc test mode status?
-		uint8_t fcc = get_fcc_test();
-		if (fcc != beken.fcc.fcc_mode)
-		{
-			beken.Strobe(BK_FLUSH_TX);
-			if (fcc == 0) // Turn off fcc test mode
-			{
-				if (beken.fcc.CW_mode)
+				if ((pwr > 0) && (pwr <= 8))
 				{
 					beken.SwitchToIdleMode();
-					beken.SetCwMode(false);
+					beken.SetPower(pwr-1);
 				}
 			}
-			else
+			
+			// Set CRC mode
+			uint8_t crc = get_disable_crc();
+			if (crc != beken.fcc.disable_crc_mode)
 			{
-				if (fcc > 3)
-				{
-					if (!beken.fcc.CW_mode)
-					{
-						beken.SwitchToIdleMode();
-						beken.SetCwMode(true);
-						beken.DumpRegisters();
-					}
-				}
-				else
+				beken.SwitchToIdleMode();
+				beken.SetCrcMode(crc);
+				beken.fcc.disable_crc_mode = crc;
+			}
+
+			// Do we need to change our factory test mode?
+			uint8_t factory = get_factory_test();
+			if (factory != beken.fcc.factory_mode)
+			{
+				beken.SwitchToIdleMode();
+				// Set frequency
+				syncch.channel = factory ? (factory-1) + CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES : 0;
+				// Set address
+				beken.SetFactoryMode(factory);
+			}
+			
+			// Do we need to change our fcc test mode status?
+			uint8_t fcc = get_fcc_test();
+			if (fcc != beken.fcc.fcc_mode)
+			{
+				beken.Strobe(BK_FLUSH_TX);
+				if (fcc == 0) // Turn off fcc test mode
 				{
 					if (beken.fcc.CW_mode)
 					{
@@ -971,103 +951,111 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 						beken.SetCwMode(false);
 					}
 				}
-				switch (fcc) {
-				case 1: case 4:
-				default:
-					beken.fcc.channel = CHANNEL_FCC_LOW;
-					break;
-				case 2: case 5:
-					beken.fcc.channel = CHANNEL_FCC_MID;
-					break;
-				case 3: case 6:
-					beken.fcc.channel = CHANNEL_FCC_HIGH;
-					break;
-				};
+				else
+				{
+					if (fcc > 3)
+					{
+						if (!beken.fcc.CW_mode)
+						{
+							beken.SwitchToIdleMode();
+							beken.SetCwMode(true);
+							beken.DumpRegisters();
+						}
+					}
+					else
+					{
+						if (beken.fcc.CW_mode)
+						{
+							beken.SwitchToIdleMode();
+							beken.SetCwMode(false);
+						}
+					}
+					switch (fcc) {
+					case 1: case 4:
+					default:
+						beken.fcc.channel = CHANNEL_FCC_LOW;
+						break;
+					case 2: case 5:
+						beken.fcc.channel = CHANNEL_FCC_MID;
+						break;
+					case 3: case 6:
+						beken.fcc.channel = CHANNEL_FCC_HIGH;
+						break;
+					};
+				}
+				beken.fcc.fcc_mode = fcc;
+				DebugPrintf(1, "\r\nFCC mode %d\r\n", fcc);
 			}
-			beken.fcc.fcc_mode = fcc;
-			DebugPrintf(1, "\r\nFCC mode %d\r\n", fcc);
-		}
-	}
-
-	// For fcc mode, just send packets on timeouts
-	if (beken.fcc.fcc_mode)
-	{
-		static uint8_t tt = 0;
-		if (++tt >= 5) // Space out to every 5 ms
-		{
-			tt = 0;
-		}
-		else
-		{
-			return;
 		}
 
-		beken.SwitchToTxMode();
-		beken.ClearAckOverflow();
-		UpdateFccScan();
-		beken.SetChannel(beken.fcc.channel);
-		UpdateTxData();
-		beken.pktDataTx.channel = 0;
-		if (!beken.fcc.CW_mode)
+		// For fcc mode, just send packets on timeouts (every 5ms)
+		if (beken.fcc.fcc_mode)
 		{
-			beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
-//			DebugPrintf(3, "*");
-		}
-		return;
-	}
-
-	// Normal modes - we have timed out for channel hopping
-	{
-		int32_t d = synctm.sync_time_us; // Time between packets, e.g. 5100 us
-		uint32_t dt = when - synctm.rx_time_us;
-		if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
-		{
-			d *= 4;
-			DebugPrintf(2, "C");
-		}
-		else
-		{
-//			DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
-			DebugPrintf(2, "c");
-			adaptive.Miss(syncch.channel);
-		}
-		{
-			uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
-			if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
+			beken.SwitchToTxMode();
+			beken.ClearAckOverflow();
+			UpdateFccScan();
+			beken.SetChannel(beken.fcc.channel);
+			UpdateTxData();
+			beken.pktDataTx.channel = 0;
+			if (!beken.fcc.CW_mode)
 			{
-				DEBUG1_LOW();
-				DEBUG1_HIGH();
-				DebugPrintf(2, "#"); // We have received a packet, but the interrupt was not triggered!
-				radio_instance->irq_handler(next_switch_us); // Use this broken time
-				DEBUG1_LOW();
-				DEBUG1_HIGH();
+				beken.SendPacket(BK_WR_TX_PLOAD, (uint8_t *)&beken.pktDataTx, PACKET_LENGTH_TX_TELEMETRY);
+			}
+		}
+		else
+		{
+			// Normal modes - we have timed out for channel hopping
+			int32_t d = synctm.sync_time_us; // Time between packets, e.g. 5100 us
+			uint32_t dt = when - synctm.rx_time_us;
+			if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
+			{
+				d *= 4;
+				DebugPrintf(2, "C");
 			}
 			else
 			{
-				next_switch_us += d; // Switch channels if we miss the next packet
+	//			DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
+				DebugPrintf(2, "c");
+				adaptive.Miss(syncch.channel);
 			}
+			{
+				uint8_t fifo_sta = radio_instance->beken.ReadReg(BK_FIFO_STATUS);	// read register FIFO_STATUS's value
+				if (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)) // while not empty
+				{
+					DEBUG1_LOW();
+					DEBUG1_HIGH();
+					DebugPrintf(2, "#"); // We have received a packet, but the interrupt was not triggered!
+					radio_instance->irq_handler(next_switch_us); // Use this broken time
+					DEBUG1_LOW();
+					DEBUG1_HIGH();
+				}
+				else
+				{
+					next_switch_us += d; // Switch channels if we miss the next packet
+				}
+			}
+			int32_t ss = int32_t(next_switch_us - when);
+			if (ss < 1000) // Not enough time
+			{
+				next_switch_us = when + d; // Switch channels if we miss the next packet
+				DebugPrintf(2, "j");
+			}
+			beken.SwitchToIdleMode();
+			nextChannel(1); // Switch to the next channel
+			beken.SwitchToRxMode();
+			beken.ClearAckOverflow();
 		}
-		int32_t ss = int32_t(next_switch_us - when);
-		if (ss < 1000) // Not enough time
-		{
-			next_switch_us = when + d; // Switch channels if we miss the next packet
-			DebugPrintf(2, "j");
-		}
-		beken.SwitchToIdleMode();
-		nextChannel(1); // Switch to the next channel
-		beken.SwitchToRxMode();
-		beken.ClearAckOverflow();
-
-		// Ask for another timeout
-		uint32_t now = AP_HAL::micros();
-		if (int32_t(next_switch_us - when) < 300) // Too late for this one
-			next_switch_us = now + synctm.sync_time_us;
-		uint32_t delta = US2ST64(next_switch_us - now); // Do not use US2ST since that will overflow 32 bits.
-
-		chSysLock();
-		chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 5 ms
-		chSysUnlock();
 	}
+
+	// Ask for another timeout
+	uint32_t now = AP_HAL::micros();
+	if (int32_t(next_switch_us - when) < 300) // Too late for this one
+		next_switch_us = now + synctm.sync_time_us;
+	uint32_t delta = US2ST64(next_switch_us - now); // Do not use US2ST since that will overflow 32 bits.
+
+	chSysLock();
+	chVTSetI(&timeout_vt, delta, trigger_timeout_event, nullptr); // Timeout every 5 ms
+	chSysUnlock();
 }
 
 // ----------------------------------------------------------------------------
