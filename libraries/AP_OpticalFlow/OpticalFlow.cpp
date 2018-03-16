@@ -94,7 +94,9 @@ void OpticalFlow::init(void)
     if (!_enabled) {
         return;
     }
-    _image_view.set(0);
+
+    // reset image view on each boot
+    _image_view.set_and_save_ifchanged(0);
     
     if (!backend) {
 #if AP_FEATURE_BOARD_DETECT

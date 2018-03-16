@@ -31,7 +31,7 @@
 #include "AP_OpticalFlow_Pixart_SROM.h"
 #include <stdio.h>
 
-#define debug(fmt, args ...)  do {printf(fmt, ## args); } while(0)
+#define debug(fmt, args ...)  do { gcs().send_text(MAV_SEVERITY_WARNING, fmt, ## args); } while(0)
 
 extern const AP_HAL::HAL& hal;
 
@@ -346,7 +346,7 @@ void AP_OpticalFlow_Pixart::timer(void)
         integral.gyro += Vector2f(gyro.x, gyro.y) * dt;
         _sem->give();
     }
-    
+
 #if 0
     static uint32_t last_print_ms;
     static int fd = -1;
@@ -397,7 +397,7 @@ void AP_OpticalFlow_Pixart::raw_frame_capture(void)
     uint16_t img_offset = 0;
     uint16_t img_seq = 0;
     
-    while (img_offset < image_size) {
+    while (img_offset < image_size && get_image_view()) {
         uint8_t v = reg_read_fast(PIXART_REG_RAW_GRAB2);
         switch (v >> 6) {
         case 0:
@@ -417,15 +417,17 @@ void AP_OpticalFlow_Pixart::raw_frame_capture(void)
         }
     }
 
+    hal.scheduler->delay(1);
+
     // load two frame capture mode start register sequences
     load_configuration_unchecked(exit_frame_capture, ARRAY_SIZE(exit_frame_capture));
 
     // reset sensor
     reg_write(PIXART_REG_POWER_RST, 0x5A);
     hal.scheduler->delay(50);
-    load_configuration_unchecked(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
+    load_configuration(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
     hal.scheduler->delay(100);
-    load_configuration_unchecked(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
+    load_configuration(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
 }
 
 // update - read latest values from sensor and fill in x,y and totals.
