@@ -1363,9 +1363,7 @@ void GCS_MAVLINK::send_opticalflow(const OpticalFlow &optflow)
     const AP_AHRS &ahrs = AP::ahrs();
     float hagl = 0;
     if (ahrs.have_inertial_nav()) {
-        if (!ahrs.get_hagl(hagl)) {
-            return;
-        }
+        ahrs.get_hagl(hagl);
     }
 
     // populate and send message
@@ -1378,7 +1376,7 @@ void GCS_MAVLINK::send_opticalflow(const OpticalFlow &optflow)
         bodyRate.x,
         bodyRate.y,
         optflow.quality(),
-        hagl,  // ground distance (in meters) set to zero
+        hagl,  // ground distance (in meters) if available
         flowRate.x,
         flowRate.y);
 }
