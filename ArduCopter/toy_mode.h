@@ -69,12 +69,39 @@ public:
             AP_Float                wp_radius_cm;
             AP_Float                wp_accel_cms;
             AP_Float                wp_accel_z_cms;
+
+            static AP_Param*                param_ptr_to_acro_rp_p;
+            static AP_Param*                param_ptr_to_acro_yaw_p;
+            static AP_Param*                param_ptr_to_acro_balance_roll;
+            static AP_Param*                param_ptr_to_acro_balance_pitch;
+            static AP_Param*                param_ptr_to_acro_trainer;
+            static AP_Param*                param_ptr_to_acro_rp_expo;
+            static AP_Param*                param_ptr_to_acro_y_expo;
+            static AP_Param*                param_ptr_to_acro_thr_mid;
+            static AP_Param*                param_ptr_to_angle_max;
+            static AP_Param*                param_ptr_to_accel_roll_max;
+            static AP_Param*                param_ptr_to_accel_pitch_max;
+            static AP_Param*                param_ptr_to_accel_yaw_max;
+            static AP_Param*                param_ptr_to_pilot_speed_up;
+            static AP_Param*                param_ptr_to_rc_feel_rp;
+            static AP_Param*                param_ptr_to_loiter_speed_cms;
+            static AP_Param*                param_ptr_to_loiter_jerk_max_cmsss;
+            static AP_Param*                param_ptr_to_loiter_accel_cmss;
+            static AP_Param*                param_ptr_to_loiter_accel_min_cmss;
+            static AP_Param*                param_ptr_to_wp_speed_cms;
+            static AP_Param*                param_ptr_to_wp_speed_up_cms;
+            static AP_Param*                param_ptr_to_wp_speed_down_cms;
+            static AP_Param*                param_ptr_to_wp_radius_cm;
+            static AP_Param*                param_ptr_to_wp_accel_cms;
+            static AP_Param*                param_ptr_to_wp_accel_z_cms;
+            
     };
 private:
 
     void trim_update(void);
     void action_arm(void);
     void blink_update(void);
+    void param_update(void);
     void send_named_int(const char *name, int32_t value);
     bool set_and_remember_mode(control_mode_t mode, mode_reason_t reason);
 
@@ -147,9 +174,12 @@ private:
     AP_Int8 primary_mode[2];
     AP_Int8 actions[10];
     AP_Int8 trim_auto;
+    AP_Int8 profile_id;
     AP_Int16 flags;
 
     Profile _var_info_profile[MAX_NUM_PROFILES];
+    bool ptr_to_param_loaded = false;
+    bool param_not_set_to_orig = false;
 
     struct {
         uint32_t start_ms;

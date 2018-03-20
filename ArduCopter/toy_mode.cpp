@@ -17,6 +17,31 @@
 
 #define ENABLE_LOAD_TEST 0
 
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_rp_p = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_yaw_p = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_balance_roll = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_balance_pitch = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_trainer = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_rp_expo = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_y_expo = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_acro_thr_mid = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_angle_max = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_accel_roll_max = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_accel_pitch_max = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_accel_yaw_max = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_pilot_speed_up = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_rc_feel_rp = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_loiter_speed_cms = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_loiter_jerk_max_cmsss = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_loiter_accel_cmss = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_loiter_accel_min_cmss = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_speed_cms = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_speed_up_cms = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_speed_down_cms = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_radius_cm = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_accel_cms = nullptr;
+AP_Param*  ToyMode::Profile::param_ptr_to_wp_accel_z_cms = nullptr;
+
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _ENABLE
@@ -149,6 +174,29 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_TMAX", 18, ToyMode, filter.thrust_max, 1.0),
 
+    // @Param: _PROFILE_ID
+    // @DisplayName: Profile ID
+    // @Description: This sets the activated profile, 0 means no profile activated
+    // @Range: 0 4
+    // @User: Advanced
+    AP_GROUPINFO("_PROFILE_ID", 19, ToyMode, profile_id, 0),
+
+    // @Group: _P1
+    // @Description: Profile set 1
+    AP_SUBGROUPINFO(_var_info_profile[0], "_P1_", 20, ToyMode, ToyMode::Profile),
+
+    // @Group: _P2
+    // @Description: Profile set 2
+    AP_SUBGROUPINFO(_var_info_profile[1], "_P2_", 21, ToyMode, ToyMode::Profile),
+
+    // @Group: _P3
+    // @Description: Profile set 3
+    AP_SUBGROUPINFO(_var_info_profile[2], "_P3_", 22, ToyMode, ToyMode::Profile),
+
+    // @Group: _P4
+    // @Description: Profile set 4
+    AP_SUBGROUPINFO(_var_info_profile[3], "_P4_", 23, ToyMode, ToyMode::Profile),
+
 #if ENABLE_LOAD_TEST
     // @Param: _LOAD_MUL
     // @DisplayName: Load test multiplier
@@ -156,21 +204,21 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Range: 0 1
     // @Increment: 0.01
     // @User: Advanced
-    AP_GROUPINFO("_LOAD_MUL", 19, ToyMode, load_test.load_mul, 1.0),
+    AP_GROUPINFO("_LOAD_MUL", 24, ToyMode, load_test.load_mul, 1.0),
     
     // @Param: _LOAD_FILT
     // @DisplayName: Load test filter
     // @Description: This filters the load test output. A value of 1 means no filter. 2 means values are repeated once. 3 means values are repeated 3 times, etc
     // @Range: 0 100
     // @User: Advanced
-    AP_GROUPINFO("_LOAD_FILT", 20, ToyMode, load_test.load_filter, 1),
+    AP_GROUPINFO("_LOAD_FILT", 25, ToyMode, load_test.load_filter, 1),
     
     // @Param: _LOAD_TYPE
     // @DisplayName: Load test type
     // @Description: This sets the type of load test
     // @Values: 0:ConstantThrust,1:LogReplay1,2:LogReplay2
     // @User: Advanced
-    AP_GROUPINFO("_LOAD_TYPE", 21, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
+    AP_GROUPINFO("_LOAD_TYPE", 26, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
 #endif
 
     // @Param: _GPS_BTN
@@ -426,6 +474,8 @@ void ToyMode::update()
         // not enabled
         return;
     }
+
+    param_update();
 
 #if ENABLE_LOAD_TEST
     if (!copter.motors->armed()) {
@@ -920,6 +970,210 @@ void ToyMode::update()
 #endif
             }
         }
+    }
+}
+
+
+void ToyMode::param_update()
+{
+    if (!ptr_to_param_loaded) {
+        enum ap_var_type dummy;
+        Profile::param_ptr_to_acro_rp_p = AP_Param::find("ACRO_RP_P", &dummy);
+        if (Profile::param_ptr_to_acro_rp_p == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_RP_P");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_yaw_p = AP_Param::find("ACRO_YAW_P", &dummy);
+        if (Profile::param_ptr_to_acro_yaw_p == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_YAW_P");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_balance_roll = AP_Param::find("ACRO_BAL_ROLL", &dummy);
+        if (Profile::param_ptr_to_acro_balance_roll == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_BAL_ROLL");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_balance_pitch = AP_Param::find("ACRO_BAL_PITCH", &dummy);
+        if (Profile::param_ptr_to_acro_balance_pitch == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_BAL_PITCH");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_trainer = AP_Param::find("ACRO_TRAINER", &dummy);
+        if (Profile::param_ptr_to_acro_trainer == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_TRAINER");
+            return;
+        }
+       
+        Profile::param_ptr_to_acro_rp_expo = AP_Param::find("ACRO_RP_EXPO", &dummy);
+        if (Profile::param_ptr_to_acro_rp_expo == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_RP_EXPO");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_y_expo = AP_Param::find("ACRO_Y_EXPO", &dummy);
+        if (Profile::param_ptr_to_acro_y_expo == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_Y_EXPO");
+            return;
+        }
+
+        Profile::param_ptr_to_acro_thr_mid = AP_Param::find("ACRO_THR_MID", &dummy);
+        if (Profile::param_ptr_to_acro_thr_mid == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ACRO_THR_MID");
+            return;
+        }
+
+        Profile::param_ptr_to_angle_max = AP_Param::find("ANGLE_MAX", &dummy);
+        if (Profile::param_ptr_to_angle_max == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ANGLE_MAX");
+            return;
+        }
+
+        Profile::param_ptr_to_accel_roll_max = AP_Param::find("ATC_ACCEL_R_MAX", &dummy);
+        if (Profile::param_ptr_to_accel_roll_max == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ATC_ACCEL_R_MAX");
+            return;
+        }
+
+        Profile::param_ptr_to_accel_pitch_max = AP_Param::find("ATC_ACCEL_P_MAX", &dummy);
+        if (Profile::param_ptr_to_accel_pitch_max == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ATC_ACCEL_P_MAX");
+            return;
+        }
+
+        Profile::param_ptr_to_accel_yaw_max = AP_Param::find("ATC_ACCEL_Y_MAX", &dummy);
+        if (Profile::param_ptr_to_accel_yaw_max == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "ATC_ACCEL_Y_MAX");
+            return;
+        }
+
+        Profile::param_ptr_to_pilot_speed_up = AP_Param::find("PILOT_SPEED_UP", &dummy);
+        if (Profile::param_ptr_to_pilot_speed_up == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "PILOT_SPEED_UP");
+            return;
+        }
+
+        Profile::param_ptr_to_rc_feel_rp = AP_Param::find("RC_FEEL_RP", &dummy);
+        if (Profile::param_ptr_to_rc_feel_rp == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "RC_FEEL_RP");
+            return;
+        }
+
+        Profile::param_ptr_to_loiter_speed_cms = AP_Param::find("WPNAV_LOIT_SPEED", &dummy);
+        if (Profile::param_ptr_to_loiter_speed_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_LOIT_SPEED");
+            return;
+        }
+
+        Profile::param_ptr_to_loiter_jerk_max_cmsss = AP_Param::find("WPNAV_LOIT_JERK", &dummy);
+        if (Profile::param_ptr_to_loiter_jerk_max_cmsss == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_LOIT_JERK");
+            return;
+        }
+        
+        Profile::param_ptr_to_loiter_accel_cmss = AP_Param::find("WPNAV_LOIT_MAXA", &dummy);
+        if (Profile::param_ptr_to_loiter_accel_cmss == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_LOIT_MAXA");
+            return;
+        }
+
+        Profile::param_ptr_to_loiter_accel_min_cmss = AP_Param::find("WPNAV_LOIT_MINA", &dummy);
+        if (Profile::param_ptr_to_loiter_accel_min_cmss == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_LOIT_MINA");
+            return;
+        }
+        
+        Profile::param_ptr_to_wp_speed_cms = AP_Param::find("WPNAV_SPEED", &dummy);
+        if (Profile::param_ptr_to_wp_speed_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_SPEED");
+            return;
+        }
+
+        Profile::param_ptr_to_wp_speed_up_cms = AP_Param::find("WPNAV_SPEED_UP", &dummy);
+        if (Profile::param_ptr_to_wp_speed_up_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_SPEED_UP");
+            return;
+        }
+
+        Profile::param_ptr_to_wp_speed_down_cms = AP_Param::find("WPNAV_SPEED_DN", &dummy);
+        if (Profile::param_ptr_to_wp_speed_down_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_SPEED_DN");
+            return;
+        }
+
+        Profile::param_ptr_to_wp_radius_cm = AP_Param::find("WPNAV_RADIUS", &dummy);
+        if (Profile::param_ptr_to_wp_radius_cm == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_RADIUS");
+            return;
+        }
+
+        Profile::param_ptr_to_wp_accel_cms = AP_Param::find("WPNAV_ACCEL", &dummy);
+        if (Profile::param_ptr_to_wp_accel_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_ACCEL");
+            return;
+        }
+
+        Profile::param_ptr_to_wp_accel_z_cms = AP_Param::find("WPNAV_ACCEL_Z", &dummy);
+        if (Profile::param_ptr_to_wp_accel_z_cms == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Profile unable to find %s\n", "WPNAV_ACCEL_Z");
+            return;
+        }
+        ptr_to_param_loaded = true;
+    } else if(profile_id != 0){
+        Profile::param_ptr_to_acro_rp_p->set_float(_var_info_profile[profile_id - 1].acro_rp_p.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_yaw_p->set_float(_var_info_profile[profile_id - 1].acro_yaw_p.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_balance_roll->set_float(_var_info_profile[profile_id - 1].acro_balance_roll.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_balance_pitch->set_float(_var_info_profile[profile_id - 1].acro_balance_pitch.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_trainer->set_float(_var_info_profile[profile_id - 1].acro_trainer.cast_to_float(), AP_PARAM_INT8);
+        Profile::param_ptr_to_acro_rp_expo->set_float(_var_info_profile[profile_id - 1].acro_rp_expo.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_y_expo->set_float(_var_info_profile[profile_id - 1].acro_y_expo.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_acro_thr_mid->set_float(_var_info_profile[profile_id - 1].acro_thr_mid.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_angle_max->set_float(_var_info_profile[profile_id - 1].angle_max.cast_to_float(), AP_PARAM_INT16);
+        Profile::param_ptr_to_accel_roll_max->set_float(_var_info_profile[profile_id - 1].accel_roll_max.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_accel_pitch_max->set_float(_var_info_profile[profile_id - 1].accel_pitch_max.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_accel_yaw_max->set_float(_var_info_profile[profile_id - 1].accel_yaw_max.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_pilot_speed_up->set_float(_var_info_profile[profile_id - 1].pilot_speed_up.cast_to_float(), AP_PARAM_INT16);
+        Profile::param_ptr_to_rc_feel_rp->set_float(_var_info_profile[profile_id - 1].rc_feel_rp.cast_to_float(), AP_PARAM_INT8);
+        Profile::param_ptr_to_loiter_speed_cms->set_float(_var_info_profile[profile_id - 1].loiter_speed_cms.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_loiter_jerk_max_cmsss->set_float(_var_info_profile[profile_id - 1].loiter_jerk_max_cmsss.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_loiter_accel_cmss->set_float(_var_info_profile[profile_id - 1].loiter_accel_cmss.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_loiter_accel_min_cmss->set_float(_var_info_profile[profile_id - 1].loiter_accel_min_cmss.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_speed_cms->set_float(_var_info_profile[profile_id - 1].wp_speed_cms.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_speed_up_cms->set_float(_var_info_profile[profile_id - 1].wp_speed_up_cms.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_speed_down_cms->set_float(_var_info_profile[profile_id - 1].wp_speed_down_cms.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_radius_cm->set_float(_var_info_profile[profile_id - 1].wp_radius_cm.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_accel_cms->set_float(_var_info_profile[profile_id - 1].wp_accel_cms.cast_to_float(), AP_PARAM_FLOAT);
+        Profile::param_ptr_to_wp_accel_z_cms->set_float(_var_info_profile[profile_id - 1].wp_accel_z_cms.cast_to_float(), AP_PARAM_FLOAT);
+        param_not_set_to_orig = false;
+    } else if(param_not_set_to_orig){
+        Profile::param_ptr_to_acro_rp_p->load();
+        Profile::param_ptr_to_acro_yaw_p->load();
+        Profile::param_ptr_to_acro_balance_roll->load();
+        Profile::param_ptr_to_acro_balance_pitch->load();
+        Profile::param_ptr_to_acro_trainer->load();
+        Profile::param_ptr_to_acro_rp_expo->load();
+        Profile::param_ptr_to_acro_y_expo->load();
+        Profile::param_ptr_to_acro_thr_mid->load();
+        Profile::param_ptr_to_angle_max->load();
+        Profile::param_ptr_to_accel_roll_max->load();
+        Profile::param_ptr_to_accel_pitch_max->load();
+        Profile::param_ptr_to_accel_yaw_max->load();
+        Profile::param_ptr_to_pilot_speed_up->load();
+        Profile::param_ptr_to_rc_feel_rp->load();
+        Profile::param_ptr_to_loiter_speed_cms->load();
+        Profile::param_ptr_to_loiter_jerk_max_cmsss->load();
+        Profile::param_ptr_to_loiter_accel_cmss->load();
+        Profile::param_ptr_to_loiter_accel_min_cmss->load();
+        Profile::param_ptr_to_wp_speed_cms->load();
+        Profile::param_ptr_to_wp_speed_up_cms->load();
+        Profile::param_ptr_to_wp_speed_down_cms->load();
+        Profile::param_ptr_to_wp_radius_cm->load();
+        Profile::param_ptr_to_wp_accel_cms->load();
+        Profile::param_ptr_to_wp_accel_z_cms->load();
+        param_not_set_to_orig = true;
     }
 }
 
