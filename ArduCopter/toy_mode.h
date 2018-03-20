@@ -4,7 +4,8 @@
   class to support "toy" mode for simplified user interaction for
   large volume consumer vehicles
  */
-
+#define MAX_NUM_PROFILES 4
+class ToyMode;
 class ToyMode
 {
 public:
@@ -31,7 +32,44 @@ public:
     void load_test_run(void);
     
     static const struct AP_Param::GroupInfo var_info[];
-    
+
+    class Profile {
+        friend class ToyMode;
+        public:
+            Profile()
+            {
+                AP_Param::setup_object_defaults(this, var_info);
+            }
+
+            static const struct AP_Param::GroupInfo var_info[];
+
+        private:
+            AP_Float                acro_rp_p;
+            AP_Float                acro_yaw_p;
+            AP_Float                acro_balance_roll;
+            AP_Float                acro_balance_pitch;
+            AP_Int8                 acro_trainer;
+            AP_Float                acro_rp_expo;
+            AP_Float                acro_y_expo;
+            AP_Float                acro_thr_mid;
+            AP_Int16                angle_max;
+            AP_Float                accel_roll_max;
+            AP_Float                accel_pitch_max;
+            AP_Float                accel_yaw_max;
+            AP_Int16                pilot_speed_up;
+            AP_Int8                 rc_feel_rp;
+        
+            AP_Float                loiter_speed_cms;
+            AP_Float                loiter_jerk_max_cmsss;
+            AP_Float                loiter_accel_cmss;
+            AP_Float                loiter_accel_min_cmss;
+            AP_Float                wp_speed_cms;
+            AP_Float                wp_speed_up_cms;
+            AP_Float                wp_speed_down_cms;
+            AP_Float                wp_radius_cm;
+            AP_Float                wp_accel_cms;
+            AP_Float                wp_accel_z_cms;
+    };
 private:
 
     void trim_update(void);
@@ -110,6 +148,8 @@ private:
     AP_Int8 actions[10];
     AP_Int8 trim_auto;
     AP_Int16 flags;
+
+    Profile _var_info_profile[MAX_NUM_PROFILES];
 
     struct {
         uint32_t start_ms;
