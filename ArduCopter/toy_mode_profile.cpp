@@ -213,4 +213,5 @@ const AP_Param::GroupInfo ToyMode::Profile::var_info[] = {
     AP_GROUPEND
 
 };
+
 #endif

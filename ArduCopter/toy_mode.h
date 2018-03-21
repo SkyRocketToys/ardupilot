@@ -69,32 +69,6 @@ public:
             AP_Float                wp_radius_cm;
             AP_Float                wp_accel_cms;
             AP_Float                wp_accel_z_cms;
-
-            static AP_Param*                param_ptr_to_acro_rp_p;
-            static AP_Param*                param_ptr_to_acro_yaw_p;
-            static AP_Param*                param_ptr_to_acro_balance_roll;
-            static AP_Param*                param_ptr_to_acro_balance_pitch;
-            static AP_Param*                param_ptr_to_acro_trainer;
-            static AP_Param*                param_ptr_to_acro_rp_expo;
-            static AP_Param*                param_ptr_to_acro_y_expo;
-            static AP_Param*                param_ptr_to_acro_thr_mid;
-            static AP_Param*                param_ptr_to_angle_max;
-            static AP_Param*                param_ptr_to_accel_roll_max;
-            static AP_Param*                param_ptr_to_accel_pitch_max;
-            static AP_Param*                param_ptr_to_accel_yaw_max;
-            static AP_Param*                param_ptr_to_pilot_speed_up;
-            static AP_Param*                param_ptr_to_rc_feel_rp;
-            static AP_Param*                param_ptr_to_loiter_speed_cms;
-            static AP_Param*                param_ptr_to_loiter_jerk_max_cmsss;
-            static AP_Param*                param_ptr_to_loiter_accel_cmss;
-            static AP_Param*                param_ptr_to_loiter_accel_min_cmss;
-            static AP_Param*                param_ptr_to_wp_speed_cms;
-            static AP_Param*                param_ptr_to_wp_speed_up_cms;
-            static AP_Param*                param_ptr_to_wp_speed_down_cms;
-            static AP_Param*                param_ptr_to_wp_radius_cm;
-            static AP_Param*                param_ptr_to_wp_accel_cms;
-            static AP_Param*                param_ptr_to_wp_accel_z_cms;
-            
     };
 private:
 
@@ -176,10 +150,50 @@ private:
     AP_Int8 trim_auto;
     AP_Int8 profile_id;
     AP_Int16 flags;
+    int8_t last_profile_id = -1;
 
+    /*
+      a table mapping profile variable names to entries in the profile
+      objects. We use the offset within the object
+     */
+    struct ProfileTable {
+        uint32_t param_offset;
+        const char *name;
+        ap_var_type var_type;
+    };
+
+#define PROFILE_ENTRY(var_p, var_name, var_type) { offsetof(Profile, var_p), var_name, var_type }
+    static const uint8_t num_profile_vars = 24;
+    const ProfileTable profile_table[num_profile_vars] = {
+        PROFILE_ENTRY(acro_rp_p,             "ACRO_RP_P", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_yaw_p,            "ACRO_YAW_P", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_balance_roll,     "ACRO_BAL_ROLL", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_balance_pitch,    "ACRO_BAL_PITCH", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_trainer,          "ACRO_TRAINER", AP_PARAM_INT8),
+        PROFILE_ENTRY(acro_rp_expo,          "ACRO_RP_EXPO", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_y_expo,           "ACRO_Y_EXPO", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(acro_thr_mid,          "ACRO_THR_MID", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(angle_max,             "ANGLE_MAX", AP_PARAM_INT16),
+        PROFILE_ENTRY(accel_roll_max,        "ATC_ACCEL_R_MAX", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(accel_pitch_max,       "ATC_ACCEL_P_MAX", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(accel_yaw_max,         "ATC_ACCEL_Y_MAX", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(pilot_speed_up,        "PILOT_SPEED_UP", AP_PARAM_INT16),
+        PROFILE_ENTRY(rc_feel_rp,            "RC_FEEL_RP", AP_PARAM_INT8),
+        PROFILE_ENTRY(loiter_speed_cms,      "WPNAV_LOIT_SPEED", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(loiter_jerk_max_cmsss, "WPNAV_LOIT_JERK", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(loiter_accel_cmss,     "WPNAV_LOIT_MAXA", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(loiter_accel_min_cmss, "WPNAV_LOIT_MINA", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_speed_cms,          "WPNAV_SPEED", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_speed_up_cms,       "WPNAV_SPEED_UP", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_speed_down_cms,     "WPNAV_SPEED_DN", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_radius_cm,          "WPNAV_RADIUS", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_accel_cms,          "WPNAV_ACCEL", AP_PARAM_FLOAT),
+        PROFILE_ENTRY(wp_accel_z_cms,        "WPNAV_ACCEL_Z", AP_PARAM_FLOAT),
+    };
+    AP_Param *profile_ptrs[num_profile_vars];
+    
     Profile _var_info_profile[MAX_NUM_PROFILES];
-    bool ptr_to_param_loaded = false;
-    bool param_not_set_to_orig = false;
+    bool ptr_to_param_loaded;
 
     struct {
         uint32_t start_ms;
