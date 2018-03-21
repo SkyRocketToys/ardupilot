@@ -4,7 +4,7 @@
   class to support "toy" mode for simplified user interaction for
   large volume consumer vehicles
  */
-#define MAX_NUM_PROFILES 4
+#define MAX_NUM_PROFILES 2
 class ToyMode;
 class ToyMode
 {
@@ -116,6 +116,7 @@ private:
         ACTION_TOGGLE_SSIMPLE = 22,
         ACTION_LOAD_TEST = 23,
         ACTION_MODE_FLOW = 24,
+        ACTION_TOGGLE_PROFILE = 25,
     };
 
     enum toy_action last_action;
