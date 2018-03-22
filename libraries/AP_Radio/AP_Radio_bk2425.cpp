@@ -415,7 +415,6 @@ bool AP_Radio_beken::UpdateTxData(void)
 		fwupload.rx_ack = false;
 		fwupload.rx_reboot = true;
 		// Tell the Tx to reboot
-		tx_pps = 0; // Don't trick myself into not rebinding
 		packetFormatDfu* tx = &beken.pktDataDfu;
 		tx->packetType = BK_PKT_TYPE_DFU;
 		uint16_t addr = 0x0002; // Command to reboot
@@ -642,7 +641,6 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 			case BK_INFO_FW_YM:
 				tx_date.firmware_year = rx->u.ctrl.data_value_hi;
 				tx_date.firmware_month = rx->u.ctrl.data_value_lo;
-				fwupload.rx_reboot = false; // Stop trying to reboot the tx after it has already rebooted
 				break;
 			case BK_INFO_FW_DAY:
 				tx_date.firmware_day = rx->u.ctrl.data_value_hi;
