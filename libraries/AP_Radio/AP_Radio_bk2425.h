@@ -137,7 +137,11 @@ public:
     uint16_t read(uint8_t chan) override; // return current "PWM" (value) of a channel
     void handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m) override; // handle a data96 mavlink packet for fw upload
     void update(void) override; // update status
-    uint32_t get_tx_version(void) override { return 0; } // get TX fw version
+
+    uint32_t get_tx_version(void) override { // get TX fw version
+        // pack date into 16 bits for vendor_id in AUTOPILOT_VERSION
+        return (uint16_t(tx_date.firmware_year)<<12) + (uint16_t(tx_date.firmware_month)<<8) + tx_date.firmware_day;
+    }
     const AP_Radio::stats &get_stats(void) override; // get radio statistics structure
 
 	// Extra public functions
@@ -191,6 +195,11 @@ private:
     bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
 	FwUpload fwupload; // Support OTA upload
 	SyncAdaptive adaptive; // Support adaptive hopping
+    struct {
+        uint8_t firmware_year;
+        uint8_t firmware_month;
+        uint8_t firmware_day;
+    } tx_date;
 
     // Bind structure saved to storage
     static const uint16_t bind_magic = 0x120a;
