@@ -205,7 +205,10 @@ bool AP_Radio_cc2500::send(const uint8_t *pkt, uint16_t len)
     return false;
 }
 
-const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
+const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config_GFSK[] = {
+    /*
+      radio config for GFSK with 57kHz deviation
+    */
     {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
     {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
     {CC2500_18_MCSM0,    0x08}, // XOSC expire 64, cal never
@@ -223,7 +226,7 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_12_MDMCFG2,  0x13}, // 30/32 sync word bits, no manchester, GFSK, DC filter enabled
     {CC2500_13_MDMCFG1,  0xA3}, // chan spacing exponent 3, preamble 4 bytes, FEC enabled
     {CC2500_14_MDMCFG0,  0x7A}, // chan spacing 299.926757kHz for 26MHz crystal
-    {CC2500_15_DEVIATN,  0x51}, // modem deviation 25.128906kHz for 26MHz crystal
+    {CC2500_15_DEVIATN,  0x51}, // modem deviation 57kHz for 26MHz crystal
     {CC2500_19_FOCCFG,   0x16}, // frequency offset compensation
     {CC2500_1A_BSCFG,    0x6C}, // bit sync config
     {CC2500_1B_AGCCTRL2, 0x43}, // target amplitude 33dB
@@ -241,6 +244,40 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_2E_TEST0,    0x0B}, // test settings
     {CC2500_03_FIFOTHR,  0x07}, // TX fifo threashold 33, RX fifo threshold 32
     {CC2500_09_ADDR,     0x00}, // device address 0 (broadcast)
+};
+
+const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
+    /* config for both TX and RX (from SmartRF Studio)
+       setup for MSK at 120kbaud, FEC enabled, whitening enabled, base freq 2403.999756MHz
+       channel spacing 299.926758, crystal 26MHz, RX filter bw 203.125kHz
+    */
+    {CC2500_06_PKTLEN,   0x0D},
+    {CC2500_07_PKTCTRL1, 0x0C},
+    {CC2500_08_PKTCTRL0, 0x44},
+    {CC2500_0B_FSCTRL1,  0x0A},
+    {CC2500_0D_FREQ2,    0x5C},
+    {CC2500_0E_FREQ1,    0x76},
+    {CC2500_0F_FREQ0,    0x27},
+    {CC2500_11_MDMCFG3,  0x2F},
+    {CC2500_12_MDMCFG2,  0x73},
+    {CC2500_13_MDMCFG1,  0xA3},
+    {CC2500_14_MDMCFG0,  0x7A},
+    {CC2500_15_DEVIATN,  0x70},
+    {CC2500_17_MCSM1,    0x03},
+    {CC2500_18_MCSM0,    0x08},
+    {CC2500_19_FOCCFG,   0x16},
+    {CC2500_1B_AGCCTRL2, 0x43},
+    {CC2500_23_FSCAL3,   0xEA},
+    {CC2500_25_FSCAL1,   0x00},
+    {CC2500_26_FSCAL0,   0x11},
+    {CC2500_2B_AGCTEST,  0x3E},
+    {CC2500_03_FIFOTHR,  0x07}, // TX fifo threashold 33, RX fifo threshold 32
+
+    // config specific to RX
+    {CC2500_00_IOCFG2,   0x01}, // GD2 high on RXFIFO filled or end of packet
+    {CC2500_17_MCSM1,    0x03}, // RX->IDLE, CCA always, TX -> IDLE
+    {CC2500_18_MCSM0,    0x08}, // XOSC expire 64, cal never
+    {CC2500_3E_PATABLE,  0xFF}, // initially max power
 };
 
 const uint16_t CRCTable[] = {
@@ -312,10 +349,17 @@ void AP_Radio_cc2500::radio_init(void)
 
     cc2500.Reset();
     hal.scheduler->delay_microseconds(100);
-    for (uint8_t i=0; i<ARRAY_SIZE(radio_config); i++) {
-        // write twice to cope with possible SPI errors
-        cc2500.WriteRegCheck(radio_config[i].reg, radio_config[i].value);
+    if (get_protocol() == AP_Radio::PROTOCOL_CC2500_GFSK) {
+        Debug(1,"Using GFSK configuration\n");
+        for (uint8_t i=0; i<ARRAY_SIZE(radio_config_GFSK); i++) {
+            cc2500.WriteRegCheck(radio_config_GFSK[i].reg, radio_config_GFSK[i].value);
+        }
+    } else {
+        for (uint8_t i=0; i<ARRAY_SIZE(radio_config); i++) {
+            cc2500.WriteRegCheck(radio_config[i].reg, radio_config[i].value);
+        }
     }
+
     cc2500.Strobe(CC2500_SIDLE);	// Go to idle...
 
     hal.scheduler->delay_microseconds(10*1000);
@@ -1033,6 +1077,7 @@ void AP_Radio_cc2500::irq_handler_thd(void *arg)
             radio_instance->stats.recv_packets = 0;
             radio_instance->chanskip = 1;
             radio_instance->nextChannel(1);
+            radio_instance->save_bind_info();
             break;
         default:
             break;

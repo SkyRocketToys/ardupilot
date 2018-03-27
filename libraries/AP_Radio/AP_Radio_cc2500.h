@@ -175,6 +175,7 @@ private:
         uint8_t reg;
         uint8_t value;
     };
+    static const config radio_config_GFSK[];
     static const config radio_config[];
 
     struct {

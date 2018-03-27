@@ -80,6 +80,7 @@ public:
         PROTOCOL_DSM2=1,
         PROTOCOL_DSMX=2,
         PROTOCOL_D16=3,
+        PROTOCOL_CC2500_GFSK=4, // deviation 57kHz for update of cc2500 with GFSK
     };
     
     // get packet statistics
