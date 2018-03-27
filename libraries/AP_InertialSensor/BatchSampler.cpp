@@ -142,10 +142,10 @@ void AP_InertialSensor::BatchSampler::push_data_to_log()
         float sample_rate = 0; // avoid warning about uninitialised values
         switch(type) {
         case IMU_SENSOR_TYPE_GYRO:
-            sample_rate = _imu._gyro_raw_sample_rates[instance] * 8;
+            sample_rate = _imu._gyro_raw_sample_rates[instance];
             break;
         case IMU_SENSOR_TYPE_ACCEL:
-            sample_rate = _imu._accel_raw_sample_rates[instance] * 4;
+            sample_rate = _imu._accel_raw_sample_rates[instance];
             break;
         }
         if (!dataflash->Log_Write_ISBH(isb_seqnum,
