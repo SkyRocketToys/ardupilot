@@ -5,7 +5,7 @@
 #include "AP_HAL_SITL_Namespace.h"
 #include <sys/time.h>
 
-#define SITL_SCHEDULER_MAX_TIMER_PROCS 4
+#define SITL_SCHEDULER_MAX_TIMER_PROCS 8
 
 /* Scheduler implementation: */
 class HALSITL::Scheduler : public AP_HAL::Scheduler {
