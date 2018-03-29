@@ -826,6 +826,11 @@ void NavEKF2_core::selectHeightForFusion()
         }
     }
 
+#if 0
+    /*
+      this is disabled for skyrocket as it can cause a shift of the
+      height above home when we get GPS lock after takeoff
+     */
     // If we are not using GPS as the primary height sensor, correct EKF origin height so that
     // combined local NED position height and origin height remains consistent with the GPS altitude
     // This also enables the GPS height to be used as a backup height source
@@ -835,6 +840,7 @@ void NavEKF2_core::selectHeightForFusion()
             ) {
         correctEkfOriginHeight();
     }
+#endif
 
     // Select the height measurement source
     if (rangeDataToFuse && (activeHgtSource == HGT_SOURCE_RNG)) {
