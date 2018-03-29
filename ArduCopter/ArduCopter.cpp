@@ -308,6 +308,7 @@ void Copter::update_batt_compass(void)
         if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
             DataFlash.Log_Write_Compass(compass);
         }
+        compass_learn.update();
     }
 }
 

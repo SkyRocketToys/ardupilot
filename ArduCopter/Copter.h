@@ -84,6 +84,7 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_TempCalibration/AP_TempCalibration.h>
+#include <AP_Compass/Compass_learn.h>
 
 // Configuration
 #include "defines.h"
@@ -225,6 +226,7 @@ private:
     AP_Baro barometer;
     Compass compass;
     AP_InertialSensor ins;
+    CompassLearn compass_learn{ahrs, compass};
 
     RangeFinder rangefinder{serial_manager, ROTATION_PITCH_270};
     struct {
