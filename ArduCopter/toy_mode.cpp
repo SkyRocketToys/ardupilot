@@ -43,56 +43,56 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _ACTION1
     // @DisplayName: Tmode action 1
     // @Description: This is the action taken for the left action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION1", 4, ToyMode, actions[0], ACTION_TOGGLE_VIDEO),
 
     // @Param: _ACTION2
     // @DisplayName: Tmode action 2
     // @Description: This is the action taken for the right action button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION2", 5, ToyMode, actions[1], ACTION_TAKE_PHOTO),
 
     // @Param: _ACTION3
     // @DisplayName: Tmode action 3
     // @Description: This is the action taken for the power button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION3", 6, ToyMode, actions[2], ACTION_DISARM),
 
     // @Param: _ACTION4
     // @DisplayName: Tmode action 4
     // @Description: This is the action taken for the left action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION4", 7, ToyMode, actions[3], ACTION_NONE),
 
     // @Param: _ACTION5
     // @DisplayName: Tmode action 5
     // @Description: This is the action taken for the right action button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION5", 8, ToyMode, actions[4], ACTION_NONE),
 
     // @Param: _ACTION6
     // @DisplayName: Tmode action 6
     // @Description: This is the action taken for the power button while the mode button is pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_ACTION6", 9, ToyMode, actions[5], ACTION_NONE),
 
     // @Param: _MODE_BTN
     // @DisplayName: Tmode mode button action
     // @Description: This is the action taken for the mode button being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_MODE_BTN", 10, ToyMode, actions[6], ACTION_TOGGLE_PROFILE),
 
     // @Param: _MODE_LONG
     // @DisplayName: Tmode mode button long action
     // @Description: This is the action taken for a long press of the mode button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_MODE_LONG", 11, ToyMode, actions[7], ACTION_NONE),
 
@@ -106,7 +106,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _LL_BTN
     // @DisplayName: Tmode launch/land button action
     // @Description: This is the action taken for the launch/land button being pressed
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_LL_BTN", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
 
@@ -183,7 +183,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _GPS_BTN
     // @DisplayName: GPS button action
     // @Description: This is the action taken for the GPS button
-    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
+    // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
     AP_GROUPINFO("_GPS_BTN", 22, ToyMode, actions[9], ACTION_MODE_RTL),
    
@@ -195,6 +195,22 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Path: toy_mode_profile.cpp
     AP_SUBGROUPINFO(_var_info_profile[1], "_P2_", 24, ToyMode, ToyMode::Profile),
 
+    // @Param: _TOFF_TIME
+    // @DisplayName: Takeoff time in seconds
+    // @Description: This sets the amount of time a takeoff takes in seconds
+    // @Range: 0 5
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_TOFF_TIME", 25, ToyMode, takeoff_time, 3.0),
+
+    // @Param: _TOFF_DELAY
+    // @DisplayName: Takeoff delay in seconds
+    // @Description: This sets the time to delay after arming for takeoff
+    // @Range: 0 5
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_TOFF_DELAY", 26, ToyMode, takeoff_delay, 1.0),
+    
     AP_GROUPEND
 };
 
@@ -285,6 +301,11 @@ void ToyMode::update()
     }
 
     uint32_t now = AP_HAL::millis();
+
+    if (takeoff_start_ms != 0 && now - takeoff_start_ms > (takeoff_time + takeoff_delay)*1000U) {
+        gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete\n");
+        takeoff_start_ms = 0;
+    }
     
     if (is_v2450_buttons()) {
         // V2450 button mapping from cypress radio. It maps the
@@ -416,6 +437,7 @@ void ToyMode::update()
     case ACTION_ARM_LAND_RTL:
     case ACTION_LOAD_TEST:
     case ACTION_MODE_FLOW:
+    case ACTION_LAUNCH_LAND:
         if (last_action == action ||
             now - last_action_ms < TOY_ACTION_DELAY_MS) {
             // for the above actions, button must be released before
@@ -661,6 +683,17 @@ void ToyMode::update()
         }
         break;
 
+    case ACTION_LAUNCH_LAND:
+        if (!copter.motors->armed()) {
+            action_arm();
+            takeoff_start_ms = AP_HAL::millis();
+            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
+        } else {
+            // switch to LAND mode
+            new_mode = LAND;
+        }
+        break;
+        
     case ACTION_LOAD_TEST:
 #if ENABLE_LOAD_TEST
         if (copter.motors->armed() && !load_test.running) {
@@ -948,7 +981,7 @@ void ToyMode::action_arm(void)
 }
 
 /*
-  adjust throttle for throttle takeoff
+  adjust throttle for smooth throttle takeoff and landing 
   This prevents sudden climbs when using throttle for arming
 */
 void ToyMode::throttle_adjust(float &throttle_control)
@@ -956,6 +989,12 @@ void ToyMode::throttle_adjust(float &throttle_control)
     uint32_t now = AP_HAL::millis();
     const uint32_t soft_start_ms = 5000;
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
+
+    if (takeoff_start_ms != 0) {
+        takeoff_throttle_adjust(throttle_control);
+        return;
+    }
+    
     if (!copter.motors->armed() && (flags & FLAG_THR_ARM)) {
         throttle_control = MIN(throttle_control, 500);
     } else if (now - throttle_arm_ms < soft_start_ms) {
@@ -977,6 +1016,31 @@ void ToyMode::throttle_adjust(float &throttle_control)
     }
 }
 
+/*
+  adjust throttle for user initiated takeoff using the launch action
+*/
+void ToyMode::takeoff_throttle_adjust(float &throttle_control)
+{
+    bool sticks_centered =
+        copter.channel_roll->get_control_in() == 0 &&
+        copter.channel_pitch->get_control_in() == 0 &&
+        copter.channel_yaw->get_control_in() == 0 &&
+        fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
+
+    if (!sticks_centered) {
+        gcs().send_text(MAV_SEVERITY_INFO, "TMODE: auto takeoff cancelled\n");
+        takeoff_start_ms = 0;
+        return;
+    }
+    uint32_t now = AP_HAL::millis();
+    if (now - takeoff_start_ms < takeoff_delay*1000) {
+        // still in delay
+        return;
+    }
+
+    throttle_control = linear_interpolate(throttle_mid+100, 750, (now-takeoff_start_ms)-(takeoff_delay*1000),
+                                          0, takeoff_time*750);
+}
 
 /*
   update blinking. Blinking is done with a 16 bit pattern for each

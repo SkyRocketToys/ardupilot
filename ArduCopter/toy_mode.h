@@ -25,6 +25,7 @@ public:
 
     // adjust throttle for throttle takeoff
     void throttle_adjust(float &throttle_control);
+    void takeoff_throttle_adjust(float &throttle_control);
 
     // handle mavlink message
     void handle_message(mavlink_message_t *msg);
@@ -118,6 +119,7 @@ private:
         ACTION_LOAD_TEST = 23,
         ACTION_MODE_FLOW = 24,
         ACTION_TOGGLE_PROFILE = 25,
+        ACTION_LAUNCH_LAND = 26,
     };
 
     enum toy_action last_action;
@@ -152,6 +154,8 @@ private:
     AP_Int8 trim_auto;
     AP_Int8 profile_id;
     AP_Int16 flags;
+    AP_Float takeoff_time;
+    AP_Float takeoff_delay;
     int8_t last_profile_id = -1;
 
     /*
@@ -228,6 +232,9 @@ private:
     uint16_t red_blink_count;
     uint16_t green_blink_count;
     uint8_t blink_disarm;
+
+    // are we in a user takeoff?
+    uint32_t takeoff_start_ms;
 
     struct {
         AP_Float volt_min;
