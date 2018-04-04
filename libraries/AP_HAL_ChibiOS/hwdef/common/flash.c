@@ -76,7 +76,7 @@
 #if BOARD_FLASH_SIZE == 512
 #define STM32_FLASH_NPAGES  7
 static const uint32_t flash_memmap[STM32_FLASH_NPAGES] = { KB(16), KB(16), KB(16), KB(16), KB(64),
-                                                           KB(128), KB(128), KB(128) };
+                                                           KB(128), KB(128) };
 
 #elif BOARD_FLASH_SIZE == 1024
 #define STM32_FLASH_NPAGES  12
