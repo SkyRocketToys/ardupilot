@@ -156,6 +156,7 @@ private:
     AP_Int16 flags;
     AP_Float takeoff_time;
     AP_Float takeoff_delay;
+    AP_Int16 land_throttle;
     int8_t last_profile_id = -1;
 
     /*
@@ -235,6 +236,9 @@ private:
 
     // are we in a user takeoff?
     uint32_t takeoff_start_ms;
+
+    // are we in a user land in FLOWHOLD mode?
+    bool user_land;
 
     struct {
         AP_Float volt_min;

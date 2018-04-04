@@ -210,6 +210,14 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.1
     // @User: Advanced
     AP_GROUPINFO("_TOFF_DELAY", 26, ToyMode, takeoff_delay, 1.0),
+
+    // @Param: _LAND_THR
+    // @DisplayName: Throttle in FLOWHOLD land mode
+    // @Description: This sets the throttle level in FLOWHOLD land mode
+    // @Range: 0 400
+    // @Increment: 1
+    // @User: Advanced
+    AP_GROUPINFO("_LAND_THR", 27, ToyMode, land_throttle, 250),
     
     AP_GROUPEND
 };
@@ -306,7 +314,7 @@ void ToyMode::update()
         gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete\n");
         takeoff_start_ms = 0;
     }
-    
+
     if (is_v2450_buttons()) {
         // V2450 button mapping from cypress radio. It maps the
         // buttons onto channels 5, 6 and 7 in a complex way, with the
@@ -689,8 +697,14 @@ void ToyMode::update()
             takeoff_start_ms = AP_HAL::millis();
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
         } else {
-            // switch to LAND mode
-            new_mode = LAND;
+            if (old_mode == FLOWHOLD) {
+                // use FLOWHOLD for landing to retain position control
+                user_land = true;
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
+            } else {
+                // switch to LAND mode
+                new_mode = LAND;
+            }
         }
         break;
         
@@ -726,6 +740,10 @@ void ToyMode::update()
     }
     
     if (new_mode != copter.control_mode) {
+
+        takeoff_start_ms = 0;
+        user_land = false;
+        
         load_test.running = false;
 #if AC_FENCE == ENABLED
         copter.fence.enable(false);
@@ -760,7 +778,11 @@ void ToyMode::update()
     } else {
         AP_Notify::flags.flight_mode |= 0x80;
     }
-    
+
+    if (!copter.motors->armed()) {
+        takeoff_start_ms = 0;
+        user_land = false;
+    }
 }
 
 /*
@@ -990,6 +1012,25 @@ void ToyMode::throttle_adjust(float &throttle_control)
     const uint32_t soft_start_ms = 5000;
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
 
+    if (user_land) {
+        bool sticks_centered =
+            copter.channel_roll->get_control_in() == 0 &&
+            copter.channel_pitch->get_control_in() == 0 &&
+            copter.channel_yaw->get_control_in() == 0 &&
+            fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
+        if (!sticks_centered) {
+            user_land = false;
+            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancelled\n");
+        } else {
+            throttle_control = land_throttle;
+            if (copter.ap.land_complete) {
+                gcs().send_text(MAV_SEVERITY_INFO, "Tmode: FLOW land complete");
+                copter.init_disarm_motors();
+                user_land = false;
+            }
+    }
+    }
+    
     if (takeoff_start_ms != 0) {
         takeoff_throttle_adjust(throttle_control);
         return;
