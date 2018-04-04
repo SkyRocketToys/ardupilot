@@ -87,7 +87,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Description: This is the action taken for the mode button being pressed
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile
     // @User: Standard
-    AP_GROUPINFO("_MODE_BTN", 10, ToyMode, actions[6], ACTION_TOGGLE_MODE),
+    AP_GROUPINFO("_MODE_BTN", 10, ToyMode, actions[6], ACTION_TOGGLE_PROFILE),
 
     // @Param: _MODE_LONG
     // @DisplayName: Tmode mode button long action
@@ -634,6 +634,7 @@ void ToyMode::update()
         } else {
             profile_id.set_and_notify(profile_id.get()+1);
         }
+        new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
         break;
         
     case ACTION_ARM_LAND_RTL:
@@ -718,6 +719,15 @@ void ToyMode::update()
             }
         }
     }
+
+    // put profile ID in the top bit of the flight mode. This is
+    // interpreted by the TX code
+    if (profile_id.get() == 1) {
+        AP_Notify::flags.flight_mode &= ~0x80;
+    } else {
+        AP_Notify::flags.flight_mode |= 0x80;
+    }
+    
 }
 
 /*

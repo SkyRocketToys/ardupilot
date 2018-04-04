@@ -210,6 +210,14 @@ const AP_Param::GroupInfo ToyMode::Profile::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("LTR_MNA", 24, ToyMode::Profile, loiter_accel_min_cmss, WPNAV_LOITER_ACCEL_MIN),
 
+
+    // @Param: MODE
+    // @DisplayName: Profile flight mode
+    // @Description: This is the flight mode associated with this profile
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,22:FlowHold
+    // @User: Standard
+    AP_GROUPINFO("MODE", 25, ToyMode::Profile, mode, FLOWHOLD),
+
     AP_GROUPEND
 
 };

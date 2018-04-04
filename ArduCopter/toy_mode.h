@@ -44,6 +44,7 @@ public:
             static const struct AP_Param::GroupInfo var_info[];
 
         private:
+            AP_Int8                 mode;
             AP_Float                acro_rp_p;
             AP_Float                acro_yaw_p;
             AP_Float                acro_balance_roll;
