@@ -140,6 +140,7 @@ void Copter::ModeRTL::stick_mixing(float &nav_roll, float &nav_pitch, float &tar
         return;
     }
 
+#if AC_FENCE == ENABLED
     if (!copter.fence.check_destination_within_fence(copter.current_loc)) {
         // don't allow stick mixing when outside fence
         if (pilot_steering) {
@@ -148,6 +149,8 @@ void Copter::ModeRTL::stick_mixing(float &nav_roll, float &nav_pitch, float &tar
         }
         return;
     }
+#endif
+
     const int16_t roll_in = channel_roll->get_control_in();
     const int16_t pitch_in = channel_pitch->get_control_in();
     const int16_t throttle_in = channel_throttle->get_control_in();
