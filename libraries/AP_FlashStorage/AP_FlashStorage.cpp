@@ -67,6 +67,7 @@ bool AP_FlashStorage::init(void)
 
         // initialise if bad header
         if (bad_header) {
+            debug("bad header; callig erasing_all()\n");
             return erase_all();
         }
     }
@@ -276,6 +277,7 @@ bool AP_FlashStorage::load_sector(uint8_t sector)
 bool AP_FlashStorage::erase_sector(uint8_t sector)
 {
     if (!flash_erase(sector)) {
+        debug("flash_erase failed\n");
         return false;
     }
 
@@ -296,6 +298,7 @@ bool AP_FlashStorage::erase_all(void)
     write_offset = sizeof(struct sector_header);
     
     if (!erase_sector(0) || !erase_sector(1)) {
+        debug("erase_sector failed\n");
         return false;
     }
     
