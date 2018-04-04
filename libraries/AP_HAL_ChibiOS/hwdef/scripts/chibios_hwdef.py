@@ -50,6 +50,12 @@ bylabel = {}
 # list of SPI devices
 spidev = []
 
+# list of stubbed out libraries:
+stubbed_out_libs = []
+
+# list of stubbed out files:
+stubbed_out_files = []
+
 # SPI bus list
 spi_list = []
 
@@ -342,6 +348,16 @@ def write_mcu_config(f):
         f.write('#define CCM_RAM_SIZE %u\n' % ccm_size)
     f.write('\n')
 
+    for k in stubbed_out_libs:
+        print("Stubbing out: %s" % k)
+        env_vars["STUB_OUT_%s" % k] = 1
+        f.write('#define STUB_OUT_%s 1\n' % k)
+
+    for k in stubbed_out_files:
+        print("Stubbing out file: %s" % k)
+        env_vars["STUB_FILE_OUT_%s" % k] = 1
+        f.write('#define STUB_FILE_OUT_%s 1\n' % k)
+    f.write('\n')
 
 def write_ldscript(fname):
     '''write ldscript.ld for this board'''
@@ -955,6 +971,10 @@ def process_line(line):
             p.af = af
     if a[0] == 'SPIDEV':
         spidev.append(a[1:])
+    if a[0] == 'STUB_OUT':
+        stubbed_out_libs.extend(a[1:])
+    if a[0] == 'STUB_FILE_OUT':
+        stubbed_out_files.extend(a[1:])
     if a[0] == 'undef':
         print("Removing %s" % a[1])
         config.pop(a[1], '')
