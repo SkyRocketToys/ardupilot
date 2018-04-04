@@ -1,5 +1,7 @@
 #include "Copter.h"
 
+#if MODE_RTL_ENABLED == ENABLED
+
 /*
  * Init and run calls for RTL flight mode
  *
@@ -561,3 +563,5 @@ int32_t Copter::ModeRTL::wp_bearing() const
 {
     return wp_nav->get_wp_bearing_to_destination();
 }
+
+#endif
