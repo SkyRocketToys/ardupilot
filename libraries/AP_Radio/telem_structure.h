@@ -24,7 +24,7 @@ struct PACKED telem_status {
     uint8_t pps; // packets per second received
     uint8_t rssi; // lowpass rssi
     uint8_t flags; // TELEM_FLAG_*
-    uint8_t flight_mode; // flight mode
+    uint8_t flight_mode; // flight mode (with profile number in high bit)
     uint8_t wifi_chan; // wifi channel number on Sonix
     uint8_t tx_max;  // max TX power
     uint8_t note_adjust; // buzzer tone adjustment
