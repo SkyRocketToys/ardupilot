@@ -108,7 +108,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Description: This is the action taken for the launch/land button being pressed
     // @Values: 0:None,1:TakePhoto,2:ToggleVideo,3:ModeAcro,4:ModeAltHold,5:ModeAuto,6:ModeLoiter,7:ModeRTL,8:ModeCircle,9:ModeLand,10:ModeDrift,11:ModeSport,12:ModeAutoTune,13:ModePosHold,14:ModeBrake,15:ModeThrow,16:Flip,17:ModeStabilize,18:Disarm,19:ToggleMode,20:Arm-Land-RTL,21:ToggleSimpleMode,22:ToggleSuperSimpleMode,23:MotorLoadTest,24:ModeFlowHold,25:ToggleProfile,26:LaunchLand
     // @User: Standard
-    AP_GROUPINFO("_LL_BTN", 13, ToyMode, actions[8], ACTION_ARM_LAND_RTL),
+    AP_GROUPINFO("_LL_BTN", 13, ToyMode, actions[8], ACTION_LAUNCH_LAND),
 
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
