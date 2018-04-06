@@ -255,6 +255,16 @@ void AP_Radio::handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t
     }
 }
 
+// play a tune on the TX
+void AP_Radio::play_tune(const char *tune_str)
+{
+    mavlink_data96_t pkt {};
+    uint8_t len = MIN(strlen(tune_str), 92);
+    pkt.len = len+4;
+    memcpy(&pkt.data[4], tune_str, len);
+    handle_data_packet(MAVLINK_COMM_0, pkt);
+}
+
 // update status, should be called from main thread
 void AP_Radio::update(void)
 {
