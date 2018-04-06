@@ -10,6 +10,7 @@
 #define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
 #define TOY_ACCEL_CAL_COUNT 20
+#define TOY_TXMODE_CHANGE_COUNT 20
 #define TOY_ACTION_DELAY_MS 200
 #define TOY_DESCENT_SLOW_HEIGHT 5
 #define TOY_DESCENT_SLOW_RAMP 3
@@ -114,9 +115,9 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
     // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged
-    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel
+    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel,4:AccelCalEnable,5:TXModeChangeEnable
     // @User: Standard
-    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM),
+    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM | FLAG_ACCEL_CAL | FLAG_TXMODE_CHANGE),
 
     // @Param: _VMIN
     // @DisplayName: Min voltage for output limiting
@@ -313,7 +314,7 @@ void ToyMode::update()
 
     uint32_t now = AP_HAL::millis();
 
-    if (now - accel_cal_time_ms < 2000) {
+    if (now - accel_cal_time_ms < 2000 || now - txmode_change_time_ms < 2000) {
         // ignore inputs for 2s
         ignore_mode_button_change = true;
         return;
@@ -376,7 +377,10 @@ void ToyMode::update()
         mode_press_counter = 0;
     }
 
-    if (mode_button && right_action_button && !copter.motors->armed()) {
+    /*
+      check for mode+stunt button for TX based accel cal trigger
+     */
+    if (mode_button && right_action_button && !copter.motors->armed() && (flags & FLAG_ACCEL_CAL)) {
         accel_cal_counter++;
         if (accel_cal_counter >= TOY_ACCEL_CAL_COUNT) {
             accel_cal_counter = -TOY_COMMAND_DELAY;
@@ -395,6 +399,30 @@ void ToyMode::update()
         }
     } else {
         accel_cal_counter = 0;
+    }
+
+    /*
+      check for mode+stunt button for change of TX input mode (Mode1 or Mode2 toggle)
+     */
+    if ((flags & FLAG_TXMODE_CHANGE) && mode_button && !copter.motors->armed()) {
+        bool throttle_at_mid = fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
+        bool pitch_at_max = copter.channel_pitch->get_control_in() > 850;
+        if (throttle_at_mid && pitch_at_max) {
+            txmode_change_counter++;
+            if (txmode_change_counter >= TOY_TXMODE_CHANGE_COUNT) {
+                txmode_change_counter = -TOY_COMMAND_DELAY;
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: txmode change\n");
+                txmode_change_time_ms = AP_HAL::millis();
+                AP_Radio *radio = AP_Radio::instance();
+                if (radio) {
+                    radio->change_txmode();
+                    // hack to play a tune, as beken TX doesn't support
+                    // playing arbitrary tunes yet
+                    AP_Notify::flags.flight_mode = SPORT | (profile_id.get()==2?0x80:0);
+                    return;
+                }
+            }
+        }
     }
     
     bool reset_combination = left_action_button && right_action_button;

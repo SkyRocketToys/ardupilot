@@ -130,6 +130,8 @@ private:
         FLAG_THR_ARM        = 1<<1,  // arm on high throttle
         FLAG_UPGRADE_LOITER = 1<<2,  // auto upgrade from ALT_HOLD to LOITER
         FLAG_RTL_CANCEL     = 1<<3,  // cancel RTL on large stick input
+        FLAG_ACCEL_CAL      = 1<<4,  // accel cal on mode+stunt for 2s
+        FLAG_TXMODE_CHANGE  = 1<<5,  // change TX mode on mode+stick for 2s
     };
 
     enum blink_patterns {
@@ -217,6 +219,8 @@ private:
     int32_t right_press_counter;
     int32_t accel_cal_counter;
     uint32_t accel_cal_time_ms;
+    int32_t txmode_change_counter;
+    uint32_t txmode_change_time_ms;
     bool ignore_mode_button_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;
