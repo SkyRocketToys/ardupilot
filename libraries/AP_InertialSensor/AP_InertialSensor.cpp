@@ -1946,6 +1946,13 @@ MAV_RESULT AP_InertialSensor::simple_accel_cal(AP_AHRS &ahrs)
         if (!converged[k]) {
             result = MAV_RESULT_FAILED;
         }
+        // check for reasonable range
+        const float max_accel = 3;
+        if (fabsf(new_accel_offset[k].x) > max_accel ||
+            fabsf(new_accel_offset[k].y) > max_accel ||
+            fabsf(new_accel_offset[k].z+GRAVITY_MSS) > max_accel) {
+            result = MAV_RESULT_FAILED;            
+        }
     }
 
     // restore orientation
