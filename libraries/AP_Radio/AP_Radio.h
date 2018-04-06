@@ -101,6 +101,9 @@ public:
 
     // play a tune on the TX
     void play_tune(const char *tune_str);
+
+    // change TX mode
+    void change_txmode(void);
     
 private:
     AP_Radio_backend *driver;

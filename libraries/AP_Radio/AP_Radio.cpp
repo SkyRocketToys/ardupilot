@@ -290,5 +290,15 @@ void AP_Radio::set_wifi_channel(uint8_t channel)
     }
 }
 
+// change TX mode, toggling between mode1 and mode2
+void AP_Radio::change_txmode(void)
+{
+    if (stick_mode == 2) {
+        stick_mode.set_and_save_ifchanged(1);
+    } else {
+        stick_mode.set_and_save_ifchanged(2);
+    }
+}
+
 #endif // HAL_RCINPUT_WITH_AP_RADIO
 
