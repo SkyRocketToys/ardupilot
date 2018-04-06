@@ -218,12 +218,12 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_0D_FREQ2,    0x5C}, // freq control high
     {CC2500_0E_FREQ1,    0x76}, // freq control middle
     {CC2500_0F_FREQ0,    0x27}, // freq control low
-    {CC2500_10_MDMCFG4,  0x8C}, // filter bandwidth 203kHz
+    {CC2500_10_MDMCFG4,  0x4C}, // filter bandwidth was 203kHz=0x8c, 406kHz=0x4c
     {CC2500_11_MDMCFG3,  0x2F}, // data rate 120kbaud
     {CC2500_12_MDMCFG2,  0x13}, // 30/32 sync word bits, no manchester, GFSK, DC filter enabled
     {CC2500_13_MDMCFG1,  0xA3}, // chan spacing exponent 3, preamble 4 bytes, FEC enabled
     {CC2500_14_MDMCFG0,  0x7A}, // chan spacing 299.926757kHz for 26MHz crystal
-    {CC2500_15_DEVIATN,  0x51}, // modem deviation 25.128906kHz for 26MHz crystal
+    {CC2500_15_DEVIATN,  0x61}, // modem deviation (CPM: 0x51 = 57.129kHz for 26MHz crystal, 0x71=228.516kHz, 0x61=114kHz)
     {CC2500_19_FOCCFG,   0x16}, // frequency offset compensation
     {CC2500_1A_BSCFG,    0x6C}, // bit sync config
     {CC2500_1B_AGCCTRL2, 0x43}, // target amplitude 33dB
@@ -231,7 +231,7 @@ const AP_Radio_cc2500::config AP_Radio_cc2500::radio_config[] = {
     {CC2500_1D_AGCCTRL0, 0x91}, // AGC control 0
     {CC2500_21_FREND1,   0x56}, // frontend config1
     {CC2500_22_FREND0,   0x10}, // frontend config0
-    {CC2500_23_FSCAL3,   0xA9}, // frequency synth cal3
+    {CC2500_23_FSCAL3,   0xEA}, // frequency synth cal3, was 0xA9
     {CC2500_24_FSCAL2,   0x0A}, // frequency synth cal2
     {CC2500_25_FSCAL1,   0x00}, // frequency synth cal1
     {CC2500_26_FSCAL0,   0x11}, // frequency synth cal0

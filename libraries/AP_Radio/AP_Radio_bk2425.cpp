@@ -347,29 +347,39 @@ void AP_Radio_beken::start_recv_bind(void)
 // handle a data96 mavlink packet for fw upload
 void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_data96_t &m)
 {
-    uint32_t ofs=0;
-    memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
-	Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
     if (sem->take_nonblocking()) {
         fwupload.chan = chan;
         fwupload.need_ack = false;
-        if (ofs == 0)
-        {
+		if (m.type == 43) {
+			// sending a tune to play - for development testing
+			Debug(4, "got tune data96 of len %u from chan %u\n", m.len, chan);
 			fwupload.reset();
-			fwupload.file_length = ((uint16_t(m.data[4]) << 8) | (m.data[5])) + 6; // Add the header to the length
-			fwupload.file_length_round = (fwupload.file_length + 0x7f) & ~0x7f; // Round up to multiple of 128
-		}
-		if (ofs != fwupload.added)
-		{
-			fwupload.need_ack = true; // We want more data
-		}
-		else
-		{
-			if (m.type == 43) {
-				// sending a tune to play - for development testing
-				fwupload.fw_type = TELEM_PLAY;
-				fwupload.queue(&m.data[0], MIN(m.len, 90));
-			} else {
+			fwupload.fw_type = TELEM_PLAY;
+			fwupload.file_length = MIN(m.len, 90);
+			fwupload.file_length_round = (fwupload.file_length + 1 + 0x0f) & ~0x0f; // Round up to multiple of 16 (with nul-terminator)
+			fwupload.queue(&m.data[0], fwupload.file_length);
+			if (fwupload.file_length_round > fwupload.file_length)
+			{
+				uint8_t pad[16] = {0};
+				fwupload.queue(&pad[0], fwupload.file_length_round - fwupload.file_length);
+			}
+		} else {
+			// sending DFU
+			uint32_t ofs=0;
+			memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
+			Debug(4, "got data96 of len %u from chan %u at offset %u\n", m.len, chan, unsigned(ofs));
+			if (ofs == 0)
+			{
+				fwupload.reset();
+				fwupload.file_length = ((uint16_t(m.data[4]) << 8) | (m.data[5])) + 6; // Add the header to the length
+				fwupload.file_length_round = (fwupload.file_length + 0x7f) & ~0x7f; // Round up to multiple of 128
+			}
+			if (ofs != fwupload.added)
+			{
+				fwupload.need_ack = true; // We want more data
+			}
+			else
+			{
 				// sending a chunk of firmware OTA upload
 				fwupload.fw_type = TELEM_FW;
 				fwupload.queue(&m.data[4], MIN(m.len-4, 92)); // This might fail if mavlink sends it too fast to me, in which case it will retry later
@@ -407,6 +417,7 @@ bool AP_Radio_beken::UpdateTxData(void)
     fwupload.counter++;
     if ((fwupload.rx_reboot ||
 		((fwupload.acked >= fwupload.file_length_round) &&
+		(fwupload.fw_type == TELEM_FW) && // Not a tune request
 		(fwupload.rx_ack) &&
         ((fwupload.counter & 0x01) != 0) && // Avoid starvation of telemetry
 		(fwupload.acked >= 0x1000))) && // Sanity check
@@ -439,15 +450,22 @@ bool AP_Radio_beken::UpdateTxData(void)
 		else
 		{
 			// Send firmware update packet
-			tx->packetType = BK_PKT_TYPE_DFU;
 			uint16_t addr = fwupload.sent;
 			tx->address_lo = addr & 0xff;
 			tx->address_hi = (addr >> 8);
 			fwupload.dequeue(&tx->data[0], SZ_DFU);
 			DebugPrintf(4, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
-			if (fwupload.free_length() > 96)
+			if (fwupload.fw_type == TELEM_PLAY)
 			{
-				fwupload.need_ack = true; // Request a new mavlink packet
+				tx->packetType = BK_PKT_TYPE_TUNE;
+			}
+			else if (fwupload.fw_type == TELEM_FW)
+			{
+				tx->packetType = BK_PKT_TYPE_DFU;
+				if (fwupload.free_length() > 96)
+				{
+					fwupload.need_ack = true; // Request a new mavlink packet
+				}
 			}
 		}
         sem->give();
