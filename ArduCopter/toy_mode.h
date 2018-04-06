@@ -247,6 +247,11 @@ private:
     bool user_land;
 
     struct {
+        AP_Float throttle_threshold;
+        AP_Float climbrate_threshold;
+    } obs;
+
+    struct {
         AP_Float volt_min;
         AP_Float volt_max;
         AP_Float thrust_min;

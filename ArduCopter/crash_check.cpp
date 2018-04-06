@@ -51,12 +51,14 @@ void Copter::crash_check()
     crash.filtered_climb_rate = 0.97 * crash.filtered_climb_rate + barometer.get_climb_rate() * 0.03;
     float scaled_throttle = motors->get_throttle() * ahrs.cos_roll() * ahrs.cos_pitch();
 
-#ifdef CRASH_CHECK_THROTTLE_THRESHOLD
+#if TOY_MODE_ENABLED
     Vector3f att_target = attitude_control->get_att_target_euler_cd();
     // only check throttle when target angle is less than 20 degrees
+    const float cr_threshold = g2.toy_mode.obs.climbrate_threshold;
+    const float thr_threshold = g2.toy_mode.obs.throttle_threshold;
     if (fabsf(att_target.x) + fabsf(att_target.y) < 2000) {
-        if (fabsf(crash.filtered_climb_rate) < CRASH_CHECK_CLIMB_THRESHOLD &&
-            (scaled_throttle > CRASH_CHECK_THROTTLE_THRESHOLD || motors->limit.throttle_upper)) {
+        if (fabsf(crash.filtered_climb_rate) < cr_threshold &&
+            (scaled_throttle > thr_threshold || motors->limit.throttle_upper)) {
             // we should be climbing and we aren't
             climb_rate_error = true;
         }
