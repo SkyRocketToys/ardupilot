@@ -9,6 +9,7 @@
 #define TOY_LAND_DISARM_COUNT 1
 #define TOY_LAND_ARM_COUNT 1
 #define TOY_RIGHT_PRESS_COUNT 1
+#define TOY_ACCEL_CAL_COUNT 20
 #define TOY_ACTION_DELAY_MS 200
 #define TOY_DESCENT_SLOW_HEIGHT 5
 #define TOY_DESCENT_SLOW_RAMP 3
@@ -312,6 +313,12 @@ void ToyMode::update()
 
     uint32_t now = AP_HAL::millis();
 
+    if (now - accel_cal_time_ms < 2000) {
+        // ignore inputs for 2s
+        ignore_mode_button_change = true;
+        return;
+    }
+    
     if (takeoff_start_ms != 0 && now - takeoff_start_ms > (takeoff_time + takeoff_delay)*1000U) {
         gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete\n");
         takeoff_start_ms = 0;
@@ -369,6 +376,27 @@ void ToyMode::update()
         mode_press_counter = 0;
     }
 
+    if (mode_button && right_action_button && !copter.motors->armed()) {
+        accel_cal_counter++;
+        if (accel_cal_counter >= TOY_ACCEL_CAL_COUNT) {
+            accel_cal_counter = -TOY_COMMAND_DELAY;
+            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal started\n");
+            MAV_RESULT result = copter.ins.simple_accel_cal(copter.ahrs);
+            accel_cal_time_ms = AP_HAL::millis();
+            if (result == MAV_RESULT_ACCEPTED) {
+                // hack to play a tune, as beken TX doesn't support
+                // playing arbitrary tunes yet
+                AP_Notify::flags.flight_mode = RTL | (profile_id.get()==2?0x80:0);
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
+                return;
+            } else {
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal failed\n");
+            }
+        }
+    } else {
+        accel_cal_counter = 0;
+    }
+    
     bool reset_combination = left_action_button && right_action_button;
     if (reset_combination && abs(copter.ahrs.roll_sensor) > 160) {
         /*
@@ -778,11 +806,7 @@ void ToyMode::update()
 
     // put profile ID in the top bit of the flight mode. This is
     // interpreted by the TX code
-    if (profile_id.get() == 1) {
-        AP_Notify::flags.flight_mode &= ~0x80;
-    } else {
-        AP_Notify::flags.flight_mode |= 0x80;
-    }
+    AP_Notify::flags.flight_mode = copter.control_mode | (profile_id.get()==2?0x80:0);
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;

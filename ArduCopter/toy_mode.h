@@ -215,6 +215,8 @@ private:
     uint8_t last_mode_choice;
     int32_t mode_press_counter;
     int32_t right_press_counter;
+    int32_t accel_cal_counter;
+    uint32_t accel_cal_time_ms;
     bool ignore_mode_button_change;
     int16_t throttle_mid = 500;
     uint32_t throttle_arm_ms;
