@@ -518,7 +518,9 @@ void ToyMode::update()
     }
     
     if (action != ACTION_NONE) {
-        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: action %u", action);
+        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: action%u: %u",
+                        action_input,
+                        action);
         last_action_ms = now;
     }
 
