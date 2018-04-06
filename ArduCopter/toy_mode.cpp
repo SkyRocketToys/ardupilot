@@ -268,15 +268,6 @@ void ToyMode::update()
     if (!done_first_update) {
         done_first_update = true;
 
-        /*
-          fixup default primary mode. A frame with a flow sensor should default to FLOWHOLD as primary mode.
-         */
-        if (copter.optflow.device_id() != 0) {
-            if (!primary_mode[0].configured_in_storage()) {
-                primary_mode[0].set(FLOWHOLD);
-            }
-        }
-        
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
     }
