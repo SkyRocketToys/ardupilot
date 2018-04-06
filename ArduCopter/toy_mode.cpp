@@ -825,7 +825,11 @@ void ToyMode::update()
 
     // put profile ID in the top bit of the flight mode. This is
     // interpreted by the TX code
-    AP_Notify::flags.flight_mode = copter.control_mode | (profile_id.get()==1?0x80:0);
+    uint8_t tx_mode = copter.control_mode;
+    if (user_land) {
+        tx_mode = LAND;
+    }
+    AP_Notify::flags.flight_mode = tx_mode | (profile_id.get()==1?0x80:0);
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;
@@ -1061,11 +1065,7 @@ void ToyMode::throttle_adjust(float &throttle_control)
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
 
     if (user_land) {
-        bool sticks_centered =
-            copter.channel_roll->get_control_in() == 0 &&
-            copter.channel_pitch->get_control_in() == 0 &&
-            copter.channel_yaw->get_control_in() == 0 &&
-            fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
+        bool sticks_centered = fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
         if (!sticks_centered) {
             user_land = false;
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancelled\n");
