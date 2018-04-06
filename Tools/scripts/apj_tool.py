@@ -7,6 +7,8 @@ import os, sys, struct, json, base64, zlib, hashlib
 
 import argparse
 
+quiet = False
+
 class embedded_defaults(object):
     '''class to manipulate embedded defaults in a firmware'''
     def __init__(self, filename):
@@ -41,7 +43,8 @@ class embedded_defaults(object):
                 sys.exit(1)
         self.firmware = f.read()
         f.close()
-        print("Loaded abin file of length %u" % len(self.firmware))
+        if not quiet:
+            print("Loaded abin file of length %u" % len(self.firmware))
 
     def load_apj(self):
         '''load firmware from a json apj or px4 file'''
@@ -202,16 +205,20 @@ parser.add_argument('--set-file', type=str, default=None, help='replace paramete
 parser.add_argument('--set', type=str, default=None, help='replace one parameter default, in form NAME=VALUE')
 parser.add_argument('--show', action='store_true', default=False, help='show current parameter defaults')
 parser.add_argument('--extract', action='store_true', default=False, help='extract firmware image to *.bin')
+parser.add_argument('--quiet', action='store_true', default=False, help='quiet output')
 
 args = parser.parse_args()
+
+quiet = args.quiet
 
 defaults = embedded_defaults(args.firmware_file)
 
 if not defaults.find():
     print("Error: Param defaults support not found in firmware")
     sys.exit(1)
-    
-print("Found param defaults max_length=%u length=%u" % (defaults.max_len, defaults.length))
+
+if not quiet:
+    print("Found param defaults max_length=%u length=%u" % (defaults.max_len, defaults.length))
 
 if args.set_file:
     # load new defaults from a file
