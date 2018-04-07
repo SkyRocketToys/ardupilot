@@ -232,8 +232,9 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Param: _OB_CLMBTHS
     // @DisplayName: Obstruction Climb Threshold
     // @Description: Minimum climb rate expected at @PREFIX@_OB_THRTHS.  This MUST take into account normal outside effects such as wind on the vehicle.
-    // @Range: 0 1
-    // @Increment: 0.01
+    // @Units: metres/second
+    // @Range: 0 10
+    // @Increment: 0.1
     // @User: Advanced
     AP_GROUPINFO("_OB_CLMBTHS", 29, ToyMode, obs.climbrate_threshold, 0.3),
 
