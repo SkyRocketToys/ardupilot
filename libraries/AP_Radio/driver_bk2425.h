@@ -44,6 +44,7 @@ enum BK_PKT_TYPE_E {
 	BK_PKT_TYPE_TELEMETRY    = 0x13, ///< (Drone->Tx) Send telemetry to tx
 	BK_PKT_TYPE_DFU          = 0x14, ///< (Drone->Tx) Send new firmware to tx
 	BK_PKT_TYPE_BIND_MANUAL  = 0x15, ///< (Tx->Drone) Tell drones this tx is broadcasting
+	BK_PKT_TYPE_TUNE         = 0x16, ///< (Drone->Tx) Send musical tune to tx
 };
 typedef uint8_t BK_PKT_TYPE;
 
