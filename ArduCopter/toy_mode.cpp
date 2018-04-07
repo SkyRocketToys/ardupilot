@@ -398,7 +398,7 @@ void ToyMode::update()
             if (result == MAV_RESULT_ACCEPTED) {
                 // hack to play a tune, as beken TX doesn't support
                 // playing arbitrary tunes yet
-                AP_Notify::flags.flight_mode = RTL | (profile_id.get()==1?0x80:0);
+                AP_Notify::flags.flight_mode = RTL | (profile_id.get()==2?0x80:0);
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
                 return;
             } else {
@@ -426,7 +426,7 @@ void ToyMode::update()
                     radio->change_txmode();
                     // hack to play a tune, as beken TX doesn't support
                     // playing arbitrary tunes yet
-                    AP_Notify::flags.flight_mode = SPORT | (profile_id.get()==1?0x80:0);
+                    AP_Notify::flags.flight_mode = SPORT | (profile_id.get()==2?0x80:0);
                     return;
                 }
             }
@@ -848,7 +848,7 @@ void ToyMode::update()
     if (user_land) {
         tx_mode = LAND;
     }
-    AP_Notify::flags.flight_mode = tx_mode | (profile_id.get()==1?0x80:0);
+    AP_Notify::flags.flight_mode = tx_mode | (profile_id.get()==2?0x80:0);
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;
