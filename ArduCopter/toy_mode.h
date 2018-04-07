@@ -286,4 +286,6 @@ private:
     } load_test;
     
     static const struct load_data load_data1[];
+
+    AP_Radio *radio;
 };

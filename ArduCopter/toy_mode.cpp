@@ -19,6 +19,10 @@
 
 #define ENABLE_LOAD_TEST 0
 
+#define TUNE_LAND "d=4,o=6,b=400:d,4b,4b,4b,4b"
+#define TUNE_ACK "d=4,o=6,b=400:8d,b"
+#define TUNE_NACK "d=4,o=6,b=400:8b,d,d"
+    
 const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _ENABLE
@@ -287,6 +291,8 @@ void ToyMode::update()
 
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
+
+        radio = AP_Radio::instance();
     }
 
     // check if we should auto-trim
@@ -396,13 +402,15 @@ void ToyMode::update()
             MAV_RESULT result = copter.ins.simple_accel_cal(copter.ahrs);
             accel_cal_time_ms = AP_HAL::millis();
             if (result == MAV_RESULT_ACCEPTED) {
-                // hack to play a tune, as beken TX doesn't support
-                // playing arbitrary tunes yet
-                AP_Notify::flags.flight_mode = RTL | (profile_id.get()==2?0x80:0);
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
-                return;
+                if (radio) {
+                    radio->play_tune(TUNE_ACK);
+                }
             } else {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal failed\n");
+                if (radio) {
+                    radio->play_tune(TUNE_NACK);
+                }
             }
         }
     } else {
@@ -421,13 +429,9 @@ void ToyMode::update()
                 txmode_change_counter = -TOY_COMMAND_DELAY;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: txmode change\n");
                 txmode_change_time_ms = AP_HAL::millis();
-                AP_Radio *radio = AP_Radio::instance();
                 if (radio) {
                     radio->change_txmode();
-                    // hack to play a tune, as beken TX doesn't support
-                    // playing arbitrary tunes yet
-                    AP_Notify::flags.flight_mode = SPORT | (profile_id.get()==2?0x80:0);
-                    return;
+                    radio->play_tune(TUNE_ACK);
                 }
             }
         }
@@ -771,10 +775,16 @@ void ToyMode::update()
             if (user_land) {
                 user_land = false;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
+                if (radio) {
+                    radio->play_tune(TUNE_ACK);
+                }
             } else if (old_mode == FLOWHOLD) {
                 // use FLOWHOLD for landing to retain position control
                 user_land = true;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
+                if (radio) {
+                    radio->play_tune(TUNE_LAND);
+                }
             } else {
                 // switch to LAND mode
                 new_mode = LAND;
@@ -848,9 +858,6 @@ void ToyMode::update()
     // put profile ID in the top bit of the flight mode. This is
     // interpreted by the TX code
     uint8_t tx_mode = copter.control_mode;
-    if (user_land) {
-        tx_mode = LAND;
-    }
     AP_Notify::flags.flight_mode = tx_mode | (profile_id.get()==2?0x80:0);
 
     if (!copter.motors->armed()) {
@@ -1091,14 +1098,20 @@ void ToyMode::throttle_adjust(float &throttle_control)
         if (!sticks_centered) {
             user_land = false;
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancelled\n");
+            if (radio) {
+                radio->play_tune(TUNE_ACK);
+            }
         } else {
             throttle_control = land_throttle;
             if (copter.ap.land_complete) {
                 gcs().send_text(MAV_SEVERITY_INFO, "Tmode: FLOW land complete");
                 copter.init_disarm_motors();
                 user_land = false;
+                if (radio) {
+                    radio->play_tune(TUNE_ACK);
+                }
             }
-    }
+        }
     }
     
     if (takeoff_start_ms != 0) {
@@ -1250,7 +1263,6 @@ void ToyMode::handle_message(mavlink_message_t *msg)
         AP_Notify::flags.video_recording = 1;
     } else if (strncmp(m.name, "WIFICHAN", 10) == 0) {
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
-        AP_Radio *radio = AP_Radio::instance();
         if (radio) {
             radio->set_wifi_channel(m.value);
         }
