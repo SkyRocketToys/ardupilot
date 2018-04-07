@@ -97,7 +97,9 @@ void Copter::ModeLand::nogps_run()
             millis() - copter.crash.last_trigger_ms > 2000) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
-            copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
+            if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
+                copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
+            }
         }
 
         if (g.land_repositioning) {
