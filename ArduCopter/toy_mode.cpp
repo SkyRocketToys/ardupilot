@@ -768,7 +768,10 @@ void ToyMode::update()
             takeoff_start_ms = AP_HAL::millis();
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
         } else {
-            if (old_mode == FLOWHOLD) {
+            if (user_land) {
+                user_land = false;
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
+            } else if (old_mode == FLOWHOLD) {
                 // use FLOWHOLD for landing to retain position control
                 user_land = true;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
@@ -1146,7 +1149,7 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
         return;
     }
 
-    throttle_control = linear_interpolate(throttle_mid+100, 750, (now-takeoff_start_ms)-(takeoff_delay*1000),
+    throttle_control = linear_interpolate(throttle_mid+100, 650, (now-takeoff_start_ms)-(takeoff_delay*1000),
                                           0, takeoff_time*750);
 }
 
