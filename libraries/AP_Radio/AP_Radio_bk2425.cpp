@@ -194,9 +194,9 @@ uint8_t AP_Radio_beken::num_channels(void)
 		if (beken.fcc.enable_cd)
 		{
 			if (beken.fcc.last_cd)
-				value += 4;
+				value = BK_RSSI_NEAR;
 			else
-				value -= 4;
+				value = BK_RSSI_FAR;
 		}
 		if (t_status.pps == 0)
 			value = BK_RSSI_MIN; // No packets = no RSSI
@@ -705,7 +705,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 	case BK_PKT_TYPE_BIND_AUTO:
 		if (rxaddr == 1)
 		{
-			if (get_autobind_rssi() > BK_RSSI_DEFAULT) // Have we disabled autobind using fake RSSI parameter?
+			if (get_autobind_rssi() > BK_RSSI_NEAR) // Have we disabled autobind using pseudo RSSI parameter?
 				break;
 			if (get_autobind_time() == 0) // Have we disabled autobind using zero time parameter?
 				break;

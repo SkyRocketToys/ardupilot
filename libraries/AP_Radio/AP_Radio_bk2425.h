@@ -31,7 +31,9 @@
 // Documentation of the expected RSSI values. These are determined by the Cypress chip.
 enum {
 	BK_RSSI_MIN = 0, // Minimum value for RSSI
-	BK_RSSI_DEFAULT = 16, // The default value for RSSI for chips that do not support it.
+	BK_RSSI_FAR = 20, // The value for RSSI for Beken chip if it is measured to be far
+	BK_RSSI_DEFAULT = 24, // The default value for RSSI for Beken chip if it is not measured
+	BK_RSSI_NEAR = 28, // The value for RSSI for Beken chip if it is measured to be near
 	BK_RSSI_MAX = 31 // Maximum value for RSSI
 };
 
