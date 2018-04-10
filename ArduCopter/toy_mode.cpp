@@ -291,8 +291,9 @@ void ToyMode::update()
 
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
-
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
         radio = AP_Radio::instance();
+#endif
     }
 
     // check if we should auto-trim
@@ -403,14 +404,10 @@ void ToyMode::update()
             accel_cal_time_ms = AP_HAL::millis();
             if (result == MAV_RESULT_ACCEPTED) {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
-                if (radio) {
-                    radio->play_tune(TUNE_ACK);
-                }
+                play_tune(TUNE_ACK);
             } else {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal failed\n");
-                if (radio) {
-                    radio->play_tune(TUNE_NACK);
-                }
+                play_tune(TUNE_NACK);
             }
         }
     } else {
@@ -429,10 +426,12 @@ void ToyMode::update()
                 txmode_change_counter = -TOY_COMMAND_DELAY;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: txmode change\n");
                 txmode_change_time_ms = AP_HAL::millis();
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
                 if (radio) {
                     radio->change_txmode();
-                    radio->play_tune(TUNE_ACK);
                 }
+#endif
+                play_tune(TUNE_ACK);
             }
         }
     }
@@ -775,16 +774,12 @@ void ToyMode::update()
             if (user_land) {
                 user_land = false;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
-                if (radio) {
-                    radio->play_tune(TUNE_ACK);
-                }
+                play_tune(TUNE_ACK);
             } else if (old_mode == FLOWHOLD) {
                 // use FLOWHOLD for landing to retain position control
                 user_land = true;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
-                if (radio) {
-                    radio->play_tune(TUNE_LAND);
-                }
+                play_tune(TUNE_LAND);
             } else {
                 // switch to LAND mode
                 new_mode = LAND;
@@ -1098,18 +1093,14 @@ void ToyMode::throttle_adjust(float &throttle_control)
         if (!sticks_centered) {
             user_land = false;
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancelled\n");
-            if (radio) {
-                radio->play_tune(TUNE_ACK);
-            }
+            play_tune(TUNE_ACK);
         } else {
             throttle_control = land_throttle;
             if (copter.ap.land_complete) {
                 gcs().send_text(MAV_SEVERITY_INFO, "Tmode: FLOW land complete");
                 copter.init_disarm_motors();
                 user_land = false;
-                if (radio) {
-                    radio->play_tune(TUNE_ACK);
-                }
+                play_tune(TUNE_ACK);
             }
         }
     }
@@ -1376,6 +1367,18 @@ void ToyMode::arm_check_compass(void)
             copter.compass.set_learn_type(Compass::LEARN_INFLIGHT, false);
         }
     }
+}
+
+/*
+  play a tune via TX buzzer
+ */
+void ToyMode::play_tune(const char *tune)
+{
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
+    if (radio) {
+        radio->play_tune(tune);
+    }
+#endif
 }
 
 #endif // TOY_MODE_ENABLED

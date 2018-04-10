@@ -83,6 +83,7 @@ private:
 
     void thrust_limiting(float *thrust, uint8_t num_motors);
     void arm_check_compass(void);
+    void play_tune(const char *tune);
 
     // work out type of button setup
     bool is_v2450_buttons(void) const {
@@ -287,5 +288,7 @@ private:
     
     static const struct load_data load_data1[];
 
+#ifdef HAL_RCINPUT_WITH_AP_RADIO
     AP_Radio *radio;
+#endif
 };
