@@ -20,7 +20,6 @@
 
 #define FLIP_THR_INC        0.20f   // throttle increase during Flip_Start stage (under 45deg lean angle)
 #define FLIP_THR_DEC        0.24f   // throttle decrease during Flip_Roll stage (between 45deg ~ -90deg roll)
-#define FLIP_ROTATION_RATE  40000   // rotation rate request in centi-degrees / sec (i.e. 400 deg/sec)
 #define FLIP_TIMEOUT_MS     2500    // timeout after 2.5sec.  Vehicle will switch back to original flight mode
 #define FLIP_RECOVERY_ANGLE 500     // consider successful recovery when roll is back within 5 degrees of original
 
@@ -36,6 +35,46 @@ control_mode_t   flip_orig_control_mode;   // flight mode when flip was initated
 uint32_t  flip_start_time;          // time since flip began
 int8_t    flip_roll_dir;            // roll direction (-1 = roll left, 1 = roll right)
 int8_t    flip_pitch_dir;           // pitch direction (-1 = pitch forward, 1 = pitch back)
+
+/*
+  flip parameters
+ */    
+const AP_Param::GroupInfo Copter::ModeFlip::var_info[] = {
+    // @Param: RAMP_MS
+    // @DisplayName: Flip ramp time
+    // @Description: Ramp time in milliseconds at the start of a flip. This allows you to adjust for height loss in flip
+    // @Units: ms
+    // @Range: 100 2000
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("RAMP_MS", 1, ModeFlip, ramp_ms, 1000),
+
+    // @Param: RAMP_CD
+    // @DisplayName: Flip ramp angle in centidegrees
+    // @Description: The ramp angle is how far in the opposite direction of the flip that we start rotating to give a flip that doesn't change position
+    // @Units: cdeg
+    // @Range: 100 2000
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("RAMP_CD", 2, ModeFlip, ramp_cd, 500),
+
+    // @Param: ROT_RATE
+    // @DisplayName: Flip rotation rate
+    // @Description: The rotation rate in degrees/second for a flip
+    // @Units: deg/s
+    // @Range: 100 3000
+    // @Increment: 1
+    // @User: Advanced
+    AP_GROUPINFO("ROT_RATE", 3, ModeFlip, rot_rate_dps, 720),
+    
+    AP_GROUPEND
+};
+
+// constructor for parameter load
+Copter::ModeFlip::ModeFlip(void) : Mode()
+{
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 // flip_init - initialise flip controller
 bool Copter::ModeFlip::init(bool ignore_checks)
@@ -53,8 +92,11 @@ bool Copter::ModeFlip::init(bool ignore_checks)
         return false;
     }
 
+    // capture current attitude which will be used during the Flip_Recovery stage
+    flip_orig_attitude = attitude_control->get_att_target_euler_cd();
+
     // ensure roll input is less than 40deg
-    if (abs(channel_roll->get_control_in()) >= 4000) {
+    if ((fabsf(flip_orig_attitude.x) >= 4000.0f)||(fabsf(flip_orig_attitude.y) >= 4000.0)) {
         return false;
     }
 
@@ -86,12 +128,6 @@ bool Copter::ModeFlip::init(bool ignore_checks)
     // log start of flip
     Log_Write_Event(DATA_FLIP_START);
 
-    // capture current attitude which will be used during the Flip_Recovery stage
-    float angle_max = copter.aparm.angle_max;
-    flip_orig_attitude.x = constrain_float(ahrs.roll_sensor, -angle_max, angle_max);
-    flip_orig_attitude.y = constrain_float(ahrs.pitch_sensor, -angle_max, angle_max);
-    flip_orig_attitude.z = ahrs.yaw_sensor;
-
     return true;
 }
 
@@ -113,64 +149,85 @@ void Copter::ModeFlip::run()
     // get corrected angle based on direction and axis of rotation
     // we flip the sign of flip_angle to minimize the code repetition
     int32_t flip_angle;
-
+    int32_t flip_orig_angle;
+    float rotation_rate_cd;
+    float smoothing_gain = 4.0f;
+    Vector3f flip_attitude = attitude_control->get_att_target_euler_cd();
     if (flip_roll_dir != 0) {
-        flip_angle = ahrs.roll_sensor * flip_roll_dir;
+        flip_angle = flip_attitude.x * flip_roll_dir;
+        // move flip angle to -45 degrees to 315 degrees.
+        flip_angle = wrap_360_cd(flip_angle+4500.0f)-4500.0f;
+        flip_orig_angle = flip_orig_attitude.x * flip_roll_dir;
+        rotation_rate_cd = attitude_control->sqrt_controller(36000.0f-flip_angle+flip_orig_angle, smoothing_gain, attitude_control->get_accel_roll_max(), 0.0f);
     } else {
-        flip_angle = ahrs.pitch_sensor * flip_pitch_dir;
+        flip_angle = flip_attitude.y * flip_pitch_dir;
+        // move flip angle to -45 degrees to 315 degrees.
+        flip_angle = wrap_360_cd(flip_angle+4500.0f)-4500.0f;
+        flip_orig_angle = flip_orig_attitude.y * flip_pitch_dir;
+        rotation_rate_cd = attitude_control->sqrt_controller(36000.0f-flip_angle+flip_orig_angle, smoothing_gain, attitude_control->get_accel_pitch_max(), 0.0f);
     }
+    rotation_rate_cd = MIN(rotation_rate_cd, uint32_t(rot_rate_dps.get())*100U);
 
     // state machine
     switch (flip_state) {
 
-    case Flip_Start:
-        // under 45 degrees request 400deg/sec roll or pitch
-        attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
+    case Flip_Start: {
+        uint16_t flip_ramp_ms = constrain_int16(ramp_ms.get(), 100, 3000);
+        uint16_t flip_ramp_angle_cd = constrain_int16(ramp_cd.get(), 100, 2000);
+        
+        // calculate rotation rate and send to attitude controller
+        rotation_rate_cd = 1000.0f*(-flip_ramp_angle_cd-flip_orig_angle)/uint16_t(flip_ramp_ms);
+        attitude_control->input_rate_bf_roll_pitch_yaw(rotation_rate_cd * flip_roll_dir, rotation_rate_cd * flip_pitch_dir, 0.0);
 
         // increase throttle
-        throttle_out += FLIP_THR_INC;
+        throttle_out = 1.0f;
 
         // beyond 45deg lean angle move to next stage
-        if (flip_angle >= 4500) {
+        if ((millis() - flip_start_time) > flip_ramp_ms) {
             if (flip_roll_dir != 0) {
                 // we are rolling
-            flip_state = Flip_Roll;
+                flip_state = Flip_Roll;
             } else {
                 // we are pitching
                 flip_state = Flip_Pitch_A;
-        }
+            }
         }
         break;
+    }
 
     case Flip_Roll:
         // between 45deg ~ -90deg request 400deg/sec roll
-        attitude_control->input_rate_bf_roll_pitch_yaw(FLIP_ROTATION_RATE * flip_roll_dir, 0.0, 0.0);
+        attitude_control->input_rate_bf_roll_pitch_yaw(rotation_rate_cd * flip_roll_dir, 0.0, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        attitude_control->set_throttle_mix_value(2.0f);
+        throttle_out = 0.0f;
 
         // beyond -90deg move on to recovery
-        if ((flip_angle < 4500) && (flip_angle > -9000)) {
+        if (flip_angle > 27000) {
             flip_state = Flip_Recover;
         }
         break;
 
     case Flip_Pitch_A:
         // between 45deg ~ -90deg request 400deg/sec pitch
-        attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
+        attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, rotation_rate_cd * flip_pitch_dir, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        attitude_control->set_throttle_mix_value(2.0f);
+        throttle_out = 0.0f;
 
-        // check roll for inversion
-        if ((labs(ahrs.roll_sensor) > 9000) && (flip_angle > 4500)) {
-            flip_state = Flip_Pitch_B;
+        // beyond -90deg move on to recovery
+        if (flip_angle > 27000) {
+            flip_state = Flip_Recover;
         }
         break;
 
     case Flip_Pitch_B:
+        // not used
         // between 45deg ~ -90deg request 400deg/sec pitch
-        attitude_control->input_rate_bf_roll_pitch_yaw(0.0, FLIP_ROTATION_RATE * flip_pitch_dir, 0.0);
+        attitude_control->input_rate_bf_roll_pitch_yaw(0.0, rotation_rate_cd * flip_pitch_dir, 0.0);
         // decrease throttle
-        throttle_out = MAX(throttle_out - FLIP_THR_DEC, 0.0f);
+        attitude_control->set_throttle_mix_value(2.0f);
+        throttle_out = 0.0f;
 
         // check roll for inversion
         if ((labs(ahrs.roll_sensor) < 9000) && (flip_angle > -4500)) {

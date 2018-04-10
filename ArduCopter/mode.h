@@ -564,8 +564,8 @@ private:
 class ModeFlip : public Mode {
 
 public:
-    // inherit constructor
-    using Copter::Mode::Mode;
+    // need a constructor for parameters
+    ModeFlip(void);
 
     bool init(bool ignore_checks) override;
     void run() override;
@@ -575,6 +575,8 @@ public:
     bool allows_arming(bool from_gcs) const override { return false; };
     bool is_autopilot() const override { return false; }
 
+    static const struct AP_Param::GroupInfo var_info[];
+    
 protected:
 
     const char *name() const override { return "FLIP"; }
@@ -585,6 +587,10 @@ private:
     // Flip
     Vector3f flip_orig_attitude;         // original vehicle attitude before flip
 
+    // flip parameters
+    AP_Int16 ramp_ms;
+    AP_Int16 ramp_cd;
+    AP_Int16 rot_rate_dps;
 };
 
 

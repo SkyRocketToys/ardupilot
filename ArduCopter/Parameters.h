@@ -585,6 +585,9 @@ public:
     // follow
     AP_Follow follow;
 #endif
+
+    // mode_flip_ptr is here so flip can have parameters
+    void *mode_flip_ptr;    
 };
 
 extern const AP_Param::Info        var_info[];

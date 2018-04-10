@@ -994,6 +994,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
 
+    // @Group: FLIP_
+    // @Path: mode_flip.cpp
+    AP_SUBGROUPPTR(mode_flip_ptr, "FLIP_", 28, ParametersG2, Copter::ModeFlip),
+    
     AP_GROUPEND
 };
 
@@ -1021,6 +1025,7 @@ ParametersG2::ParametersG2(void)
 #if MODE_FOLLOW_ENABLED == ENABLED
     ,follow(copter.ahrs)
 #endif
+    ,mode_flip_ptr(&copter.mode_flip)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
