@@ -272,8 +272,10 @@ void Copter::ModeFlowHold::run()
                                          angle_max);
     
     if (quality_filtered >= flow_min_quality &&
-        AP_HAL::millis() - copter.arm_time_ms > 3000) {
-        // don't use for first 3s when we are just taking off
+        AP_HAL::millis() - copter.arm_time_ms > 3000 &&
+        labs(ahrs.roll_sensor)  < angle_max*0.8 &&
+        labs(ahrs.pitch_sensor) < angle_max*0.8) {
+        // don't use for first 3s when we are just taking off, or at high angles
         Vector2f flow_angles;
 
         flowhold_flow_to_angle(flow_angles, (roll_in != 0) || (pitch_in != 0));
