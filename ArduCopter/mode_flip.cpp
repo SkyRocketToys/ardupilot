@@ -161,6 +161,11 @@ void Copter::ModeFlip::run()
         rotation_rate_cd = attitude_control->sqrt_controller(36000.0f-flip_angle+flip_orig_angle, smoothing_gain, attitude_control->get_accel_roll_max(), 0.0f);
     } else {
         flip_angle = flip_attitude.y * flip_pitch_dir;
+        if (flip_attitude.x < -9000 || flip_attitude.x > 9000) {
+            flip_angle = 18000 - flip_attitude.y * flip_pitch_dir;
+        } else {
+            flip_angle = flip_attitude.y * flip_pitch_dir;
+        }
         // move flip angle to -45 degrees to 315 degrees.
         flip_angle = wrap_360_cd(flip_angle+4500.0f)-4500.0f;
         flip_orig_angle = flip_orig_attitude.y * flip_pitch_dir;
@@ -168,6 +173,12 @@ void Copter::ModeFlip::run()
     }
     rotation_rate_cd = MIN(rotation_rate_cd, uint32_t(rot_rate_dps.get())*100U);
 
+    DataFlash_Class::instance()->Log_Write("FLIP", "TimeUS,Tms,State,Ang", "QIBi",
+                                           AP_HAL::micros64(),
+                                           millis() - flip_start_time,
+                                           uint8_t(flip_state),
+                                           flip_angle);
+    
     // state machine
     switch (flip_state) {
 
@@ -189,7 +200,7 @@ void Copter::ModeFlip::run()
                 flip_state = Flip_Roll;
             } else {
                 // we are pitching
-                flip_state = Flip_Pitch_A;
+                flip_state = Flip_Pitch;
             }
         }
         break;
@@ -203,12 +214,12 @@ void Copter::ModeFlip::run()
         throttle_out = 0.0f;
 
         // beyond -90deg move on to recovery
-        if (flip_angle > 27000) {
+        if (flip_angle > 31000) {
             flip_state = Flip_Recover;
         }
         break;
 
-    case Flip_Pitch_A:
+    case Flip_Pitch:
         // between 45deg ~ -90deg request 400deg/sec pitch
         attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, rotation_rate_cd * flip_pitch_dir, 0.0);
         // decrease throttle
@@ -216,21 +227,7 @@ void Copter::ModeFlip::run()
         throttle_out = 0.0f;
 
         // beyond -90deg move on to recovery
-        if (flip_angle > 27000) {
-            flip_state = Flip_Recover;
-        }
-        break;
-
-    case Flip_Pitch_B:
-        // not used
-        // between 45deg ~ -90deg request 400deg/sec pitch
-        attitude_control->input_rate_bf_roll_pitch_yaw(0.0, rotation_rate_cd * flip_pitch_dir, 0.0);
-        // decrease throttle
-        attitude_control->set_throttle_mix_value(2.0f);
-        throttle_out = 0.0f;
-
-        // check roll for inversion
-        if ((labs(ahrs.roll_sensor) < 9000) && (flip_angle > -4500)) {
+        if (flip_angle > 31000) {
             flip_state = Flip_Recover;
         }
         break;

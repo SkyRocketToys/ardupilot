@@ -267,8 +267,7 @@ enum SportModeState {
 enum FlipState {
     Flip_Start,
     Flip_Roll,
-    Flip_Pitch_A,
-    Flip_Pitch_B,
+    Flip_Pitch,
     Flip_Recover,
     Flip_Abandon
 };
