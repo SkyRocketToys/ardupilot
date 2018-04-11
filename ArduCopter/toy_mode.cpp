@@ -1280,6 +1280,10 @@ void ToyMode::send_named_int(const char *name, int32_t value)
  */
 void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
 {
+    if (copter.control_mode == FLIP) {
+        // no limit in FLIP mode
+        return;
+    }
     float thrust_mul = linear_interpolate(filter.thrust_max, filter.thrust_min, filtered_voltage, filter.volt_min, filter.volt_max);
     for (uint8_t i=0; i<num_motors; i++) {
         thrust[i] *= thrust_mul;
