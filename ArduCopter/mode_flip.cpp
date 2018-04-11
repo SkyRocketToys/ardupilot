@@ -92,7 +92,8 @@ bool Copter::ModeFlip::init(bool ignore_checks)
     if (copter.control_mode != ACRO &&
         copter.control_mode != STABILIZE &&
         copter.control_mode != ALT_HOLD &&
-        copter.control_mode != FLOWHOLD) {
+        copter.control_mode != FLOWHOLD &&
+        copter.control_mode != LOITER) {
         return false;
     }
 
