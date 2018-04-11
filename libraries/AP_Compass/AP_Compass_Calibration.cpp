@@ -341,3 +341,87 @@ MAV_RESULT Compass::handle_mag_cal_command(const mavlink_command_long_t &packet)
     
     return result;
 }
+
+
+/*
+  perform a magnetometer calibration assuming a fixed position in a known field
+
+  This is an alternative magnetometer calibration method that involves
+  placing the vehicle at a known yaw, with a known earths field
+*/
+MAV_RESULT Compass::fixed_mag_cal_field(const Vector3f &mag_bf)
+{
+    if (hal.util->get_soft_armed()) {
+        // refuse while armed
+        return MAV_RESULT_FAILED;
+    }
+
+    /*
+      we can't just adjust the offsets by the difference in field, as
+      the ODI and DIA values affect the corrections applied by the
+      offsets. We need to invert the correction matrix if we can, and
+      use that to calculate the right offsets. If we can't invert it
+      then we use it without the eliptical correction.
+     */
+
+    // read two samples to clear possible change of eliptical corrections
+    read();
+    hal.scheduler->delay(100);
+    read();
+
+    for (uint8_t i=0; i<get_count(); i++) {
+        const Vector3f &diagonals = _state[i].diagonals.get();
+        const Vector3f &offdiagonals = _state[i].offdiagonals.get();
+        const Vector3f &field = get_field(i);
+        const Vector3f &ofs = get_offsets(i);
+        // form eliptical correction matrix
+        Matrix3f mat(
+            diagonals.x, offdiagonals.x, offdiagonals.y,
+            offdiagonals.x,    diagonals.y, offdiagonals.z,
+            offdiagonals.y, offdiagonals.z,    diagonals.z
+            );
+        Vector3f correction;
+        if (mat.invert()) {
+            Vector3f v1 = mat * field;
+            Vector3f v2 = mat * mag_bf;
+            correction = v2 - v1;
+        } else {
+            // is this the best we can do??
+            correction = mag_bf - field;
+        }
+        Vector3f new_offset = ofs + correction;
+
+        // save offsets
+        set_offsets(i, new_offset);
+        save_offsets(i);
+    }
+
+    gcs().send_text(MAV_SEVERITY_INFO, "Finished fixed calibration");
+
+    return MAV_RESULT_ACCEPTED;
+}
+
+/*
+  perform a magnetometer calibration assuming a fixed position in a known field
+
+  This is an alternative magnetometer calibration method that involves
+  placing the vehicle at a known yaw, with a known earths declination,
+  inclination and field intensity.
+*/
+MAV_RESULT Compass::fixed_mag_cal(float roll_rad, float pitch_rad, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg)
+{
+    // create earth field
+    Vector3f mag_ef(intensity_mgauss, 0.0, 0.0);
+    Matrix3f R;
+    R.from_euler(0.0f, -ToRad(inclination_deg), ToRad(declination_deg));
+    mag_ef = R * mag_ef;
+
+    Matrix3f dcm;
+    dcm.from_euler(roll_rad, pitch_rad, ToRad(yaw_deg));
+    
+    // Rotate field into body frame
+    Vector3f mag_bf = dcm.transposed() * mag_ef;
+    
+    return fixed_mag_cal_field(mag_bf);
+}
+

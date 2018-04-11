@@ -329,6 +329,10 @@ public:
         return (uint16_t)_offset_max.get();
     }
 
+    // perform a magnetometer calibration assuming a fixed position in a known field
+    MAV_RESULT fixed_mag_cal_field(const Vector3f &field);
+    MAV_RESULT fixed_mag_cal(float roll_rad, float pitch_rad, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg);
+    
 private:
     /// Register a new compas driver, allocating an instance number
     ///
@@ -468,3 +472,4 @@ private:
     // mask of driver types to not load. Bit positions match DEVTYPE_ in backend
     AP_Int32 _driver_type_mask;
 };
+
