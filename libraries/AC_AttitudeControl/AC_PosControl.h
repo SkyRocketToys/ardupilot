@@ -300,6 +300,9 @@ public:
     // time_since_last_xy_update - returns time in seconds since the horizontal position controller was last run
     float time_since_last_xy_update() const;
 
+    // accel_to_throttle - alt hold's acceleration controller
+    void accel_to_throttle(float accel_target_z);
+    
     static const struct AP_Param::GroupInfo var_info[];
 
 protected:
@@ -341,9 +344,6 @@ protected:
 
     // rate_to_accel_z - calculates desired accel required to achieve the velocity target
     void rate_to_accel_z();
-
-    // accel_to_throttle - alt hold's acceleration controller
-    void accel_to_throttle(float accel_target_z);
 
     ///
     /// xy controller private methods
