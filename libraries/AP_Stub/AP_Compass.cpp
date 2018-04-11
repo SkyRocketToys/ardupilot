@@ -159,4 +159,12 @@ CompassLearn::CompassLearn(AP_AHRS &_ahrs, Compass &_compass) :
 {
 }
 
+MAV_RESULT Compass::fixed_mag_cal_field(const Vector3f &field) {
+    return MAV_RESULT_UNSUPPORTED;
+}
+
+MAV_RESULT Compass::fixed_mag_cal(float roll_rad, float pitch_rad, float declination_deg, float inclination_deg, float intensity_mgauss, float yaw_deg)
+{
+    return MAV_RESULT_UNSUPPORTED;
+}
 #endif
