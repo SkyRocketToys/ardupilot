@@ -92,25 +92,31 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
     copter.pos_control->set_accel_z(copter.g.pilot_accel_z);
 
     // initialise position and desired velocity
-    if (!copter.pos_control->is_active_z()) {
-        copter.pos_control->set_alt_target_to_current_alt();
-        copter.pos_control->set_desired_velocity_z(copter.inertial_nav.get_velocity_z());
+    if (copter.prev_control_mode == FLIP) {
+        copter.pos_control->set_desired_velocity_z(0);
+        copter.pos_control->set_alt_target(last_ins_height);
+        last_stick_input_ms = millis();
+        braking = true;
+    } else {
+        if (!copter.pos_control->is_active_z()) {
+            copter.pos_control->set_alt_target_to_current_alt();
+            copter.pos_control->set_desired_velocity_z(copter.prev_control_mode==FLIP?0:copter.inertial_nav.get_velocity_z());
+        }
+        // start with INS height
+        last_ins_height = copter.inertial_nav.get_altitude() * 0.01;
+        height_offset = 0;
+        quality_filtered = 0;
+        flow_pi_xy.reset_I();
+        limited = false;
     }
-
+    
     flow_filter.set_cutoff_frequency(copter.scheduler.get_loop_rate_hz(), flow_filter_hz.get());
-
-    quality_filtered = 0;
-    flow_pi_xy.reset_I();
-    limited = false;
     
     // stop takeoff if running
     copter.takeoff_stop();
 
     flow_pi_xy.set_dt(1.0/copter.scheduler.get_loop_rate_hz());
 
-    // start with INS height
-    last_ins_height = copter.inertial_nav.get_altitude() * 0.01;
-    height_offset = 0;
     
     return true;
 }
