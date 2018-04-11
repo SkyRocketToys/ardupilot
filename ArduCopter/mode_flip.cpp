@@ -66,6 +66,15 @@ const AP_Param::GroupInfo Copter::ModeFlip::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     AP_GROUPINFO("ROT_RATE", 3, ModeFlip, rot_rate_dps, 720),
+
+    // @Param: ACCEL_MAX
+    // @DisplayName: Flip maximum roll acceleration rate
+    // @Description: The rotation acceleration rate in degrees/second/second for a flip. This overrides the ATC_ACCEL_R_MAX and ATC_ACCEL_P_MAX during a flip. A value of zero means not to override existing values
+    // @Units: deg/s/s
+    // @Range: 0 10000
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("ACCEL_MAX", 4, ModeFlip, rot_accel_max, 0),
     
     AP_GROUPEND
 };
@@ -128,6 +137,14 @@ bool Copter::ModeFlip::init(bool ignore_checks)
     // log start of flip
     Log_Write_Event(DATA_FLIP_START);
 
+    orig_pitch_accel = attitude_control->get_accel_pitch_max();
+    orig_roll_accel = attitude_control->get_accel_roll_max();
+
+    if (rot_accel_max > 0) {
+        attitude_control->set_accel_pitch_max(rot_accel_max*100);
+        attitude_control->set_accel_roll_max(rot_accel_max*100);
+    }
+    
     return true;
 }
 
@@ -135,7 +152,6 @@ bool Copter::ModeFlip::init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::ModeFlip::run()
 {
-    float throttle_out;
     float recovery_angle;
 
     // if pilot inputs roll > 40deg or timeout occurs abandon flip
@@ -143,9 +159,9 @@ void Copter::ModeFlip::run()
         flip_state = Flip_Abandon;
     }
 
-    // get pilot's desired throttle
-    throttle_out = get_pilot_desired_throttle(channel_throttle->get_control_in());
-
+    // try to zero vertical velocity
+    pos_control->accel_to_throttle(- pos_control->get_vel_z_p().kP() * inertial_nav.get_velocity_z());
+    
     // get corrected angle based on direction and axis of rotation
     // we flip the sign of flip_angle to minimize the code repetition
     int32_t flip_angle;
@@ -190,8 +206,8 @@ void Copter::ModeFlip::run()
         rotation_rate_cd = 1000.0f*(-flip_ramp_angle_cd-flip_orig_angle)/uint16_t(flip_ramp_ms);
         attitude_control->input_rate_bf_roll_pitch_yaw(rotation_rate_cd * flip_roll_dir, rotation_rate_cd * flip_pitch_dir, 0.0);
 
-        // increase throttle
-        throttle_out = 1.0f;
+        // force full throttle
+        attitude_control->set_throttle_out(1.0, false, g.throttle_filt);
 
         // beyond 45deg lean angle move to next stage
         if ((millis() - flip_start_time) > flip_ramp_ms) {
@@ -211,8 +227,10 @@ void Copter::ModeFlip::run()
         attitude_control->input_rate_bf_roll_pitch_yaw(rotation_rate_cd * flip_roll_dir, 0.0, 0.0);
         // decrease throttle
         attitude_control->set_throttle_mix_value(2.0f);
-        throttle_out = 0.0f;
 
+        // set zero throttle
+        attitude_control->set_throttle_out(0, false, g.throttle_filt);
+        
         // beyond -90deg move on to recovery
         if (flip_angle > 31000) {
             flip_state = Flip_Recover;
@@ -224,8 +242,10 @@ void Copter::ModeFlip::run()
         attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, rotation_rate_cd * flip_pitch_dir, 0.0);
         // decrease throttle
         attitude_control->set_throttle_mix_value(2.0f);
-        throttle_out = 0.0f;
 
+        // set zero throttle
+        attitude_control->set_throttle_out(0, false, g.throttle_filt);
+        
         // beyond -90deg move on to recovery
         if (flip_angle > 31000) {
             flip_state = Flip_Recover;
@@ -235,9 +255,6 @@ void Copter::ModeFlip::run()
     case Flip_Recover:
         // use originally captured earth-frame angle targets to recover
         attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
-
-        // increase throttle to gain any lost altitude
-        throttle_out += FLIP_THR_INC;
 
         if (flip_roll_dir != 0) {
             // we are rolling
@@ -272,7 +289,13 @@ void Copter::ModeFlip::run()
 
     // set motors to full range
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
+}
 
-    // output pilot's throttle without angle boost
-    attitude_control->set_throttle_out(throttle_out, false, g.throttle_filt);
+/*
+  restore accelerations on mode exit
+ */
+void Copter::ModeFlip::stop(void)
+{
+    attitude_control->set_accel_pitch_max(orig_pitch_accel);
+    attitude_control->set_accel_roll_max(orig_roll_accel);
 }

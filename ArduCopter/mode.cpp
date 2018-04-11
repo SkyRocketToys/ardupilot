@@ -252,6 +252,10 @@ void Copter::exit_mode(Copter::Mode *&old_flightmode,
     }
 #endif
 
+    if (old_flightmode == &mode_flip) {
+        mode_flip.stop();
+    }
+    
     // stop mission when we leave auto mode
 #if MODE_AUTO_ENABLED == ENABLED
     if (old_flightmode == &mode_auto) {

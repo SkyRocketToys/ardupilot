@@ -569,6 +569,7 @@ public:
 
     bool init(bool ignore_checks) override;
     void run() override;
+    void stop();
 
     bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
@@ -591,6 +592,11 @@ private:
     AP_Int16 ramp_ms;
     AP_Int16 ramp_cd;
     AP_Int16 rot_rate_dps;
+    AP_Float rot_accel_max;
+
+    // saved accelerations
+    float orig_pitch_accel;
+    float orig_roll_accel;
 };
 
 
