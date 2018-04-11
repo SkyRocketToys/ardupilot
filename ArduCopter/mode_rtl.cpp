@@ -182,7 +182,7 @@ void Copter::ModeRTL::stick_mixing(float &nav_roll, float &nav_pitch, float &tar
 
     if (pilot_pitch > 0.5*angle_limit) {
         pilot_pitch = (3*pilot_pitch - angle_limit);
-    } else if (pilot_pitch < -0.5f) {
+    } else if (pilot_pitch < -0.5f*angle_limit) {
         pilot_pitch = (3*pilot_pitch + angle_limit);
     }
     nav_pitch += pilot_pitch;
