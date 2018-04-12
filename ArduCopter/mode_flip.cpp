@@ -7,7 +7,7 @@
  *
  *      Controls:
  *          CH7_OPT - CH12_OPT parameter must be set to "Flip" (AUXSW_FLIP) which is "2"
- *          Pilot switches to Stabilize, Acro or AltHold flight mode and puts ch7/ch8 switch to ON position
+ *          Pilot switches to Stabilize, Acro, AltHold, FlowHold, or Loiter flight mode and puts ch7/ch8 switch to ON position
  *          Vehicle will Roll right by default but if roll or pitch stick is held slightly left, forward or back it will flip in that direction
  *          Vehicle should complete the roll within 2.5sec and will then return to the original flight mode it was in before flip was triggered
  *          Pilot may manually exit flip by switching off ch7/ch8 or by moving roll stick to >40deg left or right
@@ -88,7 +88,7 @@ Copter::ModeFlip::ModeFlip(void) : Mode()
 // flip_init - initialise flip controller
 bool Copter::ModeFlip::init(bool ignore_checks)
 {
-    // only allow flip from ACRO, Stabilize, AltHold or Drift flight modes
+    // only allow flip from ACRO, Stabilize, AltHold, FlowHold or Loiter flight modes
     if (copter.control_mode != ACRO &&
         copter.control_mode != STABILIZE &&
         copter.control_mode != ALT_HOLD &&
