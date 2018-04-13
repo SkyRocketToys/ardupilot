@@ -156,10 +156,27 @@ void Copter::ModeFlip::run()
     float recovery_angle;
 
     // if pilot inputs roll > 40deg or timeout occurs abandon flip
-    if (!motors->armed() || (abs(channel_roll->get_control_in()) >= 4000) || (abs(channel_pitch->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
+    if (!motors->armed() || (millis() - flip_start_time) > FLIP_TIMEOUT_MS) {
         flip_state = Flip_Abandon;
     }
 
+    /*
+      also abandon if users moves stick to 80% other than in direction
+      of the flip This allows for user to use full stick movement in
+      the direction of the flip and not cause the flip to be abandoned
+    */
+    if (flip_roll_dir != 0) {
+        if (labs(channel_pitch->get_control_in()) >= 4000 ||
+            channel_roll->get_control_in() * (-flip_roll_dir) >= 4000) {
+            flip_state = Flip_Abandon;            
+        }
+    } else {
+        if (labs(channel_roll->get_control_in()) >= 4000 ||
+            channel_pitch->get_control_in() * (-flip_pitch_dir) >= 4000) {
+            flip_state = Flip_Abandon;            
+        }
+    }
+    
     // try to zero vertical velocity
     pos_control->accel_to_throttle(- pos_control->get_vel_z_p().kP() * inertial_nav.get_velocity_z());
     
