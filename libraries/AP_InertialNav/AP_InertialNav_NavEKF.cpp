@@ -1,4 +1,5 @@
 #include <AP_HAL/AP_HAL.h>
+#include <DataFlash/DataFlash.h>
 #include "AP_InertialNav.h"
 
 #if AP_AHRS_NAVEKF_AVAILABLE
@@ -43,6 +44,22 @@ void AP_InertialNav_NavEKF::update(float dt)
         _pos_z_rate *= 100; // convert to cm/s
         _pos_z_rate = - _pos_z_rate; // InertialNav is NEU
     }
+
+    AP_Baro *baro = AP_Baro::get_instance();
+    if (baro) {
+        float baro_alt_cm = baro->get_altitude() * 100;
+        float baro_climb_rate_cms = baro->get_climb_rate() * 100;
+
+        DataFlash_Class::instance()->Log_Write("INVB", "TimeUS,BAlt,BCRt,Alt,Vel", "Qffff",
+                                               AP_HAL::micros64(),
+                                               baro_alt_cm, baro_climb_rate_cms, _relpos_cm.z,
+                                               _velocity_cm.z);
+        
+        _relpos_cm.z = baro_alt_cm;
+    
+        _velocity_cm.z = baro_climb_rate_cms;
+    }
+    
 }
 
 /**
