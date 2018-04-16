@@ -596,6 +596,16 @@ void AC_PosControl::rate_to_accel_z()
     // consolidate and constrain target acceleration
     _accel_target.z = _accel_feedforward.z + p;
 
+    if (_accel_z_limit_max_cmss > 0) {
+        _accel_target.z = MIN(_accel_target.z, _accel_z_limit_max_cmss);
+        _accel_z_limit_max_cmss = 0;
+    }
+
+    if (_accel_z_limit_min_cmss > 0) {
+        _accel_target.z = MAX(_accel_target.z, _accel_z_limit_min_cmss);
+        _accel_z_limit_min_cmss = 0;
+    }
+    
     // set target for accel based throttle controller
     accel_to_throttle(_accel_target.z);
 }

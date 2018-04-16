@@ -294,6 +294,14 @@ public:
     const Vector3f& get_vel_target() const { return _vel_target; }
     const Vector3f& get_accel_target() const { return _accel_target; }
 
+    void set_accel_z_limit_max(float limit_cmss) {
+        _accel_z_limit_max_cmss = limit_cmss;
+    }
+
+    void set_accel_z_limit_min(float limit_cmss) {
+        _accel_z_limit_min_cmss = limit_cmss;
+    }
+    
     // lean_angles_to_accel - convert roll, pitch lean angles to lat/lon frame accelerations in cm/s/s
     void lean_angles_to_accel(float& accel_x_cmss, float& accel_y_cmss) const;
 
@@ -406,6 +414,9 @@ protected:
     float       _leash_down_z;          // vertical leash down in cm.  target will never be further than this distance below the vehicle
     float       _leash_up_z;            // vertical leash up in cm.  target will never be further than this distance above the vehicle
 
+    float       _accel_z_limit_max_cmss;
+    float       _accel_z_limit_min_cmss;
+    
     // output from controller
     float       _roll_target;           // desired roll angle in centi-degrees calculated by position controller
     float       _pitch_target;          // desired roll pitch in centi-degrees calculated by position controller
