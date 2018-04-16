@@ -4,6 +4,8 @@
 
 #if AP_AHRS_NAVEKF_AVAILABLE
 
+extern const AP_HAL::HAL& hal;
+
 /*
   A wrapper around the AP_InertialNav class which uses the NavEKF
   filter if available, and falls back to the AP_InertialNav filter
@@ -45,10 +47,32 @@ void AP_InertialNav_NavEKF::update(float dt)
         _pos_z_rate = - _pos_z_rate; // InertialNav is NEU
     }
 
+    uint32_t now = AP_HAL::millis();
+    if (!hal.util->get_soft_armed()) {
+        _arm_time_ms = 0;
+    } else if (_arm_time_ms == 0) {
+        _arm_time_ms = now;
+        _in_takeoff = true;
+    }
+
     AP_Baro *baro = AP_Baro::get_instance();
     if (baro) {
         float baro_alt_cm = baro->get_altitude() * 100;
         float baro_climb_rate_cms = baro->get_climb_rate() * 100;
+        
+        _vel_z_filter = 0.7 * _vel_z_filter + 0.3 * baro_climb_rate_cms;
+        _pos_z_filter = 0.9 * _pos_z_filter + 0.1 * baro_alt_cm;
+
+        if (_in_takeoff && _pos_z_filter > 120) {
+            _in_takeoff = false;
+        }
+            
+        if (!_in_takeoff) {
+            _velocity_cm.z = _vel_z_filter;
+            _relpos_cm.z = _pos_z_filter;
+        } else {
+            _relpos_cm.z = MAX(_pos_z_filter, 0);
+        }
 
 #if 0
         DataFlash_Class::instance()->Log_Write("INVB", "TimeUS,BAlt,BCRt,Alt,Vel", "Qffff",
@@ -56,10 +80,6 @@ void AP_InertialNav_NavEKF::update(float dt)
                                                baro_alt_cm, baro_climb_rate_cms, _relpos_cm.z,
                                                _velocity_cm.z);
 #endif
-        
-        _relpos_cm.z = baro_alt_cm;
-    
-        _velocity_cm.z = baro_climb_rate_cms;
     }
     
 }

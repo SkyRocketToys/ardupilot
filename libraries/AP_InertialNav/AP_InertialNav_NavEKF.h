@@ -107,6 +107,11 @@ private:
     Vector3f _relpos_cm;   // NEU
     Vector3f _velocity_cm; // NEU
     float _pos_z_rate;
+    float _vel_z_filter;
+    float _pos_z_filter;
+    float _pos_low_limit;
+    uint32_t _arm_time_ms;
+    bool _in_takeoff;
     struct Location _abspos;
     bool _haveabspos;
     AP_AHRS_NavEKF &_ahrs_ekf;
