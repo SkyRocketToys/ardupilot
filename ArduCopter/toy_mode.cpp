@@ -859,6 +859,10 @@ void ToyMode::update()
         takeoff_start_ms = 0;
         user_land = false;
     }
+
+    if (copter.control_mode == LAND) {
+        copter.pos_control->set_accel_z_limit_max(100);
+    }
 }
 
 /*
@@ -1119,6 +1123,11 @@ void ToyMode::throttle_adjust(float &throttle_control)
         throttle_control = MIN(throttle_control, throttle_start + p * (1000 - throttle_start));
     }
 
+    if (throttle_control < 400) {
+        // make sure we don't accelerate upwards
+        copter.pos_control->set_accel_z_limit_max(100);
+    }
+    
     // limit descent rate close to the ground
     float height = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
     if (throttle_control < 500 &&
@@ -1156,7 +1165,7 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
     }
 
     if (copter.barometer.get_altitude() < 1) {
-        copter.pos_control->set_accel_z_limit_min(50);
+        copter.pos_control->set_accel_z_limit_min(75);
     }
 
     throttle_control = linear_interpolate(throttle_mid+100, 650, (now-takeoff_start_ms)-(takeoff_delay*1000),
