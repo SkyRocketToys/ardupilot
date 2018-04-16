@@ -1089,6 +1089,8 @@ void ToyMode::throttle_adjust(float &throttle_control)
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
 
     if (user_land) {
+        copter.pos_control->set_accel_z_limit_max(100);
+        
         bool sticks_centered = fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
         if (!sticks_centered) {
             user_land = false;
@@ -1151,6 +1153,10 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
     if (now - takeoff_start_ms < takeoff_delay*1000) {
         // still in delay
         return;
+    }
+
+    if (copter.barometer.get_altitude() < 1) {
+        copter.pos_control->set_accel_z_limit_min(50);
     }
 
     throttle_control = linear_interpolate(throttle_mid+100, 650, (now-takeoff_start_ms)-(takeoff_delay*1000),
@@ -1297,7 +1303,6 @@ void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
                                                (double)thrust_mul,
                                                pwm[0], pwm[1], pwm[2], pwm[3]);
     }
-                                           
 }
 
 #if ENABLE_LOAD_TEST
