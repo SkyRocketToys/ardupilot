@@ -50,10 +50,12 @@ void AP_InertialNav_NavEKF::update(float dt)
         float baro_alt_cm = baro->get_altitude() * 100;
         float baro_climb_rate_cms = baro->get_climb_rate() * 100;
 
+#if 0
         DataFlash_Class::instance()->Log_Write("INVB", "TimeUS,BAlt,BCRt,Alt,Vel", "Qffff",
                                                AP_HAL::micros64(),
                                                baro_alt_cm, baro_climb_rate_cms, _relpos_cm.z,
                                                _velocity_cm.z);
+#endif
         
         _relpos_cm.z = baro_alt_cm;
     
