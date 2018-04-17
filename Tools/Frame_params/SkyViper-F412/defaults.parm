@@ -305,14 +305,6 @@ FLOW_POS_Y      -0.01
 FLOW_FXSCALER    550
 FLOW_FYSCALER    550
 
-# z params for new vibe robust inertial nav method
-PSC_ACCZ_FILT    6
-PSC_ACCZ_I       0.7
-PSC_ACCZ_IMAX    800
-PSC_ACCZ_P       0.35
-PSC_POSZ_P       1.0
-PSC_VELZ_P       1.5
-
 # flip params
 FLIP_RAMP_CD    500
 FLIP_RAMP_MS    350
