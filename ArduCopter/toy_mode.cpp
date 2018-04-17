@@ -242,6 +242,24 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_OB_CLMBTHS", 29, ToyMode, obs.climbrate_threshold, 0.3),
 
+    // @Param: _TOFF_ACC
+    // @DisplayName: Takeoff min acceleration
+    // @Description: Minimum vertical acceleration during takeoff, to overcome ground effect
+    // @Units: cm/s/s
+    // @Range: 0 400
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("_TOFF_ACC", 30, ToyMode, takeoff_min_acc, 120),
+
+    // @Param: _LAND_ACC
+    // @DisplayName: Land max acceleration
+    // @Description: Maximum vertical acceleration during land, to overcome ground effect
+    // @Units: cm/s/s
+    // @Range: 0 400
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("_LAND_ACC", 31, ToyMode, land_max_acc, 100),
+    
     AP_GROUPEND
 };
 
@@ -1089,7 +1107,7 @@ void ToyMode::throttle_adjust(float &throttle_control)
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
 
     if (user_land) {
-        copter.pos_control->set_accel_z_limit_max(100);
+        copter.pos_control->set_accel_z_limit_max(land_max_acc.get());
         
         bool sticks_centered = fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
         if (!sticks_centered) {
@@ -1121,7 +1139,7 @@ void ToyMode::throttle_adjust(float &throttle_control)
 
     if (throttle_control < 400) {
         // make sure we don't accelerate upwards
-        copter.pos_control->set_accel_z_limit_max(100);
+        copter.pos_control->set_accel_z_limit_max(land_max_acc.get());
     }
     
     // limit descent rate close to the ground
@@ -1161,10 +1179,10 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
     }
 
     if (copter.barometer.get_altitude() < 1) {
-        copter.pos_control->set_accel_z_limit_min(75);
+        copter.pos_control->set_accel_z_limit_min(takeoff_min_acc.get());
     }
 
-    throttle_control = linear_interpolate(throttle_mid+100, 650, (now-takeoff_start_ms)-(takeoff_delay*1000),
+    throttle_control = linear_interpolate(throttle_mid+100, 750, (now-takeoff_start_ms)-(takeoff_delay*1000),
                                           0, takeoff_time*750);
 }
 

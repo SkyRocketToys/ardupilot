@@ -160,6 +160,8 @@ private:
     AP_Float takeoff_time;
     AP_Float takeoff_delay;
     AP_Int16 land_throttle;
+    AP_Int16 takeoff_min_acc;
+    AP_Int16 land_max_acc;
     int8_t last_profile_id = -1;
 
     /*
