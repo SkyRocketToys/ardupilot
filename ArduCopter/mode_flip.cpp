@@ -75,7 +75,16 @@ const AP_Param::GroupInfo Copter::ModeFlip::var_info[] = {
     // @Increment: 10
     // @User: Advanced
     AP_GROUPINFO("ACCEL_MAX", 4, ModeFlip, rot_accel_max, 0),
-    
+
+    // @Param: STOP_CD
+    // @DisplayName: Flip end angle in centidegrees
+    // @Description: The end angle is the angular difference from the starting angle that the flip goes back to normal levelling
+    // @Units: cdeg
+    // @Range: 100 2000
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("STOP_CD", 5, ModeFlip, stop_cd, 1500),
+
     AP_GROUPEND
 };
 
@@ -271,15 +280,23 @@ void Copter::ModeFlip::run()
         break;
 
     case Flip_Recover:
-        // use originally captured earth-frame angle targets to recover
-        attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
-
         if (flip_roll_dir != 0) {
             // we are rolling
             recovery_angle = fabsf(flip_orig_attitude.x - (float)ahrs.roll_sensor);
         } else {
             // we are pitching
             recovery_angle = fabsf(flip_orig_attitude.y - (float)ahrs.pitch_sensor);
+        }
+
+        if (fabsf(recovery_angle) > stop_cd) {
+            if (flip_roll_dir != 0) {
+                attitude_control->input_rate_bf_roll_pitch_yaw(rotation_rate_cd * flip_roll_dir, 0.0, 0.0);
+            } else {
+                attitude_control->input_rate_bf_roll_pitch_yaw(0.0f, rotation_rate_cd * flip_pitch_dir, 0.0);            
+            }
+        } else {
+            // use originally captured earth-frame angle targets to recover
+            attitude_control->input_euler_angle_roll_pitch_yaw(flip_orig_attitude.x, flip_orig_attitude.y, flip_orig_attitude.z, false, get_smoothing_gain());
         }
 
         // check for successful recovery
