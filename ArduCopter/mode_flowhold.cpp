@@ -93,14 +93,15 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
 
     // initialise position and desired velocity
     if (copter.prev_control_mode == FLIP) {
+        copter.pos_control->set_alt_target_to_current_alt();
         copter.pos_control->set_desired_velocity_z(0);
-        copter.pos_control->set_alt_target(last_ins_height);
+        copter.pos_control->set_vel_target_z(0);
         last_stick_input_ms = millis();
         braking = true;
     } else {
         if (!copter.pos_control->is_active_z()) {
             copter.pos_control->set_alt_target_to_current_alt();
-            copter.pos_control->set_desired_velocity_z(copter.prev_control_mode==FLIP?0:copter.inertial_nav.get_velocity_z());
+            copter.pos_control->set_desired_velocity_z(copter.inertial_nav.get_velocity_z());
         }
         // start with INS height
         last_ins_height = copter.inertial_nav.get_altitude() * 0.01;
