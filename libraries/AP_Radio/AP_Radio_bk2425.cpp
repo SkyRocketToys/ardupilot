@@ -232,6 +232,10 @@ uint8_t AP_Radio_beken::num_channels(void)
         }
         stats.lost_packets=0;
         stats.timeouts=0;
+        if (have_tx_pps == 1) // Have we had tx pps recently?
+			tx_pps = 0;
+        if (have_tx_pps == 2) // We have had it at some time
+			have_tx_pps = 1; // Not recently
     }
     return chan_count;
 }
@@ -619,6 +623,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 		    {
 				already_bound = true; // Do not autobind to a different tx unless we power off
 // test rssi	beken.EnableCarrierDetect(false); // Save 1ma of power
+				beken.WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x01); // Ignore the binding channel, which might be from competing siren txs.
 			}
 			adaptive.Get(rx->channel); // Give the good news to the adaptive logic
 			// Put the data into the control values (assuming mode2)
@@ -670,7 +675,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 				if (!have_tx_pps) {
 					check_double_bind();
 				}
-				have_tx_pps = true;
+				have_tx_pps = 2;
 				break;
 			case BK_INFO_BATTERY:
 				// "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display
@@ -1013,7 +1018,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 				DebugPrintf(1, "\r\nFCC mode %d\r\n", fcc);
 			}
 		}
-
+		
 		// For fcc mode, just send packets on timeouts (every 5ms)
 		if (beken.fcc.fcc_mode)
 		{

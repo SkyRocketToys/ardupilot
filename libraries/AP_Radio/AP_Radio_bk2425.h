@@ -212,7 +212,7 @@ private:
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
 	uint8_t tx_pps; // Last telemetry PPS received from Tx
-    bool have_tx_pps; // True when tx_pss has been received
+    uint8_t have_tx_pps; // 0=never received, 1=received at least one, 2=received recently
     uint32_t telem_send_count; // How many telemetry packets have i sent?
 
     // Parameters
