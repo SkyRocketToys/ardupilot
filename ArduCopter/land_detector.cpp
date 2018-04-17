@@ -67,11 +67,21 @@ void Copter::update_land_detector()
         bool accel_stationary = (land_accel_ef_filter.get().length() <= LAND_DETECTOR_ACCEL_MAX);
 
         // check that vertical speed is within 1m/s of zero
-        bool descent_rate_low = fabsf(inertial_nav.get_velocity_z()) < 100;
+        bool descent_rate_low = fabsf(inertial_nav.get_velocity_z()) < 150;
 
         // if we have a healthy rangefinder only allow landing detection below 2 meters
         bool rangefinder_check = (!rangefinder_alt_ok() || rangefinder_state.alt_cm_filt.get() < LAND_RANGEFINDER_MIN_ALT_CM);
 
+#if 0
+        DataFlash_Class::instance()->Log_Write("LDET", "TimeUS,Count,MLow,MixMin,ALen,DRate", "QIBBff",
+                                               AP_HAL::micros64(),
+                                               land_detector_count,
+                                               motors->limit.throttle_lower,
+                                               attitude_control->is_throttle_mix_min(),
+                                               land_accel_ef_filter.get().length(),
+                                               inertial_nav.get_velocity_z());
+#endif
+        
         if (motor_at_lower_limit && accel_stationary && descent_rate_low && rangefinder_check) {
             // landed criteria met - increment the counter and check if we've triggered
             if( land_detector_count < ((float)LAND_DETECTOR_TRIGGER_SEC)*scheduler.get_loop_rate_hz()) {
@@ -163,19 +173,25 @@ void Copter::update_throttle_thr_mix()
         const float angle_error = attitude_control->get_att_error_angle_deg();
         bool large_angle_error = (angle_error > LAND_CHECK_ANGLE_ERROR_DEG);
 
-        // check for large acceleration - falling or high turbulence
-        Vector3f accel_ef = ahrs.get_accel_ef_blended();
-        accel_ef.z += GRAVITY_MSS;
-        bool accel_moving = (accel_ef.length() > LAND_CHECK_ACCEL_MOVING);
-
         // check for requested decent
         bool descent_not_demanded = pos_control->get_desired_velocity().z >= 0.0f;
 
-        if ( large_angle_request || large_angle_error || accel_moving || descent_not_demanded) {
+        if ( large_angle_request || large_angle_error || descent_not_demanded) {
             attitude_control->set_throttle_mix_max();
         } else {
             attitude_control->set_throttle_mix_min();
         }
+
+#if 0
+        DataFlash_Class::instance()->Log_Write("TMIX", "TimeUS,ATarg,AErr,Accel,AFil,DRate,LAR,LAE,AM,DND,IMM", "QfffffBBBBB",
+                                               AP_HAL::micros64(),
+                                               norm(angle_target.x, angle_target.y),
+                                               angle_error,
+                                               pos_control->get_desired_velocity().z,
+                                               large_angle_request, large_angle_error,
+                                               accel_moving, descent_not_demanded,
+                                               attitude_control->is_throttle_mix_min());
+#endif
     }
 #endif
 }
