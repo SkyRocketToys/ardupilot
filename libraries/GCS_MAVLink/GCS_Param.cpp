@@ -361,7 +361,7 @@ void GCS_MAVLINK::send_queued_parameters(void)
         return;
     }
     if (streamRates[STREAM_PARAMS].get() <= 0) {
-        streamRates[STREAM_PARAMS].set(10);
+        streamRates[STREAM_PARAMS].set(50);
     }
     if (stream_trigger(STREAM_PARAMS)) {
         send_message(MSG_NEXT_PARAM);
