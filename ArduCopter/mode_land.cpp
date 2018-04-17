@@ -145,6 +145,9 @@ void Copter::ModeLand::nogps_run()
     }
 
     copter.land_run_vertical_control(land_pause);
+
+    // prevent jumps on landing
+    copter.pos_control->set_accel_z_limit_max(100);
 }
 
 /*

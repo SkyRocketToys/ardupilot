@@ -859,10 +859,6 @@ void ToyMode::update()
         takeoff_start_ms = 0;
         user_land = false;
     }
-
-    if (copter.control_mode == LAND) {
-        copter.pos_control->set_accel_z_limit_max(100);
-    }
 }
 
 /*
