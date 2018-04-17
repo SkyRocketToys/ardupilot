@@ -249,7 +249,7 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Range: 0 400
     // @Increment: 10
     // @User: Advanced
-    AP_GROUPINFO("_TOFF_ACC", 30, ToyMode, takeoff_min_acc, 120),
+    AP_GROUPINFO("_TOFF_ACC", 30, ToyMode, takeoff_min_acc, 150),
 
     // @Param: _LAND_ACC
     // @DisplayName: Land max acceleration
@@ -1182,7 +1182,7 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
         copter.pos_control->set_accel_z_limit_min(takeoff_min_acc.get());
     }
 
-    throttle_control = linear_interpolate(throttle_mid+100, 750, (now-takeoff_start_ms)-(takeoff_delay*1000),
+    throttle_control = linear_interpolate(throttle_mid+100, 720, (now-takeoff_start_ms)-(takeoff_delay*1000),
                                           0, takeoff_time*750);
 }
 
