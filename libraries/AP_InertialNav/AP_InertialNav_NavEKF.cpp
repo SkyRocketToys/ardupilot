@@ -55,6 +55,7 @@ void AP_InertialNav_NavEKF::update(float dt)
         _in_takeoff = true;
     }
 
+#ifdef HAL_USE_BARO_INAV
     AP_Baro *baro = AP_Baro::get_instance();
     if (baro) {
         float baro_alt_cm = baro->get_altitude() * 100;
@@ -81,6 +82,7 @@ void AP_InertialNav_NavEKF::update(float dt)
                                                _velocity_cm.z);
 #endif
     }
+#endif
     
 }
 
