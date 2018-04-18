@@ -161,6 +161,11 @@ public:
     // is_active - returns true if the z-axis position controller has been run very recently
     bool is_active_z() const;
 
+    // force the Z controller as active, to prevent resets
+    void set_active_z() {
+        _last_update_z_ms = AP_HAL::millis();
+    }
+    
     /// update_z_controller - fly to altitude in cm above home
     void update_z_controller();
 
