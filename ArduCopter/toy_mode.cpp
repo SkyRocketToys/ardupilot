@@ -17,7 +17,11 @@
 #define TOY_DESCENT_SLOW_MIN 300
 #define TOY_RESET_TURTLE_TIME 5000
 
-#define ENABLE_LOAD_TEST 0
+#define ENABLE_LOAD_TEST 1
+
+#if ENABLE_LOAD_TEST
+#include "load_data1.h"
+#endif
 
 #define TUNE_LAND "d=4,o=6,b=400:d,4b,4b,4b,4b"
 #define TUNE_ACK "d=4,o=6,b=400:8d,b"
@@ -162,30 +166,6 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_PROFILE_ID", 19, ToyMode, profile_id, 1),
 
-#if ENABLE_LOAD_TEST
-    // @Param: _LOAD_MUL
-    // @DisplayName: Load test multiplier
-    // @Description: This scales the load test output, as a value between 0 and 1
-    // @Range: 0 1
-    // @Increment: 0.01
-    // @User: Advanced
-    AP_GROUPINFO("_LOAD_MUL", 24, ToyMode, load_test.load_mul, 1.0),
-    
-    // @Param: _LOAD_FILT
-    // @DisplayName: Load test filter
-    // @Description: This filters the load test output. A value of 1 means no filter. 2 means values are repeated once. 3 means values are repeated 3 times, etc
-    // @Range: 0 100
-    // @User: Advanced
-    AP_GROUPINFO("_LOAD_FILT", 25, ToyMode, load_test.load_filter, 1),
-    
-    // @Param: _LOAD_TYPE
-    // @DisplayName: Load test type
-    // @Description: This sets the type of load test
-    // @Values: 0:ConstantThrust,1:LogReplay1,2:LogReplay2
-    // @User: Advanced
-    AP_GROUPINFO("_LOAD_TYPE", 26, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
-#endif
-
     // @Param: _GPS_BTN
     // @DisplayName: GPS button action
     // @Description: This is the action taken for the GPS button
@@ -259,6 +239,31 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 10
     // @User: Advanced
     AP_GROUPINFO("_LAND_ACC", 31, ToyMode, land_max_acc, 100),
+
+#if ENABLE_LOAD_TEST
+    // @Param: _LOAD_MUL
+    // @DisplayName: Load test multiplier
+    // @Description: This scales the load test output, as a value between 0 and 1
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_MUL", 32, ToyMode, load_test.load_mul, 1.0),
+    
+    // @Param: _LOAD_FILT
+    // @DisplayName: Load test filter
+    // @Description: This filters the load test output. A value of 1 means no filter. 2 means values are repeated once. 3 means values are repeated 3 times, etc
+    // @Range: 0 100
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_FILT", 33, ToyMode, load_test.load_filter, 1),
+    
+    // @Param: _LOAD_TYPE
+    // @DisplayName: Load test type
+    // @Description: This sets the type of load test
+    // @Values: 0:ConstantThrust,1:LogReplay1,2:LogReplay2
+    // @User: Advanced
+    AP_GROUPINFO("_LOAD_TYPE", 34, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
+#endif
+
     
     AP_GROUPEND
 };
@@ -813,9 +818,7 @@ void ToyMode::update()
             load_test.running = false;
             gcs().send_text(MAV_SEVERITY_INFO, "Tmode: load_test off");
             copter.init_disarm_motors();
-            copter.set_mode(ALT_HOLD, MODE_REASON_TMODE);
         } else {
-            copter.set_mode(ALT_HOLD, MODE_REASON_TMODE);
 #if AC_FENCE == ENABLED
             copter.fence.enable(false);
 #endif
@@ -1349,7 +1352,7 @@ void ToyMode::load_test_run(void)
         load_test.filter_counter++;
         if (load_test.filter_counter >= load_test.load_filter.get()) {
             load_test.filter_counter = 0;
-            load_test.row = (load_test.row + 1) % ARRAY_SIZE(load_data1);
+            load_test.row = (load_test.row + 1) % ARRAY_SIZE_SIMPLE(load_data1);
         }
         break;
         
@@ -1361,7 +1364,7 @@ void ToyMode::load_test_run(void)
         load_test.filter_counter++;
         if (load_test.filter_counter >= load_test.load_filter.get()) {
             load_test.filter_counter = 0;
-            load_test.row = (load_test.row + 1) % ARRAY_SIZE(load_data1);
+            load_test.row = (load_test.row + 1) % ARRAY_SIZE_SIMPLE(load_data1);
         }
         break;
 

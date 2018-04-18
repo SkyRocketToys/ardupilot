@@ -145,7 +145,6 @@ bool Copter::ModeFlip::init(bool ignore_checks)
         } else {
             flip_roll_dir = FLIP_ROLL_LEFT;
         }
-        hal.console->printf("long_pitch_input %d\n", flip_roll_dir);
     } else if (channel_pitch->get_control_in() > 300) {
         flip_pitch_dir = FLIP_PITCH_BACK;
     }else if(channel_pitch->get_control_in() < -300) {

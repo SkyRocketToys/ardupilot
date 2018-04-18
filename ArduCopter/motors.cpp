@@ -317,7 +317,9 @@ void Copter::motors_output()
     SRV_Channels::output_ch_all();
 
     // check if we are performing the motor test
-    if (ap.motor_test) {
+    if (g2.toy_mode.load_test.running) {
+        g2.toy_mode.load_test_run();
+    } else if (ap.motor_test) {
         motor_test_output();
     } else {
         bool interlock = motors->armed() && !ap.in_arming_delay && (!ap.using_interlock || ap.motor_interlock_switch) && !ap.motor_emergency_stop;
