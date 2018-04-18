@@ -206,7 +206,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
 
     
     ef_output += xy_I;
-    ef_output *= copter.aparm.angle_max;
+    ef_output *= 4500; // convert to centidegrees
 
     // convert to body frame
     bf_angles += copter.ahrs.rotate_earth_to_body2D(ef_output);
