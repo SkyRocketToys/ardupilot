@@ -405,6 +405,25 @@ void AC_AttitudeControl::input_angle_step_bf_roll_pitch_yaw(float roll_angle_ste
 // Calculates the body frame angular velocities to follow the target attitude
 void AC_AttitudeControl::attitude_controller_run_quat()
 {
+    if (_accel_roll_max_target > 0) {
+        const float delta_rate = 100000.0 / 400.0;
+        float diff = _accel_roll_max_target - _accel_roll_max;
+        diff = constrain_float(diff, -delta_rate, delta_rate);
+        _accel_roll_max += diff;
+        if (is_zero(diff)) {
+            _accel_roll_max_target = 0;
+        }
+    }
+    if (_accel_pitch_max_target > 0) {
+        const float delta_rate = 100000.0 / 400.0;
+        float diff = _accel_pitch_max_target - _accel_pitch_max;
+        diff = constrain_float(diff, -delta_rate, delta_rate);
+        _accel_pitch_max += diff;
+        if (is_zero(diff)) {
+            _accel_pitch_max_target = 0;
+        }
+    }
+
     // Retrieve quaternion vehicle attitude
     // TODO add _ahrs.get_quaternion()
     Quaternion attitude_vehicle_quat;
@@ -686,24 +705,6 @@ float AC_AttitudeControl::rate_target_to_motor_yaw(float rate_actual_rads, float
 // Enable or disable body-frame feed forward
 void AC_AttitudeControl::accel_limiting(bool enable_limits)
 {
-    if (_accel_roll_max_target > 0) {
-        const float delta_rate = 50000.0 / 400.0;
-        float diff = _accel_roll_max_target - _accel_roll_max;
-        diff = constrain_float(diff, -delta_rate, delta_rate);
-        _accel_roll_max += diff;
-        if (is_zero(diff)) {
-            _accel_roll_max_target = 0;
-        }
-    }
-    if (_accel_pitch_max_target > 0) {
-        const float delta_rate = 50000.0 / 400.0;
-        float diff = _accel_pitch_max_target - _accel_pitch_max;
-        diff = constrain_float(diff, -delta_rate, delta_rate);
-        _accel_pitch_max += diff;
-        if (is_zero(diff)) {
-            _accel_pitch_max_target = 0;
-        }
-    }
     if (enable_limits) {
         // If enabling limits, reload from eeprom or set to defaults
         if (is_zero(_accel_roll_max)) {
