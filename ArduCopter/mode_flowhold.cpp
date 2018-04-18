@@ -93,10 +93,15 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
 
     // initialise position and desired velocity
     if (copter.prev_control_mode == FLIP) {
+        copter.pos_control->set_active_z();
         copter.pos_control->set_alt_target_to_current_alt();
         copter.pos_control->set_desired_velocity_z(0);
         copter.pos_control->set_vel_target_z(0);
         last_stick_input_ms = millis();
+        last_ins_height = copter.inertial_nav.get_altitude() * 0.01;
+        height_offset = 0;
+        quality_filtered = 0;
+        flow_pi_xy.reset_I();
         braking = true;
     } else {
         if (!copter.pos_control->is_active_z()) {
@@ -214,12 +219,15 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     bf_angles.y = constrain_float(bf_angles.y, -copter.aparm.angle_max, copter.aparm.angle_max);
 
     if (log_counter++ % 20 == 0) {
-        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy", "Qfffffffff",
+        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy,R,P,AM", "Qffffffffffff",
                                                AP_HAL::micros64(),
                                                (double)sensor_flow.x, (double)sensor_flow.y,
                                                (double)bf_angles.x, (double)bf_angles.y,
                                                (double)quality_filtered,
-                                               (double)xy_I.x, (double)xy_I.y);
+                                               (double)xy_I.x, (double)xy_I.y,
+                                               (double)copter.ahrs.roll_sensor,
+                                               (double)copter.ahrs.pitch_sensor,
+                                               (double)copter.attitude_control->get_althold_lean_angle_max());
     }
 }
 
@@ -273,15 +281,15 @@ void Copter::ModeFlowHold::run()
     // calculate alt-hold angles
     int16_t roll_in = copter.channel_roll->get_control_in();
     int16_t pitch_in = copter.channel_pitch->get_control_in();
-    float angle_max = copter.attitude_control->get_althold_lean_angle_max();
+    float angle_max = copter.aparm.angle_max;
     copter.get_pilot_desired_lean_angles(roll_in, pitch_in,
                                          bf_angles.x, bf_angles.y,
                                          angle_max);
     
     if (quality_filtered >= flow_min_quality &&
         AP_HAL::millis() - copter.arm_time_ms > 3000 &&
-        labs(ahrs.roll_sensor)  < angle_max*0.8 &&
-        labs(ahrs.pitch_sensor) < angle_max*0.8) {
+        labs(ahrs.roll_sensor)  < 3500 &&
+        labs(ahrs.pitch_sensor) < 3500) {
         // don't use for first 3s when we are just taking off, or at high angles
         Vector2f flow_angles;
 
@@ -292,7 +300,15 @@ void Copter::ModeFlowHold::run()
     }
     bf_angles.x = constrain_float(bf_angles.x, -angle_max, angle_max);
     bf_angles.y = constrain_float(bf_angles.y, -angle_max, angle_max);
-            
+
+#if 0
+    DataFlash_Class::instance()->Log_Write("FH2", "TimeUS,BFx,BFy,State,RIn,PIn,AMax", "QffBhhf",
+                                           AP_HAL::micros64(),
+                                           (double)bf_angles.x, (double)bf_angles.y,
+                                           flowhold_state,
+                                           roll_in, pitch_in, angle_max);
+#endif
+    
     // Flow Hold State Machine
     switch (flowhold_state) {
 
