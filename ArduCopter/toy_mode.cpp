@@ -797,7 +797,6 @@ void ToyMode::update()
                 // use FLOWHOLD for landing to retain position control
                 user_land = true;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
-                play_tune(TUNE_LAND);
             } else {
                 // switch to LAND mode
                 new_mode = LAND;
@@ -1120,7 +1119,6 @@ void ToyMode::throttle_adjust(float &throttle_control)
                 gcs().send_text(MAV_SEVERITY_INFO, "Tmode: FLOW land complete");
                 copter.init_disarm_motors();
                 user_land = false;
-                play_tune(TUNE_ACK);
             }
         }
     }
