@@ -203,6 +203,7 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
 
     // update flight mode
     flightmode = new_flightmode;
+    prev_control_mode = control_mode;
     control_mode = mode;
     control_mode_reason = reason;
     DataFlash.Log_Write_Mode(control_mode, reason);
