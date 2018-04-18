@@ -591,7 +591,6 @@ private:
     // flip parameters
     AP_Int16 ramp_ms;
     AP_Int16 ramp_cd;
-    AP_Int16 stop_cd;
     AP_Int16 rot_rate_dps;
     AP_Float rot_accel_max;
     bool long_pitch_input;
