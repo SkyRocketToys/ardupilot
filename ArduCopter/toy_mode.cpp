@@ -876,6 +876,14 @@ void ToyMode::update()
         takeoff_start_ms = 0;
         user_land = false;
     }
+
+    if (labs(copter.channel_pitch->get_control_in()) > 3000) {
+        if (pitch_input_start_ms == 0) {
+            pitch_input_start_ms = AP_HAL::millis();
+        }
+    } else {
+        pitch_input_start_ms = 0;
+    }
 }
 
 /*

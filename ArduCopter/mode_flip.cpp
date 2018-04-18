@@ -134,7 +134,19 @@ bool Copter::ModeFlip::init(bool ignore_checks)
     flip_roll_dir = flip_pitch_dir = 0;
 
     // choose direction based on pilot's roll and pitch sticks
-    if (channel_pitch->get_control_in() > 300) {
+#if TOY_MODE_ENABLED == ENABLED
+    long_pitch_input = copter.g2.toy_mode.long_pitch_input();
+#endif
+    if (long_pitch_input) {
+        // allow rolls in forward flight if the pitch stick has been fwd or back
+        // for over 2 seconds
+        if (channel_roll->get_control_in() >= 0) {
+            flip_roll_dir = FLIP_ROLL_RIGHT;
+        } else {
+            flip_roll_dir = FLIP_ROLL_LEFT;
+        }
+        hal.console->printf("long_pitch_input %d\n", flip_roll_dir);
+    } else if (channel_pitch->get_control_in() > 300) {
         flip_pitch_dir = FLIP_PITCH_BACK;
     }else if(channel_pitch->get_control_in() < -300) {
         flip_pitch_dir = FLIP_PITCH_FORWARD;
@@ -174,15 +186,17 @@ void Copter::ModeFlip::run()
       of the flip This allows for user to use full stick movement in
       the direction of the flip and not cause the flip to be abandoned
     */
-    if (flip_roll_dir != 0) {
-        if (labs(channel_pitch->get_control_in()) >= 4000 ||
-            channel_roll->get_control_in() * (-flip_roll_dir) >= 4000) {
-            flip_state = Flip_Abandon;            
-        }
-    } else {
-        if (labs(channel_roll->get_control_in()) >= 4000 ||
-            channel_pitch->get_control_in() * (-flip_pitch_dir) >= 4000) {
-            flip_state = Flip_Abandon;            
+    if (!long_pitch_input) {
+        if (flip_roll_dir != 0) {
+            if (labs(channel_pitch->get_control_in()) >= 4000 ||
+                channel_roll->get_control_in() * (-flip_roll_dir) >= 4000) {
+                flip_state = Flip_Abandon;            
+            }
+        } else {
+            if ((labs(channel_roll->get_control_in()) >= 4000 ||
+                 channel_pitch->get_control_in() * (-flip_pitch_dir) >= 4000)) {
+                flip_state = Flip_Abandon;            
+            }
         }
     }
     

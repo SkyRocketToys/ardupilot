@@ -31,6 +31,11 @@ public:
     void handle_message(mavlink_message_t *msg);
 
     void load_test_run(void);
+
+    // return true if we have had pitch stick input for over 2s
+    bool long_pitch_input(void) const {
+        return pitch_input_start_ms != 0 && AP_HAL::millis() - pitch_input_start_ms > 2000;
+    }
     
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -163,6 +168,10 @@ private:
     AP_Int16 takeoff_min_acc;
     AP_Int16 land_max_acc;
     int8_t last_profile_id = -1;
+
+    // record start of large pitch input for purposes of choosing flip
+    // direction in mode FLIP
+    uint32_t pitch_input_start_ms;
 
     /*
       a table mapping profile variable names to entries in the profile

@@ -594,10 +594,14 @@ private:
     AP_Int16 stop_cd;
     AP_Int16 rot_rate_dps;
     AP_Float rot_accel_max;
+    bool long_pitch_input;
 
     // saved accelerations
     float orig_pitch_accel;
     float orig_roll_accel;
+
+    uint32_t fwd_start_ms;
+    uint32_t back_start_ms;
 };
 
 
