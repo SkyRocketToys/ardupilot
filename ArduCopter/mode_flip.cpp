@@ -331,6 +331,6 @@ void Copter::ModeFlip::run()
  */
 void Copter::ModeFlip::stop(void)
 {
-    attitude_control->set_accel_pitch_max(orig_pitch_accel);
-    attitude_control->set_accel_roll_max(orig_roll_accel);
+    attitude_control->set_accel_pitch_max_slew(orig_pitch_accel);
+    attitude_control->set_accel_roll_max_slew(orig_roll_accel);
 }
