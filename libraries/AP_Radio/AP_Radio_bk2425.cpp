@@ -439,6 +439,26 @@ bool AP_Radio_beken::UpdateTxData(void)
         sem->give();
         return true;
 	}
+    else if ((fwupload.acked >= fwupload.file_length_round) &&
+		(fwupload.fw_type == TELEM_PLAY) && // Atune request
+		(fwupload.rx_ack) &&
+        ((fwupload.counter & 0x01) != 0) && // Avoid starvation of telemetry
+		(fwupload.acked > 0) && // Sanity check
+        sem->take_nonblocking()) // Is the other threads busy with fwupload data?
+	{
+		fwupload.rx_ack = false;
+		fwupload.file_length = 0;
+		fwupload.file_length_round = 0;
+		fwupload.added = 0;
+		// Tell the Tx the tune is complete
+		packetFormatDfu* tx = &beken.pktDataDfu;
+		tx->packetType = BK_PKT_TYPE_TUNE;
+		uint16_t addr = 0x0004; // Command to finalise the tune
+		tx->address_lo = addr & 0xff;
+		tx->address_hi = (addr >> 8);
+        sem->give();
+        return true;
+	}
     // send firmware update packet for 7/8 of packets if any data pending
 	else if ((fwupload.added >= (fwupload.acked + SZ_DFU)) && // Do we have a new packet to upload?
         ((fwupload.counter & 0x07) != 0) && // Avoid starvation of telemetry
