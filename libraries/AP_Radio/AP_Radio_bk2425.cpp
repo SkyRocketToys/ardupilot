@@ -375,6 +375,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
 			if (ofs == 0)
 			{
 				fwupload.reset();
+				// Typically file_length = 0x3906; file_length_round = 0x3980;
 				fwupload.file_length = ((uint16_t(m.data[4]) << 8) | (m.data[5])) + 6; // Add the header to the length
 				fwupload.file_length_round = (fwupload.file_length + 0x7f) & ~0x7f; // Round up to multiple of 128
 			}
@@ -414,21 +415,23 @@ void AP_Radio_beken::update_SRT_telemetry(void)
 // ----------------------------------------------------------------------------
 // Update a radio control packet
 // Called from IRQ context.
-// Returns true for DFU, false for telemetry
+// Returns true for DFU or TUNE, false for telemetry
 bool AP_Radio_beken::UpdateTxData(void)
 {
     // send reboot command if appropriate
     fwupload.counter++;
-    if ((fwupload.rx_reboot ||
-		((fwupload.acked >= fwupload.file_length_round) &&
+    if ((fwupload.acked >= fwupload.file_length_round) &&
 		(fwupload.fw_type == TELEM_FW) && // Not a tune request
 		(fwupload.rx_ack) &&
+		(fwupload.acked >= 0x1000)) // Sanity check
+	{
+		fwupload.rx_reboot = true;
+	}
+    if (fwupload.rx_reboot && // Sanity check
         ((fwupload.counter & 0x01) != 0) && // Avoid starvation of telemetry
-		(fwupload.acked >= 0x1000))) && // Sanity check
         sem->take_nonblocking()) // Is the other threads busy with fwupload data?
 	{
 		fwupload.rx_ack = false;
-		fwupload.rx_reboot = true;
 		// Tell the Tx to reboot
 		packetFormatDfu* tx = &beken.pktDataDfu;
 		tx->packetType = BK_PKT_TYPE_DFU;
@@ -446,10 +449,7 @@ bool AP_Radio_beken::UpdateTxData(void)
 		(fwupload.acked > 0) && // Sanity check
         sem->take_nonblocking()) // Is the other threads busy with fwupload data?
 	{
-		fwupload.rx_ack = false;
-		fwupload.file_length = 0;
-		fwupload.file_length_round = 0;
-		fwupload.added = 0;
+		fwupload.reset();
 		// Tell the Tx the tune is complete
 		packetFormatDfu* tx = &beken.pktDataDfu;
 		tx->packetType = BK_PKT_TYPE_TUNE;
