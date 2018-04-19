@@ -210,6 +210,7 @@ ATC_RAT_YAW_FILT       3.5
 ATC_SLEW_YAW        3250
 ATC_THR_MIX_MAN        4
 ATC_THR_MIX_MAX        0.9
+ATC_THR_MIX_MIN        0.5
 
 # tuning
 ACRO_RP_EXPO           0.3

@@ -14,6 +14,7 @@ void Copter::crash_check()
     if (!motors->armed() || ap.land_complete || g.fs_crash_check == 0) {
         crash.counter = 0;
         crash.reset_reason = RESET_REASON_LANDED;
+        crash.climb_start_ms = 0;
         return;
     }
 
@@ -21,6 +22,7 @@ void Copter::crash_check()
     if (control_mode == ACRO || control_mode == FLIP || control_mode == SPORT) {
         crash.counter = 0;
         crash.reset_reason = RESET_REASON_MODE;
+        crash.climb_start_ms = 0;
         return;
     }
 
@@ -35,6 +37,7 @@ void Copter::crash_check()
         angle_error_deg < 1.5*CRASH_CHECK_ANGLE_DEVIATION_DEG) {
         crash.counter = 0;
         crash.reset_reason = RESET_REASON_ACCEL;
+        crash.climb_start_ms = 0;
         return;
     }
 
@@ -51,17 +54,31 @@ void Copter::crash_check()
     crash.filtered_climb_rate = 0.97 * crash.filtered_climb_rate + barometer.get_climb_rate() * 0.03;
     float scaled_throttle = motors->get_throttle() * ahrs.cos_roll() * ahrs.cos_pitch();
 
+    // low pass filtered altitude
+    crash.filtered_alt = 0.95 * crash.filtered_alt + 0.05 * barometer.get_altitude();
+
 #if TOY_MODE_ENABLED
     Vector3f att_target = attitude_control->get_att_target_euler_cd();
     // only check throttle when target angle is less than 20 degrees
     const float cr_threshold = g2.toy_mode.obs.climbrate_threshold;
     const float thr_threshold = g2.toy_mode.obs.throttle_threshold;
     if (fabsf(att_target.x) + fabsf(att_target.y) < 2000) {
-        if (fabsf(crash.filtered_climb_rate) < cr_threshold &&
-            (scaled_throttle > thr_threshold || motors->limit.throttle_upper)) {
+        bool climb_requested = (scaled_throttle > thr_threshold || motors->limit.throttle_upper);
+        if (fabsf(crash.filtered_climb_rate) < cr_threshold && climb_requested) {
             // we should be climbing and we aren't
             climb_rate_error = true;
         }
+        if (climb_requested) {
+            if (crash.climb_start_ms == 0) {
+                crash.climb_start_ms = now;
+                crash.climb_start_alt = crash.filtered_alt;
+            }
+            crash.climb_start_alt = MIN(crash.climb_start_alt, crash.filtered_alt);
+        } else {
+            crash.climb_start_ms = 0;
+        }
+    } else {
+        crash.climb_start_ms = 0;
     }
 #endif
 
@@ -81,19 +98,36 @@ void Copter::crash_check()
         }
         DataFlash_Class::instance()->Log_Write(
             "CCHK",
-            "TimeUS,Count,FCRt,AErr,SThr,Flags,RR",
-            "QHfffBB",
+            "TimeUS,Count,FCRt,AErr,SThr,Flags,RR,FAlt,CSat",
+            "QHfffBBfB",
             AP_HAL::micros64(),
             crash.counter,
             (double)crash.filtered_climb_rate,
             (double)angle_error_deg,
             (double)scaled_throttle,
             flags,
-            (uint8_t)crash.reset_reason
+            (uint8_t)crash.reset_reason,
+            crash.filtered_alt,
+            controls_saturated
             );
         crash.reset_reason = RESET_REASON_NONE;
     }
 
+#if TOY_MODE_ENABLED
+    /*
+      longer term crash detection based on delta-altitude
+     */
+    if (crash.climb_start_ms != 0 &&
+        now - crash.climb_start_ms > g2.toy_mode.obs.climb_ms) {
+        float delta_alt = crash.filtered_alt - crash.climb_start_alt;
+        if (delta_alt < g2.toy_mode.obs.climb_alt) {
+            climb_rate_error = true;
+            crash.counter = CRASH_CHECK_TRIGGER_SEC * scheduler.get_loop_rate_hz();
+            crash.climb_start_ms = 0;
+        }
+    }
+#endif
+    
     if (!angle_error && !climb_rate_error && !controls_saturated) {
         crash.counter = 0;
         crash.reset_reason = RESET_REASON_NOERRORS;
