@@ -100,9 +100,11 @@ struct SyncAdaptive {
 struct FwUpload {
 	enum { SZ_BUFFER = 128 }; // Must be a power of two
 	mavlink_channel_t chan; // Reference for talking to mavlink subsystem
-	bool need_ack; // When true, we need to talk to mavlink subsystem (ask for more firmware)
 	uint8_t counter; // Used to throttle the upload, to prevent starvation of telemetry
 	enum telem_type fw_type; // Whether we are uploading program code or a test tune
+	
+	// Data that is reset by reset()
+	bool need_ack; // When true, we need to talk to mavlink subsystem (ask for more firmware)
 	uint32_t added;  // The number of bytes added to the queue
 	uint32_t sent;   // The number of bytes sent to the tx
 	uint32_t acked;  // The number of bytes acked by the tx
@@ -119,7 +121,7 @@ struct FwUpload {
 	uint8_t free_length() { return SZ_BUFFER - 1 - pending_length(); } // Do not fill in the last byte in the circular buffer
 	void queue(const uint8_t *pSrc, uint8_t len); // Assumes sufficient room has been checked for
 	void dequeue(uint8_t *pDst, uint8_t len); // Assumes sufficient data has been checked for
-	void reset() { file_length = 0x3906; file_length_round = 0x3980; added = sent = acked = 0; pending_head = pending_tail = 0; rx_reboot = rx_ack = need_ack = false; }
+	void reset() { file_length = file_length_round = 0; added = sent = acked = 0; pending_head = pending_tail = 0; rx_reboot = rx_ack = need_ack = false; }
 };
 
 // Main class for receiving (and replying) to Beken radio packets
