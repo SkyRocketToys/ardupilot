@@ -261,6 +261,8 @@ private:
     struct {
         AP_Float throttle_threshold;
         AP_Float climbrate_threshold;
+        AP_Float climb_alt;
+        AP_Int16 climb_ms;
     } obs;
 
     struct {

@@ -264,6 +264,21 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     AP_GROUPINFO("_LOAD_TYPE", 34, ToyMode, load_test.load_type, LOAD_TYPE_LOG1),
 #endif
 
+    // @Param: _OB_CLBMS
+    // @DisplayName: Obstruction Throttle climb time
+    // @Description: Time for climb obstruction test
+    // @Range: 0 5000
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("_OB_CLBMS", 35, ToyMode, obs.climb_ms, 3000),
+
+    // @Param: _OB_CLBALT
+    // @DisplayName: Obstruction Throttle climb altitude
+    // @Description: Height delta for climb obstruction test
+    // @Range: 0 10
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_OB_CLBALT", 36, ToyMode, obs.climb_alt, 4),
     
     AP_GROUPEND
 };
@@ -1323,6 +1338,10 @@ void ToyMode::thrust_limiting(float *thrust, uint8_t num_motors)
         return;
     }
     float thrust_mul = linear_interpolate(filter.thrust_max, filter.thrust_min, filtered_voltage, filter.volt_min, filter.volt_max);
+    if (copter.crash.last_trigger_ms && AP_HAL::millis() - copter.crash.last_trigger_ms < 3000) {
+        // force low thrust during obstruction landing
+        thrust_mul = 0.35;
+    }
     for (uint8_t i=0; i<num_motors; i++) {
         thrust[i] *= thrust_mul;
     }

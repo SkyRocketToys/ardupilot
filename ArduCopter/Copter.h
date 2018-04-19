@@ -638,6 +638,9 @@ private:
         uint32_t last_trigger_ms;
         uint32_t last_log;
         reset_reason_t reset_reason;
+        uint32_t climb_start_ms;
+        float climb_start_alt;
+        float filtered_alt;
     } crash;
 
     // set when we are upgrading parameters from 3.4
