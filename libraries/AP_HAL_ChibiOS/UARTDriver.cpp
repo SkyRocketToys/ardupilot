@@ -213,6 +213,7 @@ void UARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS)
                 }
                 _device_initialised = true;
             }
+            sdStop((SerialDriver*)sdef.serial);
             sercfg.speed = _baudrate;
             if (!sdef.dma_tx && !sdef.dma_rx) {
                 sercfg.cr1 = 0;
