@@ -45,6 +45,8 @@ uint8_t GCS_MAVLINK::mavlink_active = 0;
 uint8_t GCS_MAVLINK::chan_is_streaming = 0;
 uint32_t GCS_MAVLINK::reserve_param_space_start_ms;
 
+const uint32_t GCS_MAVLINK::autobaud_rates[] = {625000, 921600, 115200, 57600};
+
 GCS *GCS::_singleton = nullptr;
 
 GCS_MAVLINK::GCS_MAVLINK()
@@ -874,18 +876,21 @@ GCS_MAVLINK::update(uint32_t max_time_us)
 
     // process received bytes
     uint16_t nbytes = comm_get_available(chan);
+    bool parsed_any_packet = false;
+
     for (uint16_t i=0; i<nbytes; i++)
     {
         uint8_t c = comm_receive_ch(chan);
 
         bool parsed_packet = false;
-        
+
         // Try to get a new message
         if (mavlink_parse_char(chan, c, &msg, &status)) {
             hal.util->perf_begin(_perf_packet);
             packetReceived(status, msg);
             hal.util->perf_end(_perf_packet);
             parsed_packet = true;
+            parsed_any_packet = true;
         }
 
         if (parsed_packet || i % 100 == 0) {
@@ -894,6 +899,23 @@ GCS_MAVLINK::update(uint32_t max_time_us)
                 break;
             }
         }
+    }
+
+    if (parsed_any_packet) {
+        last_packet_parsed_ms = AP_HAL::millis();
+    } else if (AP_HAL::millis() - last_packet_parsed_ms > autobaud_timeout_ms) {
+        _port->begin(autobaud_rates[next_autobaud]);
+        // gcs().send_text(MAV_SEVERITY_INFO, "%i: Trying baud %u (%u/%u)",
+        //                 (uint8_t)chan,
+        //                 autobaud_rates[next_autobaud],
+        //                 next_autobaud,
+        //                 ARRAY_SIZE(autobaud_rates));
+        next_autobaud++;
+        if (next_autobaud >= ARRAY_SIZE(autobaud_rates)) {
+            next_autobaud = 0;
+        }
+        // don't autobaud too often....
+        last_packet_parsed_ms = AP_HAL::millis();
     }
 
     if (!waypoint_receiving) {

@@ -443,6 +443,11 @@ private:
     void load_signing_key(void);
     bool signing_enabled(void) const;
     static void save_signing_timestamp(bool force_save_now);
+
+    uint8_t next_autobaud;
+    static const uint32_t autobaud_rates[];
+    static const uint16_t autobaud_timeout_ms = 5000;
+    uint32_t last_packet_parsed_ms; // time-since-boot last packet received
 };
 
 /// @class GCS
