@@ -681,6 +681,31 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
         }
         bindHopData[i] = val;
     }
+
+    // additional loop to fix any close channels
+    for (i=0; i<NUM_CHANNELS; i++) {
+        // first loop only accepts channels that are outside wifi band
+        if (have_channel(bindHopData[i], i, 0)) {
+            uint8_t c;
+            for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
+                if ((channel <= cc_wifi_low || channel >= cc_wifi_high) && !have_channel(c, i, 0)) {
+                    bindHopData[i] = c;
+                    break;
+                }
+            }
+        }
+        // if that fails then accept channels within the wifi band
+        if (have_channel(bindHopData[i], i, 0)) {
+            uint8_t c;
+            for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
+                if (!have_channel(c, i, 0)) {
+                    bindHopData[i] = c;
+                    break;
+                }
+            }
+        }
+    }
+    
     for (i=0; i<NUM_CHANNELS; i++) {
         Debug(3, "%u ", bindHopData[i]);
     }
