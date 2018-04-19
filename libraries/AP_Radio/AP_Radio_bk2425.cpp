@@ -1237,10 +1237,11 @@ bool AP_Radio_beken::load_bind_info(void)
 // check if we are the 2nd RX bound to this TX
 void AP_Radio_beken::check_double_bind(void)
 {
-    if (tx_pps <= telem_send_count || // Has the tx been receiving telemetry from someone else already?
-        get_autobind_time() == 0) { // Have we disabled autobinding? We can always bind to our manually bound drone.
+    if (tx_pps == 0) { // Has the tx not been receiving telemetry from someone else recently?
+		valid_connection = true;
         return;
     }
+	valid_connection = false;
     // the TX has received more telemetry packets in the last second
     // than we have ever sent. There must be another RX sending
     // telemetry packets. We will reset our mfg_id and go back waiting

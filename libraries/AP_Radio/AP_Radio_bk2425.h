@@ -171,7 +171,7 @@ private:
 	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
 	void update_SRT_telemetry(void);
 	void check_fw_ack(void);
-    void check_double_bind(void); // check for double binding
+    void check_double_bind(void); // check for double binding or true connection
    
     // Static data, for interrupt support
     static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
@@ -215,6 +215,7 @@ private:
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
 	uint8_t tx_pps; // Last telemetry PPS received from Tx
     uint8_t have_tx_pps; // 0=never received, 1=received at least one, 2=received recently
+    uint8_t valid_connection; // Take some time before admitting to ardupilot we have a connection
     uint32_t telem_send_count; // How many telemetry packets have i sent?
 
     // Parameters
