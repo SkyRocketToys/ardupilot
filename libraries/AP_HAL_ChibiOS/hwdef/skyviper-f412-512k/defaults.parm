@@ -314,6 +314,7 @@ FLIP_ACCEL_MAX  3000
 
 BRD_RADIO_TYPE 3
 BRD_RADIO_ABLVL 15
+BRD_RADIO_TXPOW 7
 
 # DCM does better for flips on this frame
 AHRS_EKF_TYPE 0
