@@ -126,6 +126,7 @@ private:
         ACTION_MODE_FLOW = 24,
         ACTION_TOGGLE_PROFILE = 25,
         ACTION_LAUNCH_LAND = 26,
+        ACTION_TOGGLE_LEDS = 27,
     };
 
     enum toy_action last_action;
@@ -168,6 +169,7 @@ private:
     AP_Int16 takeoff_min_acc;
     AP_Int16 land_max_acc;
     int8_t last_profile_id = -1;
+    bool leds_off;
 
     // record start of large pitch input for purposes of choosing flip
     // direction in mode FLIP
