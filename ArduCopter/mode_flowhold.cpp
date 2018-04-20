@@ -102,7 +102,6 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
         height_offset = 0;
         quality_filtered = 0;
         flow_pi_xy.reset_I();
-        braking = true;
     } else {
         if (!copter.pos_control->is_active_z()) {
             copter.pos_control->set_alt_target_to_current_alt();
@@ -166,10 +165,14 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     if (stick_input) {
         last_stick_input_ms = now;
         braking = true;
+        braking_angle = atan2f(sensor_flow.y, sensor_flow.x);
     }
     if (!stick_input && braking) {
         // stop braking if either 3s has passed, or we have slowed below 0.3m/s
-        if (now - last_stick_input_ms > 3000 || sensor_flow.length() < 0.3) {
+        float flow_angle = atan2f(sensor_flow.y, sensor_flow.x);
+        float flow_diff_cd = wrap_180_cd(degrees(flow_angle - braking_angle) * 100);
+        //printf("%.2f %u\n", (now - last_stick_input_ms)*0.001, labs(flow_diff_cd));
+        if (now - last_stick_input_ms > 3000 || fabsf(flow_diff_cd) > 9000) {
             braking = false;
 #if 0
             printf("braking done at %u vel=%f\n", now - last_stick_input_ms,

@@ -682,6 +682,9 @@ private:
     // are we braking after pilot input?
     bool braking;
 
+    // angle of braking vector
+    float braking_angle;
+
     // last time there was significant stick input
     uint32_t last_stick_input_ms;
 };
