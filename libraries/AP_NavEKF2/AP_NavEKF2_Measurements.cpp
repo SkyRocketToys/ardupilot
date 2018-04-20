@@ -574,6 +574,7 @@ void NavEKF2_core::readBaroData()
         frontend->logging.log_baro = true;
 
         baroDataNew.hgt = frontend->_baro.get_altitude();
+        baroDataNew.hgtRate = frontend->_baro.get_climb_rate();
 
         // If we are in takeoff mode, the height measurement is limited to be no less than the measurement at start of takeoff
         // This prevents negative baro disturbances due to copter downwash corrupting the EKF altitude during initial ascent

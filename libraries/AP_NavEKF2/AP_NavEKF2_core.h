@@ -414,7 +414,8 @@ private:
 
     struct baro_elements {
         float       hgt;         // 0
-        uint32_t    time_ms;     // 1
+        float       hgtRate;     // 1
+        uint32_t    time_ms;     // 2
     };
 
     struct range_elements {

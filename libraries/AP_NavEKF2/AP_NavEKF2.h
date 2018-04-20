@@ -391,6 +391,7 @@ private:
     AP_Int8 _magMask;               // Bitmask forcng specific EKF core instances to use simple heading magnetometer fusion.
     AP_Int8 _originHgtMode;         // Bitmask controlling post alignment correction and reporting of the EKF origin height.
     AP_Int8 _mag_ef_type;           // source of earth-field vactor.
+    AP_Float _insHgtCheckLim;       // Maximum deviation of INS height from baro allowed when operating without GPS vertical velocity
 
     // Tuning parameters
     const float gpsNEVelVarAccScale = 0.05f;       // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration

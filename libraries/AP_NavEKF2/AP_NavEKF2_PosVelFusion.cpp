@@ -171,10 +171,12 @@ void NavEKF2_core::ResetHeight(void)
     // set the variances to the measurement variance
     P[8][8] = posDownObsNoise;
 
-    // Reset the vertical velocity state using GPS vertical velocity if we are airborne
+    // Reset the vertical velocity state using GPS vertical velocity or baro height rate if we are airborne
     // Check that GPS vertical velocity data is available and can be used
     if (inFlight && !gpsNotAvailable && frontend->_fusionModeGPS == 0 && !frontend->inhibitGpsVertVelUse) {
         stateStruct.velocity.z =  gpsDataNew.vel.z;
+    } else if (!useGpsVertVel && (frontend->_altSource == 0)) {
+        stateStruct.velocity.z = -baroDataDelayed.hgtRate;
     } else if (onGround) {
         stateStruct.velocity.z = 0.0f;
     }
@@ -443,6 +445,19 @@ void NavEKF2_core::FuseVelPosNED()
             float velDErr = stateStruct.velocity.z - observation[2];
             // check if they are the same sign and both more than 3-sigma out of bounds
             if ((hgtErr*velDErr > 0.0f) && (sq(hgtErr) > 9.0f * (P[8][8] + R_OBS_DATA_CHECKS[5])) && (sq(velDErr) > 9.0f * (P[5][5] + R_OBS_DATA_CHECKS[2]))) {
+                badIMUdata = true;
+            } else {
+                badIMUdata = false;
+            }
+        } else if (!useGpsVertVel && fuseHgtData && (frontend->_altSource == 0)) {
+            // calculate errors for height and height rate measurements
+            float hgtErr  = stateStruct.position.z - observation[5];
+            float velDErr = stateStruct.velocity.z + baroDataDelayed.hgtRate;
+            // check if they are the same sign and errors are out of bounds
+            if ((hgtErr*velDErr > 0.0f)
+                    && (sq(hgtErr) > sq(frontend->_insHgtCheckLim))
+                    && (sq(velDErr) > sq(0.2f * frontend->_insHgtCheckLim))) {
+                ResetHeight();
                 badIMUdata = true;
             } else {
                 badIMUdata = false;

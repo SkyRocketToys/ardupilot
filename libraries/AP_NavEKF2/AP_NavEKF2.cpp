@@ -558,6 +558,16 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @Values: 0:MeasuredField,1:Tables
     // @User: Advanced
     AP_GROUPINFO("MAG_EF_TYPE", 50, NavEKF2, _mag_ef_type, 0),
+
+    // @Param: INS_HGT_CHECK
+    // @DisplayName: Maximum INS height deviation allowed
+    // @Description: When the INS height deviation from the measurement exceeds this value, the EKF will declare the INS solution as bad and reset the height to the baro measurement and the vertical velocity to the baro height derivative. Only used when operating without GPS vertical velocity.
+    // @Range: 0.5 5.0
+    // @Increment: 0.5
+    // @User: Advanced
+    // @Units: m
+    AP_GROUPINFO("INS_HGT_CHECK", 51, NavEKF2, _insHgtCheckLim, 1.0f),
+
     
     AP_GROUPEND
 };
