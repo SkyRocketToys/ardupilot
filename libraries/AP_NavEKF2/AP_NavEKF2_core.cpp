@@ -259,6 +259,8 @@ void NavEKF2_core::InitialiseVariables()
     ekfGpsRefHgt = 0.0;
     velOffsetNED.zero();
     posOffsetNED.zero();
+    hgtErrFilt = 0.0f;
+    hgtRateErrFilt = 0.0f;
 
     // range beacon fusion variables
     memset(&rngBcnDataNew, 0, sizeof(rngBcnDataNew));
