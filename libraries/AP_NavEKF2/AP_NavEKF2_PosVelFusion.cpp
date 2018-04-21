@@ -452,11 +452,21 @@ void NavEKF2_core::FuseVelPosNED()
         } else if (!useGpsVertVel && fuseHgtData && (frontend->_altSource == 0)) {
             // calculate errors for height and height rate measurements
             float hgtErr  = stateStruct.position.z - observation[5];
-            float velDErr = stateStruct.velocity.z + baroDataDelayed.hgtRate;
-            // check if they are the same sign and errors are out of bounds
-            if ((hgtErr*velDErr > 0.0f)
-                    && (sq(hgtErr) > sq(frontend->_insHgtCheckLim))
-                    && (sq(velDErr) > sq(0.2f * frontend->_insHgtCheckLim))) {
+            float hgtRateErr = stateStruct.velocity.z + baroDataDelayed.hgtRate;
+
+            // filter using first order LPF and limit states
+            const float velTestLimRatio = 0.2f; // ratio of velocity to positon test limit
+            float hgtErrLim = 3.0f * frontend->_insHgtCheckLim;
+            hgtErrFilt = 0.9f * hgtErrFilt + 0.1f * constrain_float(hgtErr, -hgtErrLim, hgtErrLim);
+            float hgtRateErrLim = velTestLimRatio * hgtErrLim;
+            hgtRateErrFilt = 0.9f * hgtRateErrFilt + 0.1f * constrain_float(hgtRateErr, -hgtRateErrLim, hgtRateErrLim);
+
+            // If they are the same sign and errors are out of bounds, declare the IMU data bad and reset vertical states
+            if ((hgtErrFilt*hgtRateErrFilt > 0.0f)
+                    && (sq(hgtErrFilt) > sq(frontend->_insHgtCheckLim))
+                    && (sq(hgtRateErrFilt) > sq(hgtRateErrFilt * frontend->_insHgtCheckLim))) {
+                hgtErrFilt = 0.0f;
+                hgtRateErrFilt = 0.0f;
                 ResetHeight();
                 badIMUdata = true;
             } else {

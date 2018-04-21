@@ -906,6 +906,10 @@ private:
     Vector3f velOffsetNED;          // This adds to the earth frame velocity estimate at the IMU to give the velocity at the body origin (m/s)
     Vector3f posOffsetNED;          // This adds to the earth frame position estimate at the IMU to give the position at the body origin (m)
 
+    // variables used for checking for bad accel data using baro height and height rate
+    float hgtErrFilt;
+    float hgtRateErrFilt;
+
     // variables used to calculate a vertical velocity that is kinematically consistent with the verical position
     float posDownDerivative;        // Rate of chage of vertical position (dPosD/dt) in m/s. This is the first time derivative of PosD.
     float posDown;                  // Down position state used in calculation of posDownRate
