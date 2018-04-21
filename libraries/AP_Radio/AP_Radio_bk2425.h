@@ -159,6 +159,7 @@ private:
     void radio_init(void);
 	void ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
 	void ProcessBindPacket(const packetFormatRx * rx);
+	void BadDroneId(void); // The tx we are listening to wants to talk to another drone
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
     uint16_t calc_crc(uint8_t *data, uint8_t len);

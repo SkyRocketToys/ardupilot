@@ -72,7 +72,10 @@ enum BK_INFO_TYPE_E {
 	BK_INFO_PPS = 8,
 	BK_INFO_BATTERY = 9,
 	BK_INFO_COUNTDOWN = 10,
-	BK_INFO_HOPPING = 11,
+	BK_INFO_HOPPING0 = 11,
+	BK_INFO_HOPPING1 = 12,
+	BK_INFO_DRONEID0 = 13,
+	BK_INFO_DRONEID1 = 14,
 	BK_INFO_MAX
 };
 typedef uint8_t BK_INFO_TYPE;
@@ -412,7 +415,7 @@ public:
 	bool CarrierDetect(void);
 
     // Visible public variables (naughty)
-    uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
+    volatile uint8_t bkReady; // initialised in AP_Radio_bk2425.h radio_init() at the very end. Similar to a semaphore.
     static ITX_SPEED gTxSpeed;
 	FccParams fcc;
 	packetFormatTx pktDataTx; // Packet data to send (telemetry)
