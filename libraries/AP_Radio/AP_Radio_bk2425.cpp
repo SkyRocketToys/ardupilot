@@ -657,24 +657,27 @@ void AP_Radio_beken::map_stick_mode(void)
 // This is a valid manual/auto binding packet.
 // The type of binding is valid now, and it came with the right address.
 // Lets check to see if it wants to be for another drone though
-void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
+// Return 1 on double binding
+uint8_t AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 {
 	// Did the tx pick a drone yet?
-	if (rx->u.bind.droneid[0] | rx->u.bind.droneid[1] | rx->u.bind.droneid[2] | rx->u.bind.droneid[3])
+	uint32_t did = ((uint32_t)rx->u.bind.droneid[0]) | ((uint32_t)rx->u.bind.droneid[1] << 8)
+		| ((uint32_t)rx->u.bind.droneid[2] << 16) | ((uint32_t)rx->u.bind.droneid[3] << 24);
+	uint32_t mid = ((uint32_t)myDroneId[0]) | ((uint32_t)myDroneId[1] << 8)
+		| ((uint32_t)myDroneId[2] << 16) | ((uint32_t)myDroneId[3] << 24);
+	if (did)
 	{
 		// Is it me or someone else?
-		if ((rx->u.bind.droneid[0] != myDroneId[0]) ||
-			(rx->u.bind.droneid[1] != myDroneId[1]) ||
-			(rx->u.bind.droneid[2] != myDroneId[2]) ||
-			(rx->u.bind.droneid[3] != myDroneId[3]) )
+		if (did != mid)
 		{
 			// This tx is not for us!
 			if (!valid_connection && !already_bound)
 			{
 				// Keep searching!
+				Debug(1, "WrongDroneId: %08lx vs %08lx\n", did, mid);
 				BadDroneId();
+				return 1;
 			}
-			return;
 		}
 	}
 	
@@ -685,18 +688,21 @@ void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
         adaptive.Invalidate();
         syncch.SetHopping(0, rx->u.bind.hopping);
         beken.SetAddresses(&rx->u.bind.bind_address[0]);
-        DebugMavlink(1, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
+        Debug(1, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
             rx->u.bind.bind_address[1], rx->u.bind.bind_address[2],
             rx->u.bind.bind_address[3], rx->u.bind.bind_address[4]);
         save_bind_info(); // May take some time
     }
+    return 0;
 }
 
 
 // ----------------------------------------------------------------------------
 // Handle receiving a packet (we are still in an interrupt!)
-void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
+// Return 1 if we want to stay on the current radio frequency instead of hopping (double binding)
+uint8_t AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 {
+	uint8_t result = 0;
     const packetFormatRx * rx = (const packetFormatRx *) packet; // Interpret the packet data
     switch (rx->packetType) {
     case BK_PKT_TYPE_CTRL_FOUND:
@@ -761,7 +767,19 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
                 tx_pps = rx->u.ctrl.data_value_lo; // Remember pps from tx
                 if (!have_tx_pps) {
 					have_tx_pps = 2;
-                    check_double_bind();
+					if (tx_pps == 0) { // Has the tx not been receiving telemetry from someone else recently?
+						valid_connection = true;
+					}
+					else
+					{
+						// the TX has received more telemetry packets in the last second
+						// than we have ever sent. There must be another RX sending
+						// telemetry packets. We will reset our mfg_id and go back waiting
+						// for a new bind packet, hopefully with the right TX
+						Debug(1, "Double-bind detected via PPS %d\n", tx_pps);
+						BadDroneId();
+						result = 1;
+					}
                 } else {
 					have_tx_pps = 2;
 				}
@@ -799,6 +817,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 						(rx->u.ctrl.data_value_hi != myDroneId[1])) {
 						Debug(1, "Bad DroneID0 %02x %02x\n", rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
 						BadDroneId(); // Bad drone id - disconnect from this tx
+						result = 1;
 					}
 				}
 				break;
@@ -809,6 +828,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 						(rx->u.ctrl.data_value_hi != myDroneId[3])) {
 						Debug(1, "Bad DroneID1 %02x %02x\n", rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
 						BadDroneId(); // Bad drone id - disconnect from this tx
+						result = 1;
 					}
 				}
 				break;
@@ -822,18 +842,33 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
         if (rxaddr == 1)
         {
             if (get_autobind_rssi() > BK_RSSI_DEFAULT) // Have we disabled autobind using fake RSSI parameter?
+            {
+				Debug(2, "X0");
                 break;
+			}
             if (get_autobind_time() == 0) // Have we disabled autobind using zero time parameter?
+            {
+				Debug(2, "X1");
                 break;
+			}
             if (already_bound) // Do not auto-bind (i.e. to another tx) until we reboot.
+            {
+				Debug(2, "X2");
                 break;
+			}
             uint32_t now = AP_HAL::millis();
             if (now < get_autobind_time() * 1000) // Is this too soon from rebooting/powering up to autobind?
+            {
+				Debug(2, "X3");
                 break;
+			}
             // Check the carrier detect to see if the drone is too far away to auto-bind
             if (!beken.CarrierDetect())
+            {
+				Debug(2, "X4");
                 break;
-            ProcessBindPacket(rx);
+			}
+            result = ProcessBindPacket(rx);
         }
         break;
         
@@ -841,12 +876,18 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
         if (rxaddr == 1)
         {
             if (bind_time_ms == 0) // We have never receiving a binding click
+            {
+				Debug(2, "X5");
                 break; // Do not bind
+			}
             if (already_bound) // Do not manually-bind (i.e. to another tx) until we reboot.
+            {
+				Debug(2, "X6");
                 break;
+			}
 //          if (uint32_t(AP_HAL::millis() - bind_time_ms) > 1000ul * 60u) // Have we pressed the button to bind recently? One minute timeout
 //              break; // Do not bind
-            ProcessBindPacket(rx);
+            result = ProcessBindPacket(rx);
         }
         break;
         
@@ -856,6 +897,7 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
         // This is one of our packets! Ignore it.
         break;
     }
+    return result;
 }
 
 // ----------------------------------------------------------------------------
@@ -966,7 +1008,10 @@ void AP_Radio_beken::irq_handler(uint32_t when)
         } while (!(fifo_sta & BK_FIFO_STATUS_RX_EMPTY)); // while not empty
         beken.WriteReg(BK_WRITE_REG | BK_STATUS,
             (BK_STATUS_RX_DR | BK_STATUS_TX_DS | BK_STATUS_MAX_RT)); // clear RX_DR or TX_DS or MAX_RT interrupt flag
-        ProcessPacket(packet, rxstd);
+        if (1 == ProcessPacket(packet, rxstd))
+        {
+			bNext = false; // Because double binding detected
+		}
         if (beken.fcc.enable_cd)
         {
             beken.fcc.last_cd = beken.CarrierDetect(); // Detect if close or not
@@ -1327,22 +1372,6 @@ bool AP_Radio_beken::load_bind_info(void)
     beken.SetAddresses(&info.bindTxId[0]);
 
     return true;
-}
-
-// ----------------------------------------------------------------------------
-// check if we are the 2nd RX bound to this TX
-void AP_Radio_beken::check_double_bind(void)
-{
-    if (tx_pps == 0) { // Has the tx not been receiving telemetry from someone else recently?
-        valid_connection = true;
-        return;
-    }
-    // the TX has received more telemetry packets in the last second
-    // than we have ever sent. There must be another RX sending
-    // telemetry packets. We will reset our mfg_id and go back waiting
-    // for a new bind packet, hopefully with the right TX
-    Debug(1, "Double-bind detected via PPS %d\n", tx_pps);
-	BadDroneId();
 }
 
 // ----------------------------------------------------------------------------

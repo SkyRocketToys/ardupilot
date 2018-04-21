@@ -157,8 +157,8 @@ private:
 
 	//  Private functions
     void radio_init(void);
-	void ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
-	void ProcessBindPacket(const packetFormatRx * rx);
+	uint8_t ProcessPacket(const uint8_t* packet, uint8_t rxaddr);
+	uint8_t ProcessBindPacket(const packetFormatRx * rx);
 	void BadDroneId(void); // The tx we are listening to wants to talk to another drone
     void setChannel(uint8_t channel);
     void nextChannel(uint8_t skip);
@@ -172,7 +172,6 @@ private:
 	void map_stick_mode(void); // Support mode1,2,3,4 for stick mapping
 	void update_SRT_telemetry(void);
 	void check_fw_ack(void);
-    void check_double_bind(void); // check for double binding or true connection
    
     // Static data, for interrupt support
     static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
