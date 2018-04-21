@@ -760,9 +760,11 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
             case BK_INFO_PPS:
                 tx_pps = rx->u.ctrl.data_value_lo; // Remember pps from tx
                 if (!have_tx_pps) {
+					have_tx_pps = 2;
                     check_double_bind();
-                }
-                have_tx_pps = 2;
+                } else {
+					have_tx_pps = 2;
+				}
                 break;
             case BK_INFO_BATTERY:
                 // "voltage from TX is in 0.025 volt units". Convert to 0.01 volt units for easier display
@@ -1359,6 +1361,7 @@ void AP_Radio_beken::BadDroneId(void)
 	}
     stats.recv_packets = 0;
     beken.WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x02);
+    have_tx_pps = false;
 }
 
 // ----------------------------------------------------------------------------
