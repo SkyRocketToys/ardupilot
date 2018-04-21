@@ -12,9 +12,6 @@
 #define TOY_ACCEL_CAL_COUNT 20
 #define TOY_TXMODE_CHANGE_COUNT 20
 #define TOY_ACTION_DELAY_MS 200
-#define TOY_DESCENT_SLOW_HEIGHT 5
-#define TOY_DESCENT_SLOW_RAMP 3
-#define TOY_DESCENT_SLOW_MIN 300
 #define TOY_RESET_TURTLE_TIME 5000
 
 #define ENABLE_LOAD_TEST 1
@@ -279,6 +276,32 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.1
     // @User: Advanced
     AP_GROUPINFO("_OB_CLBALT", 36, ToyMode, obs.climb_alt, 4),
+
+    // @Param: _SLOW_HGT
+    // @DisplayName: Slowdown height for descent
+    // @Description: Height at which we start slowing down vertical descent
+    // @Range: 0 10
+    // @Increment: 0.1
+    // @Units: m
+    // @User: Advanced
+    AP_GROUPINFO("_SLOW_HGT", 37, ToyMode, slow_height, 5),
+
+    // @Param: _SLOW_RAMP
+    // @DisplayName: Slowdown height ramp start
+    // @Description: Height above TMODE_SLOW_HGT that we start to slow descent rate
+    // @Range: 0 10
+    // @Increment: 0.1
+    // @Units: m
+    // @User: Advanced
+    AP_GROUPINFO("_SLOW_RAMP", 38, ToyMode, slow_ramp, 3),
+
+    // @Param: _SLOW_THR
+    // @DisplayName: Slowdown height throttle
+    // @Description: Throttle limit at TMODE_SLOW_HGT height. 500 corresponds with hover throttle. 0 corresponds to full descent rate
+    // @Range: 0 500
+    // @Increment: 10
+    // @User: Advanced
+    AP_GROUPINFO("_SLOW_THR", 39, ToyMode, slow_thr, 300),
     
     AP_GROUPEND
 };
@@ -1174,10 +1197,10 @@ void ToyMode::throttle_adjust(float &throttle_control)
     // limit descent rate close to the ground
     float height = copter.inertial_nav.get_altitude() * 0.01 - copter.arming_altitude_m;
     if (throttle_control < 500 &&
-        height < TOY_DESCENT_SLOW_HEIGHT + TOY_DESCENT_SLOW_RAMP &&
+        height < slow_height + slow_ramp &&
         copter.motors->armed() && !copter.ap.land_complete) {
-        float limit = linear_interpolate(TOY_DESCENT_SLOW_MIN, 0, height,
-                                         TOY_DESCENT_SLOW_HEIGHT, TOY_DESCENT_SLOW_HEIGHT+TOY_DESCENT_SLOW_RAMP);
+        float limit = linear_interpolate(slow_thr, 0, height,
+                                         slow_height, slow_height+slow_ramp);
         if (throttle_control < limit) {
             // limit descent rate close to the ground
             throttle_control = limit;

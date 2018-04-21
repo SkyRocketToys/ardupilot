@@ -168,6 +168,9 @@ private:
     AP_Int16 land_throttle;
     AP_Int16 takeoff_min_acc;
     AP_Int16 land_max_acc;
+    AP_Float slow_height;
+    AP_Float slow_ramp;
+    AP_Float slow_thr;
     int8_t last_profile_id = -1;
     bool leds_off;
 
