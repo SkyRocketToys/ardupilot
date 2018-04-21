@@ -29,39 +29,40 @@ extern const AP_HAL::HAL& hal;
 
 // --------------------------------------------------------------------
 static const uint8_t Bank1_RegTable[ITX_MAX][IREG_MAX][5]={
-	// (TX_SPEED == 250u)
+	// (TX_SPEED == 250u) // [ITX_250]
 	{
-		{ BK2425_R1_4,  0xf9,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // REG5 250kbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // REG4 250kbps
+		{ BK2425_R1_4,  0xf9,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // [IREG1_4]  REG4 250kbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // [IREG1_5]  REG5 250kbps
+		PLL_SPEED,                                              // [IREG1_12] REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // [IREG1_13] REG13
+		{ BK2425_R1_4,  0xff,0x96,0x8a,0xdb }, // 0xDB8A96f9ul, // [IREG1_4A] REG4 250kbps
 	},
-	// (TX_SPEED == 1000u)
+	// (TX_SPEED == 1000u) [ITX_1000]
 	{
-		{ BK2425_R1_4,  0xf9,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xa6 }, // 0xA60F0624ul, // REG5 1Mbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x82,0x1b }, // 0x1B8296f9ul, // REG4 1Mbps
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0x1b }, // 0x1B8296f9ul, // [IREG1_4]  REG4 1Mbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xa6 }, // 0xA60F0624ul, // [IREG1_5]  REG5 1Mbps
+		PLL_SPEED,                                              // [IREG1_12] REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // [IREG1_13] REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0x1b }, // 0x1B8296f9ul, // [IREG1_4A] REG4 1Mbps
 	},
-	// (TX_SPEED == 2000u)
+	// (TX_SPEED == 2000u) [ITX_2000]
 	{
-		{ BK2425_R1_4,  0xf9,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xb60f0624ul, // REG5 2Mbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x82,0xdb }, // 0xdb8296f9ul, // REG4 2Mbps
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0xdb }, // 0xdb8296f9ul, // [IREG1_4]  REG4 2Mbps
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xb60f0624ul, // [IREG1_5]  REG5 2Mbps
+		PLL_SPEED,                                              // [IREG1_12] REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // [IREG1_13] REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0xdb }, // 0xdb8296f9ul, // [IREG1_4A] REG4 2Mbps
 	},
-	// (TX_SPEED == 0u)
+	// (TX_SPEED == 0u) // [ITX_CARRIER]
 	{
-		{ BK2425_R1_4,  0xf9,0x96,0x82,0x21 }, // 0xF9968221ul, // REG4 carrier
-		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // REG5 250kbps
-		PLL_SPEED,                                              // REG12
-		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // REG13
-		{ BK2425_R1_4,  0xff,0x96,0x82,0x21 }, // 0xDB8A96f9ul, // REG4 250kbps
+		{ BK2425_R1_4,  0xf9,0x96,0x82,0x21 }, // 0xF9968221ul, // [IREG1_4] REG4 carrier
+		{ BK2425_R1_5,  0x24,0x06,0x0f,0xb6 }, // 0xB60F0624ul, // [IREG1_5] REG5 250kbps
+		PLL_SPEED,                                              // [IREG1_12] REG12
+		{ BK2425_R1_13, 0x36,0xb4,0x80,0x00 }, // 0x36B48000ul, // [IREG1_13] REG13
+		{ BK2425_R1_4,  0xff,0x96,0x82,0x21 }, // 0xDB8A96f9ul, // [IREG1_4A] REG4 250kbps
 	}
 };
+	
 
 // --------------------------------------------------------------------
 static const uint8_t Bank0_Reg6[ITX_MAX][2] = {

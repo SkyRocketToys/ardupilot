@@ -15,6 +15,11 @@
 #include <AP_Notify/AP_Notify.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
+// start of 12 byte CPU ID
+#ifndef UDID_START
+#define UDID_START	0x1FFF7A10
+#endif
+
 #define TIMEOUT_PRIORITY 250      // Right above timer thread
 #define EVT_TIMEOUT EVENT_MASK(0) // Event in the irq handler thread triggered by a timeout interrupt
 #define EVT_IRQ     EVENT_MASK(1) // Event in the irq handler thread triggered by a radio IRQ (Tx finished, Rx finished, MaxRetries limit)
@@ -27,6 +32,8 @@ extern const AP_HAL::HAL& hal;
 // Output fast debug information on the UART, in raw format. MavLink should be disabled if you want to understand these messages.
 // This is for debugging issues with frequency hopping and synchronisation.
 #define DebugPrintf(level, fmt, args...)   do { if (radio_instance && ((level) <= radio_instance->get_debug_level())) { printf(fmt, ##args); }} while (0)
+// Output debug information on the mavlink to the UART connected to the WiFi, wrapped in MavLink packets
+#define DebugMavlink(level, fmt, args...)   do { if ((level) <= get_debug_level()) { gcs().send_text(MAV_SEVERITY_INFO, fmt, ##args); }} while (0)
 
 
 // object instance for trampoline
@@ -116,7 +123,7 @@ AP_Radio_beken::AP_Radio_beken(AP_Radio &_radio) :
     radio_instance = this;
     beken.fcc.fcc_mode = 0;
     beken.fcc.channel = 23;
-    beken.fcc.power = 7;
+    beken.fcc.power = 7+1; // Full power
 }
 
 /*
@@ -260,6 +267,32 @@ bool AP_Radio_beken::send(const uint8_t *pkt, uint16_t len)
     return false;
 }
 
+// Borrow the CRC32 algorithm from AP_HAL_SITL
+// Not exactly fast algorithm as it is bit based
+#define CRC32_POLYNOMIAL 0xEDB88320L
+static uint32_t CRC32Value(uint32_t icrc)
+{
+    int i;
+    uint32_t crc = icrc;
+    for ( i = 8 ; i > 0; i-- )
+    {
+        if ( crc & 1 )
+            crc = ( crc >> 1 ) ^ CRC32_POLYNOMIAL;
+        else
+            crc >>= 1;
+    }
+    return crc;
+}
+
+static uint32_t CalculateBlockCRC32(uint32_t length, const uint8_t *buffer, uint32_t crc)
+{
+    while ( length-- != 0 )
+    {
+        crc = ((crc >> 8) & 0x00FFFFFFL) ^ (CRC32Value(((uint32_t) crc ^ *buffer++) & 0xff));
+    }
+    return( crc );
+}
+
 /*
   initialise the radio
  */
@@ -276,6 +309,16 @@ void AP_Radio_beken::radio_init(void)
         return; // Failure
     }
 
+	{
+		uint8_t serialid[12];
+		memcpy(serialid, (const void *)UDID_START, 12); // 0x1FFF7A10ul on STM32F412 (see Util::get_system_id)
+		uint32_t drone_crc = CalculateBlockCRC32(12, serialid, 0xfffffffful);
+   		myDroneId[0] = drone_crc;
+		myDroneId[1] = drone_crc >> 8;
+		myDroneId[2] = drone_crc >> 16;
+		myDroneId[3] = drone_crc >> 24;
+		DebugPrintf(1, "DroneCrc:%08x\r\n", drone_crc);
+	}
     Debug(1, "beken: radio_init starting\n");
 
     beken.bkReady = 0;
@@ -474,13 +517,13 @@ bool AP_Radio_beken::UpdateTxData(void)
             // Resend the last tx packet until it is acknowledged
             DebugPrintf(4, "resend %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
         }
-        else
+        else if (fwupload.pending_length() >= SZ_DFU) // safety check
         {
             // Send firmware update packet
             uint16_t addr = fwupload.sent;
             tx->address_lo = addr & 0xff;
             tx->address_hi = (addr >> 8);
-            fwupload.dequeue(&tx->data[0], SZ_DFU);
+            fwupload.dequeue(&tx->data[0], SZ_DFU); // (updated sent, pending_tail)
             DebugPrintf(4, "send %u %u %u\r\n", fwupload.added, fwupload.sent, fwupload.acked);
             if (fwupload.fw_type == TELEM_PLAY)
             {
@@ -613,8 +656,28 @@ void AP_Radio_beken::map_stick_mode(void)
 // ----------------------------------------------------------------------------
 // This is a valid manual/auto binding packet.
 // The type of binding is valid now, and it came with the right address.
+// Lets check to see if it wants to be for another drone though
 void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 {
+	// Did the tx pick a drone yet?
+	if (rx->u.bind.droneid[0] | rx->u.bind.droneid[1] | rx->u.bind.droneid[2] | rx->u.bind.droneid[3])
+	{
+		// Is it me or someone else?
+		if ((rx->u.bind.droneid[0] != myDroneId[0]) ||
+			(rx->u.bind.droneid[1] != myDroneId[1]) ||
+			(rx->u.bind.droneid[2] != myDroneId[2]) ||
+			(rx->u.bind.droneid[3] != myDroneId[3]) )
+		{
+			// This tx is not for us!
+			if (!valid_connection && !already_bound)
+			{
+				// Keep searching!
+				BadDroneId();
+			}
+			return;
+		}
+	}
+	
     // Set the address on which we are receiving the control data
     syncch.SetChannel(rx->channel);
     if (get_factory_test() == 0) // Final check that we are not in factory mode
@@ -622,12 +685,13 @@ void AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
         adaptive.Invalidate();
         syncch.SetHopping(0, rx->u.bind.hopping);
         beken.SetAddresses(&rx->u.bind.bind_address[0]);
-        Debug(3, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
+        DebugMavlink(1, " Bound to %x %x %x %x %x\r\n", rx->u.bind.bind_address[0],
             rx->u.bind.bind_address[1], rx->u.bind.bind_address[2],
             rx->u.bind.bind_address[3], rx->u.bind.bind_address[4]);
         save_bind_info(); // May take some time
     }
 }
+
 
 // ----------------------------------------------------------------------------
 // Handle receiving a packet (we are still in an interrupt!)
@@ -717,13 +781,35 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
                     }
                 }
                 break;
-            case BK_INFO_HOPPING:
+            case BK_INFO_HOPPING0:
                 if (get_factory_test() == 0)
                 {
                     syncch.SetHopping(rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
-//                    DebugPrintf(2, "[%d] ", rx->u.ctrl.data_value_lo);
+//                  DebugPrintf(2, "[%d] ", rx->u.ctrl.data_value_lo);
                 }
                 break;
+            case BK_INFO_HOPPING1: // Ignored so far
+				break;
+            case BK_INFO_DRONEID0: // Does this Tx even want to talk to me?
+				if (rx->u.ctrl.data_value_lo || rx->u.ctrl.data_value_hi)
+				{
+					if ((rx->u.ctrl.data_value_lo != myDroneId[0]) ||
+						(rx->u.ctrl.data_value_hi != myDroneId[1])) {
+						Debug(1, "Bad DroneID0 %02x %02x\n", rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
+						BadDroneId(); // Bad drone id - disconnect from this tx
+					}
+				}
+				break;
+            case BK_INFO_DRONEID1: // Does this Tx even want to talk to me?
+				if (rx->u.ctrl.data_value_lo || rx->u.ctrl.data_value_hi)
+				{
+					if ((rx->u.ctrl.data_value_lo != myDroneId[2]) ||
+						(rx->u.ctrl.data_value_hi != myDroneId[3])) {
+						Debug(1, "Bad DroneID1 %02x %02x\n", rx->u.ctrl.data_value_lo, rx->u.ctrl.data_value_hi);
+						BadDroneId(); // Bad drone id - disconnect from this tx
+					}
+				}
+				break;
             default:
                 break;
             };
@@ -756,8 +842,8 @@ void AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
                 break; // Do not bind
             if (already_bound) // Do not manually-bind (i.e. to another tx) until we reboot.
                 break;
-//            if (uint32_t(AP_HAL::millis() - bind_time_ms) > 1000ul * 60u) // Have we pressed the button to bind recently? One minute timeout
-//                break; // Do not bind
+//          if (uint32_t(AP_HAL::millis() - bind_time_ms) > 1000ul * 60u) // Have we pressed the button to bind recently? One minute timeout
+//              break; // Do not bind
             ProcessBindPacket(rx);
         }
         break;
@@ -812,14 +898,14 @@ void AP_Radio_beken::irq_handler(uint32_t when)
         DEBUG1_HIGH();
         // Packet was sent towards the Tx board
         synctm.tx_time_us = when;
-//        stats.sentPacketCount++;
+//      stats.sentPacketCount++;
         beken.SwitchToIdleMode();
         if (beken.fcc.disable_crc_mode && !beken.fcc.disable_crc)
         {
             beken.SetCrcMode(true);
         }
         bNext = bRx = true;
-//        DebugPrintf(2, "T");
+//      DebugPrintf(2, "T");
     }
     if (bk_sta & BK_STATUS_MAX_RT)
     {
@@ -834,8 +920,8 @@ void AP_Radio_beken::irq_handler(uint32_t when)
         DEBUG1_HIGH();
         // We have received a packet
         uint8_t rxstd = 0;
-//        DebugPrintf(2, "R%ld,%ld\r\n", when, synctm.sync_time_us);
-//        DebugPrintf(2, "R");
+//      DebugPrintf(2, "R%ld,%ld\r\n", when, synctm.sync_time_us);
+//      DebugPrintf(2, "R");
         // Which pipe (address) have we received this packet on?
         if ((bk_sta & BK_STATUS_RX_MASK) == BK_STATUS_RX_P_0)
         {
@@ -862,12 +948,12 @@ void AP_Radio_beken::irq_handler(uint32_t when)
             {
                 bReply = true;
                 synctm.Rx(when);
-//                printf("R%d ", when - next_switch_us);
+//              printf("R%d ", when - next_switch_us);
                 next_switch_us = when + synctm.sync_time_us + 1500; // Switch channels if we miss the next packet
                 // This includes short packets (e.g. where no telemetry was sent)
                 beken.ReadRegisterMulti(BK_RD_RX_PLOAD, packet, len); // read receive payload from RX_FIFO buffer
-//                DebugPrintf(3, "Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
-//                    packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
+//              DebugPrintf(3, "Packet %d(%d) %d %d %d %d %d %d %d %d ...\r\n", rxstd, len,
+//                  packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
             }
             else // Packet was too long
             {
@@ -960,15 +1046,17 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
         if (++check_params_timer >= 10) // We don't need to test the parameter logic every ms.
         {
             // Every 50ms get here
+			bool bOldReady = beken.bkReady;
+			beken.bkReady = false;
             check_params_timer = 0;
             // Set the transmission power
-            uint8_t pwr = get_transmit_power();
+            uint8_t pwr = get_transmit_power(); // 1..8
             if (pwr != beken.fcc.power + 1)
             {
                 if ((pwr > 0) && (pwr <= 8))
                 {
                     beken.SwitchToIdleMode();
-                    beken.SetPower(pwr-1);
+                    beken.SetPower(pwr-1); // (this will set beken.fcc.power)
                 }
             }
             
@@ -1040,6 +1128,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
                 beken.fcc.fcc_mode = fcc;
                 DebugPrintf(1, "\r\nFCC mode %d\r\n", fcc);
             }
+			beken.bkReady = bOldReady;
         }
         
         // For fcc mode, just send packets on timeouts (every 5ms)
@@ -1068,7 +1157,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
             }
             else
             {
-    //            DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
+    //          DebugPrintf(2, "c%d ", AP_HAL::micros() - next_switch_us);
                 DebugPrintf(2, "c");
                 adaptive.Miss(syncch.channel);
             }
@@ -1103,7 +1192,9 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
 
     // Ask for another timeout
     uint32_t now = AP_HAL::micros();
-    if (int32_t(next_switch_us - when) < 300) // Too late for this one
+    if (int32_t(next_switch_us - when) < 300) // Too late for that one
+        next_switch_us = now + synctm.sync_time_us;
+    if (int32_t(next_switch_us - now) < 250) // Too late for this one
         next_switch_us = now + synctm.sync_time_us;
     uint32_t delta = US2ST64(next_switch_us - now); // Do not use US2ST since that will overflow 32 bits.
 
@@ -1244,20 +1335,30 @@ void AP_Radio_beken::check_double_bind(void)
         valid_connection = true;
         return;
     }
-    valid_connection = false;
     // the TX has received more telemetry packets in the last second
     // than we have ever sent. There must be another RX sending
     // telemetry packets. We will reset our mfg_id and go back waiting
     // for a new bind packet, hopefully with the right TX
-    Debug(1,"Double-bind detected\n");
+    Debug(1, "Double-bind detected via PPS %d\n", tx_pps);
+	BadDroneId();
+}
 
+// ----------------------------------------------------------------------------
+void AP_Radio_beken::BadDroneId(void)
+{
     // clear the current bind information
+    valid_connection = false;
     // with luck we will connect to another tx
     beken.SwitchToIdleMode();
     beken.SetFactoryMode(0); // Reset the tx address
     adaptive.Invalidate();
     syncch.SetHopping(0,0);
+	if (stats.recv_packets < 1000)
+	{
+		already_bound = false; // Not already solidly bound to a drone
+	}
     stats.recv_packets = 0;
+    beken.WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x02);
 }
 
 // ----------------------------------------------------------------------------
@@ -1293,7 +1394,7 @@ void SyncChannel::NextChannel(void)
             {
                 hopping_current = hopping_wanted;
                 hopping_countdown = countdown_invalid;
-//                printf("{Use %d} ", hopping_current);
+//              printf("{Use %d} ", hopping_current);
             }
         }
         uint8_t table = channel / CHANNEL_COUNT_LOGICAL;
@@ -1356,7 +1457,7 @@ void SyncAdaptive::Miss(uint8_t channel)
             if (hopping != oh) // Have we changed?
             {
                 missed[f2] = rx[f2] = 0; // Reset the values
-//                printf("{%d->%d:%d} ", f1+2400, f2+2400, hopping);
+//              printf("{%d->%d:%d} ", f1+2400, f2+2400, hopping);
             }
         }
     }
