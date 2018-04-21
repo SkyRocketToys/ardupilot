@@ -55,35 +55,12 @@ void AP_InertialNav_NavEKF::update(float dt)
         _in_takeoff = true;
     }
 
-#ifdef HAL_USE_BARO_INAV
-    AP_Baro *baro = AP_Baro::get_instance();
-    if (baro) {
-        float baro_alt_cm = baro->get_altitude() * 100;
-        float baro_climb_rate_cms = baro->get_climb_rate() * 100;
-        
-        _vel_z_filter = 0.7 * _vel_z_filter + 0.3 * baro_climb_rate_cms;
-        _pos_z_filter = 0.9 * _pos_z_filter + 0.1 * baro_alt_cm;
-
-        if (_in_takeoff && _pos_z_filter > 120) {
-            _in_takeoff = false;
-        }
-            
-        if (!_in_takeoff) {
-            _velocity_cm.z = _vel_z_filter;
-            _relpos_cm.z = _pos_z_filter;
-        } else {
-            _relpos_cm.z = MAX(_pos_z_filter, 0);
-        }
-
-#if 0
-        DataFlash_Class::instance()->Log_Write("INVB", "TimeUS,BAlt,BCRt,Alt,Vel", "Qffff",
-                                               AP_HAL::micros64(),
-                                               baro_alt_cm, baro_climb_rate_cms, _relpos_cm.z,
-                                               _velocity_cm.z);
-#endif
-    }
-#endif
+    update_baro(dt);
     
+    if (_ahrs_ekf.get_ekf_type() == 0) {
+        _velocity_cm.z = _velocity_z;
+        _relpos_cm.z = _position_z;
+    }
 }
 
 /**
@@ -209,6 +186,122 @@ bool AP_InertialNav_NavEKF::get_hagl(float &height) const
 float AP_InertialNav_NavEKF::get_velocity_z() const
 {
     return _velocity_cm.z;
+}
+
+// check_baro - check if new baro readings have arrived and use them to correct vertical accelerometer offsets
+void AP_InertialNav_NavEKF::check_baro()
+{
+    AP_Baro &_baro = *AP_Baro::get_instance();
+    uint32_t baro_update_time;
+
+    // calculate time since last baro reading (in ms)
+    baro_update_time = _baro.get_last_update();
+    if( baro_update_time != _baro_last_update ) {
+        const float dt = (float)(baro_update_time - _baro_last_update) * 0.001f; // in seconds
+        // call correction method
+        correct_with_baro(_baro.get_altitude()*100.0f, dt);
+        _baro_last_update = baro_update_time;
+    }
+}
+
+// set_altitude - set base altitude estimate in cm
+void AP_InertialNav_NavEKF::set_altitude( float new_altitude)
+{
+    _position_base_z = new_altitude;
+    _position_correction_z = 0;
+    _position_z = new_altitude; // _position = _position_base + _position_correction
+    _hist_position_estimate_z.clear(); // reset z history to avoid fake z velocity at next baro calibration (next rearm)
+}
+
+// correct_with_baro - modifies accelerometer offsets using barometer.  dt is time since last baro reading
+void AP_InertialNav_NavEKF::correct_with_baro(float baro_alt, float dt)
+{
+    static uint8_t first_reads = 0;
+
+    // discard samples where dt is too large
+    if( dt > 0.5f ) {
+        return;
+    }
+
+    // discard first 10 reads but perform some initialisation
+    if( first_reads <= 10 ) {
+        set_altitude(baro_alt);
+        first_reads++;
+    }
+
+    // 3rd order samples (i.e. position from baro) are delayed by 150ms (15 iterations at 100hz)
+    // so we should calculate error using historical estimates
+    float hist_position_base_z;
+    if (_hist_position_estimate_z.is_full()) {
+        hist_position_base_z = _hist_position_estimate_z.front();
+    } else {
+        hist_position_base_z = _position_base_z;
+    }
+
+    // calculate error in position from baro with our estimate
+    _position_error_z = baro_alt - (hist_position_base_z + _position_correction_z);
+}
+
+// update_gains - update gains from time constant (given in seconds)
+void AP_InertialNav_NavEKF::update_baro_gains()
+{
+    // Z axis time constant
+    if (_time_constant_z <= 0.0f) {
+        _k1_z = _k2_z = _k3_z = 0.0f;
+    }else{
+        _k1_z = 3.0f / _time_constant_z;
+        _k2_z = 3.0f / (_time_constant_z*_time_constant_z);
+        _k3_z = 1.0f / (_time_constant_z*_time_constant_z*_time_constant_z);
+    }
+}
+
+/*
+  update vertical velocity and position using barometer based data
+ */
+void AP_InertialNav_NavEKF::update_baro(float dt)
+{
+    // discard samples where dt is too large
+    if( dt > 0.1f ) {
+        return;
+    }
+
+    if (_k1_z <= 0) {
+        update_baro_gains();
+    }
+
+    // check if new baro readings have arrived and use them to correct vertical accelerometer offsets.
+    check_baro();
+
+    float accel_ef_z = _ahrs_ekf.get_accel_ef().z;
+
+    // remove influence of gravity
+    accel_ef_z += GRAVITY_MSS;
+    accel_ef_z *= 100.0f;
+
+    //Convert North-East-Down to North-East-Up
+    accel_ef_z = -accel_ef_z;
+
+    accel_correction_z += _position_error_z * _k3_z  * dt;
+
+    _velocity_z += _position_error_z * _k2_z  * dt;
+
+    _position_correction_z += _position_error_z * _k1_z  * dt;
+
+    // calculate velocity increase adding new acceleration from accelerometers
+    float velocity_increase_z;
+    velocity_increase_z = (accel_ef_z + accel_correction_z) * dt;
+
+    // calculate new estimate of position
+    _position_base_z += (_velocity_z + velocity_increase_z*0.5) * dt;
+
+    // update the corrected position estimate
+    _position_z = _position_base_z + _position_correction_z;
+
+    // calculate new velocity
+    _velocity_z += velocity_increase_z;
+
+    // store 3rd order estimate (i.e. estimated vertical position) for future use
+    _hist_position_estimate_z.push_back(_position_base_z);
 }
 
 #endif // AP_AHRS_NAVEKF_AVAILABLE
