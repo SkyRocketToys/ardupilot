@@ -115,4 +115,23 @@ private:
     struct Location _abspos;
     bool _haveabspos;
     AP_AHRS_NavEKF &_ahrs_ekf;
+
+    void check_baro();
+    void set_altitude( float new_altitude);
+    void correct_with_baro(float baro_alt, float dt);
+    void update_baro_gains();
+    void update_baro(float dt);
+
+#define AP_INTERTIALNAV_TC_Z    2.0f
+
+    float _position_error_z;
+    float accel_correction_z;
+    float _time_constant_z = AP_INTERTIALNAV_TC_Z;
+    float _k1_z, _k2_z, _k3_z;
+    float _velocity_z;
+    uint32_t _baro_last_update;
+    float _position_base_z;
+    float _position_correction_z;
+    float _position_z;
+    AP_BufferFloat_Size15 _hist_position_estimate_z;
 };
