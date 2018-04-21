@@ -539,6 +539,10 @@ void Replay::setup()
     _vehicle.setup();
 
     inhibit_gyro_cal();
+    // WritePrioritisedBlock will drop log messages if we are
+    // disarmed.  Setting log-disarmed here means we get our initial
+    // FMT messages out
+    set_log_disarmed();
 
     if (log_info.update_rate == 400) {
         // assume copter for 400Hz
@@ -560,6 +564,13 @@ void Replay::set_ins_update_rate(uint16_t _update_rate) {
 void Replay::inhibit_gyro_cal() {
     if (!logreader.set_parameter("INS_GYR_CAL", AP_InertialSensor::GYRO_CAL_NEVER)) {
         ::fprintf(stderr, "Failed to set GYR_CAL parameter\n");
+        abort();
+    }
+}
+
+void Replay::set_log_disarmed() {
+    if (!logreader.set_parameter("LOG_DISARMED", 1.0)) {
+        ::fprintf(stderr, "Failed to set LOG_DISARMED");
         abort();
     }
 }

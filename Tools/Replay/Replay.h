@@ -164,6 +164,7 @@ private:
 
     void set_ins_update_rate(uint16_t update_rate);
     void inhibit_gyro_cal();
+    void set_log_disarmed();
 
     void usage(void);
     void set_user_parameters(void);
