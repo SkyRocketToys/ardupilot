@@ -90,13 +90,13 @@ void LogReader::maybe_install_vehicle_specific_parsers() {
 }
 
 /*
-  messages which we will be generating, so should be discarded
+  messages which we will be generating, so should be discarded.  Additionally, FMT messages for messages NOT in this list will be passed straight through to the output file, whereas FMT messages for messages IN this list must come from LOG_BASE_STRUCTURES in LogStructure.h
  */
 static const char *generated_names[] = { "EKF1", "EKF2", "EKF3", "EKF4", "EKF5",
                                          "NKF1", "NKF2", "NKF3", "NKF4", "NKF5",
                                          "NKF6", "NKF7", "NKF8", "NKF9", "NKF10",
                                          "AHR2", "POS", "CHEK",
-                                         "IMT", "IMT2",
+                                         "IMT", "IMT2", "IMT3",
                                          "MAG", "MAG2",
                                          "BARO", "BAR2",
                                          "GPS","GPA",
@@ -153,9 +153,9 @@ bool LogReader::handle_log_format_msg(const struct log_Format &f)
 	char name[5];
 	memset(name, '\0', 5);
 	memcpy(name, f.name, 4);
-	debug("Defining log format for type (%d) (%s)\n", f.type, name);
 
         if (save_message_type(name)) {
+            debug("Passing through log format for type (%d) (%s)\n", f.type, name);
             /* 
                any messages which we won't be generating internally in
                replay should get the original FMT header
@@ -165,6 +165,8 @@ bool LogReader::handle_log_format_msg(const struct log_Format &f)
             struct log_Format f_mapped = f;
             f_mapped.type = map_fmt_type(name, f.type);
             dataflash.WriteBlock(&f_mapped, sizeof(f_mapped));
+        } else {
+            debug("Log format for type (%d) (%s) should be generated\n", f.type, name);
         }
 
         if (msgparser[f.type] != NULL) {
