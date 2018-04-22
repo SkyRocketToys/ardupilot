@@ -318,7 +318,7 @@ BRD_RADIO_ABLVL 15
 BRD_RADIO_TXPOW 7
 
 # DCM does better for flips on this frame
-AHRS_EKF_TYPE 0
+#AHRS_EKF_TYPE 0
 
 # Extra parameters for stunt
 TMODE_ACTION2 16
@@ -336,12 +336,12 @@ TMODE_P2_XL_R_MX 162000
 TMODE_P2_XL_Y_MX 54000
 
 # z params for new vibe robust inertial nav method
-PSC_ACCZ_FILT    6
-PSC_ACCZ_I       0.7
-PSC_ACCZ_IMAX    800
-PSC_ACCZ_P       0.35
-PSC_POSZ_P       1.0
-PSC_VELZ_P       1.5
+# PSC_ACCZ_FILT    6
+# PSC_ACCZ_I       0.7
+# PSC_ACCZ_IMAX    800
+# PSC_ACCZ_P       0.35
+# PSC_POSZ_P       1.0
+# PSC_VELZ_P       1.5
 
 # default to streaming, overridden by release script
 SYSID_SW_TYPE 101
