@@ -313,6 +313,9 @@ void AP_Radio_beken::radio_init(void)
 		uint8_t serialid[12];
 		memcpy(serialid, (const void *)UDID_START, 12); // 0x1FFF7A10ul on STM32F412 (see Util::get_system_id)
 		uint32_t drone_crc = CalculateBlockCRC32(12, serialid, 0xfffffffful);
+		if ((drone_crc & 0xff) == 0) {
+			++drone_crc; // Ensure that the first byte (LSB) is non-zero for all drone CRC, for benefit of old (buggy) tx code.
+		}
    		myDroneId[0] = drone_crc;
 		myDroneId[1] = drone_crc >> 8;
 		myDroneId[2] = drone_crc >> 16;
@@ -665,7 +668,7 @@ uint8_t AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 		| ((uint32_t)rx->u.bind.droneid[2] << 16) | ((uint32_t)rx->u.bind.droneid[3] << 24);
 	uint32_t mid = ((uint32_t)myDroneId[0]) | ((uint32_t)myDroneId[1] << 8)
 		| ((uint32_t)myDroneId[2] << 16) | ((uint32_t)myDroneId[3] << 24);
-	if (did)
+	if (did & 0xff) // If the first byte is zero, the drone id is not set (compatibility with old tx code)
 	{
 		// Is it me or someone else?
 		if (did != mid)
