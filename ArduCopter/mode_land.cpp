@@ -168,6 +168,15 @@ void Copter::ModeLand::flowhold_run()
     if (motors->armed() && ap.land_complete) {
         copter.init_disarm_motors();
     }
+    if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
+        copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
+        millis() - copter.crash.last_trigger_ms > 2000) {
+        Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
+        // exit land if throttle is high
+        if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
+            copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
+        }
+    }
 }
 
 /*
