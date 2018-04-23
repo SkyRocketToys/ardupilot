@@ -260,9 +260,6 @@ private:
     // are we in a user takeoff?
     uint32_t takeoff_start_ms;
 
-    // are we in a user land in FLOWHOLD mode?
-    bool user_land;
-
     struct {
         AP_Float throttle_threshold;
         AP_Float climbrate_threshold;
