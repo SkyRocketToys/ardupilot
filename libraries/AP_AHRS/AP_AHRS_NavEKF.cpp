@@ -1117,7 +1117,11 @@ bool AP_AHRS_NavEKF::get_filter_status(nav_filter_status &status) const
 {
     switch (ekf_type()) {
     case EKF_TYPE_NONE:
-        return false;
+        memset(&status, 0, sizeof(status));
+        status.flags.attitude = 1;
+        status.flags.vert_vel = 1;
+        status.flags.vert_pos = 1;
+        return true;
 
     case EKF_TYPE2:
     default:
