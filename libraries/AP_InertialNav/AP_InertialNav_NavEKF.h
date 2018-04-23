@@ -103,6 +103,8 @@ public:
      */
     float       get_velocity_z() const;
 
+    void set_tc_z(float tc_z, float k1, float k2, float k3);
+    
 private:
     Vector3f _relpos_cm;   // NEU
     Vector3f _velocity_cm; // NEU
@@ -122,11 +124,9 @@ private:
     void update_baro_gains();
     void update_baro(float dt);
 
-#define AP_INTERTIALNAV_TC_Z    2.0f
-
     float _position_error_z;
     float accel_correction_z;
-    float _time_constant_z = AP_INTERTIALNAV_TC_Z;
+    float _time_constant_z = 1.0;
     float _k1_z, _k2_z, _k3_z;
     float _velocity_z;
     uint32_t _baro_last_update;

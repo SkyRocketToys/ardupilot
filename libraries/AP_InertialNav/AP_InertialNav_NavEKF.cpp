@@ -255,6 +255,21 @@ void AP_InertialNav_NavEKF::update_baro_gains()
     }
 }
 
+// update gain constants
+void AP_InertialNav_NavEKF::set_tc_z(float tc_z, float k1, float k2, float k3)
+{
+    _time_constant_z = tc_z;
+    
+    // Z axis time constant
+    if (_time_constant_z <= 0.0f) {
+        _k1_z = _k2_z = _k3_z = 0.0f;
+    }else{
+        _k1_z = k1 / _time_constant_z;
+        _k2_z = k2 / (_time_constant_z*_time_constant_z);
+        _k3_z = k3 / (_time_constant_z*_time_constant_z*_time_constant_z);
+    }
+}
+
 /*
   update vertical velocity and position using barometer based data
  */
