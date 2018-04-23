@@ -463,7 +463,8 @@ void NavEKF2_core::FuseVelPosNED()
 
             // If they are the same sign and errors are out of bounds, declare the IMU data bad and reset vertical states
             if ((hgtErrFilt*hgtRateErrFilt > 0.0f)
-                && (sq(hgtErrFilt) > sq(frontend->_insHgtCheckLim))) {
+                    && (sq(hgtErrFilt) > sq(frontend->_insHgtCheckLim))
+                    && (sq(hgtRateErrFilt) > sq(velTestLimRatio * frontend->_insHgtCheckLim))) {
                 hgtErrFilt = 0.0f;
                 hgtRateErrFilt = 0.0f;
                 ResetHeight();
