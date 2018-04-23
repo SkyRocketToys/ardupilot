@@ -262,10 +262,10 @@ void Copter::ModeFlowHold::run()
     target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), copter.g.pilot_speed_up);
 
     if (in_landing) {
-        float descent_speed = get_pilot_speed_dn();
+        float descent_speed = get_pilot_speed_dn() * 0.66;
         float ins_height = copter.inertial_nav.get_altitude() * 0.01;
         float height = ins_height + height_offset;
-        target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 2, 6);
+        target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 3, 8);
     }
         
     // get pilot's desired yaw rate
