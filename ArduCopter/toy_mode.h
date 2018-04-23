@@ -171,6 +171,7 @@ private:
     AP_Float slow_height;
     AP_Float slow_ramp;
     AP_Float slow_thr;
+    AP_Int8 inav_enable;
     AP_Float inav_tc_z;
     AP_Float inav_k1;
     AP_Float inav_k2;

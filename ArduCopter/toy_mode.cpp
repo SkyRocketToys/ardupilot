@@ -334,6 +334,13 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.1
     // @User: Advanced
     AP_GROUPINFO("_INAV_K3", 43, ToyMode, inav_k3, 1),
+
+    // @Param: _INAV_EN
+    // @DisplayName: INAV enable
+    // @Description: Enable INAV system for height control
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Advanced
+    AP_GROUPINFO("_INAV_EN", 44, ToyMode, inav_enable, 1),
     
     AP_GROUPEND
 };
@@ -956,7 +963,7 @@ void ToyMode::update()
         pitch_input_start_ms = 0;
     }
 
-    copter.inertial_nav.set_tc_z(inav_tc_z, inav_k1, inav_k2, inav_k3);
+    copter.inertial_nav.set_tc_z(inav_enable, inav_tc_z, inav_k1, inav_k2, inav_k3);
 }
 
 /*
