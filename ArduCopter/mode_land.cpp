@@ -2,6 +2,7 @@
 
 // FIXME? why are these static?
 static bool land_with_gps;
+static bool land_with_flow;
 
 static uint32_t land_start_time;
 static bool land_pause;
@@ -36,6 +37,14 @@ bool Copter::ModeLand::init(bool ignore_checks)
     // reset flag indicating if pilot has applied roll or pitch inputs during landing
     ap.land_repo_active = false;
 
+    if (!land_with_gps && (copter.optflow.enabled() && copter.optflow.healthy())) {
+        land_with_flow = true;
+        gcs().send_text(MAV_SEVERITY_INFO, "TMODE: land with FLOW\n");
+        copter.mode_flowhold.init(ignore_checks);        
+    } else {
+        land_with_flow = false;
+    }
+    
     return true;
 }
 
@@ -45,7 +54,9 @@ void Copter::ModeLand::run()
 {
     if (land_with_gps) {
         gps_run();
-    }else{
+    } else if (land_with_flow) {
+        flowhold_run();
+    } else {
         nogps_run();
     }
 }
@@ -148,6 +159,15 @@ void Copter::ModeLand::nogps_run()
 
     // prevent jumps on landing
     copter.pos_control->set_accel_z_limit_max(100);
+}
+
+// flowhold landing
+void Copter::ModeLand::flowhold_run()
+{
+    copter.mode_flowhold.run_land();
+    if (motors->armed() && ap.land_complete) {
+        copter.init_disarm_motors();
+    }
 }
 
 /*
