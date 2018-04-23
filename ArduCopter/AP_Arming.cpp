@@ -563,7 +563,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         return false;
     }
 
-#ifndef ALLOW_ARM_NO_COMPASS
+#if !defined(ALLOW_ARM_NO_COMPASS) && CONFIG_HAL_BOARD != HAL_BOARD_SITL
     // check compass health
     if (!_compass.healthy()) {
         if (display_failure) {
