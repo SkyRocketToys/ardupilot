@@ -266,6 +266,7 @@ void Copter::ModeFlowHold::run()
         float ins_height = copter.inertial_nav.get_altitude() * 0.01;
         float height = ins_height + height_offset;
         target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 3, 8);
+        copter.pos_control->set_accel_z_limit_max(50);
     }
         
     // get pilot's desired yaw rate
