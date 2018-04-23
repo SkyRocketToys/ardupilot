@@ -837,17 +837,12 @@ void ToyMode::update()
             takeoff_start_ms = AP_HAL::millis();
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
         } else {
-            if (user_land) {
-                user_land = false;
+            if (old_mode == LAND) {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
-                play_tune(TUNE_ACK);
-            } else if (old_mode == FLOWHOLD) {
-                // use FLOWHOLD for landing to retain position control
-                user_land = true;
-                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
+                new_mode = FLOWHOLD;
             } else {
-                // switch to LAND mode
                 new_mode = LAND;
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
             }
         }
         break;
@@ -884,7 +879,6 @@ void ToyMode::update()
     if (new_mode != copter.control_mode) {
 
         takeoff_start_ms = 0;
-        user_land = false;
         
         load_test.running = false;
 #if AC_FENCE == ENABLED
@@ -920,7 +914,6 @@ void ToyMode::update()
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;
-        user_land = false;
     }
 
     if (labs(copter.channel_pitch->get_control_in()) > 3000) {
@@ -1159,24 +1152,6 @@ void ToyMode::throttle_adjust(float &throttle_control)
     const uint32_t soft_start_ms = 5000;
     const uint16_t throttle_start = 600 + copter.g.throttle_deadzone;
 
-    if (user_land) {
-        copter.pos_control->set_accel_z_limit_max(land_max_acc.get());
-        
-        bool sticks_centered = fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
-        if (!sticks_centered) {
-            user_land = false;
-            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancelled\n");
-            play_tune(TUNE_ACK);
-        } else {
-            throttle_control = land_throttle;
-            if (copter.ap.land_complete) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Tmode: FLOW land complete");
-                copter.init_disarm_motors();
-                user_land = false;
-            }
-        }
-    }
-    
     if (takeoff_start_ms != 0) {
         takeoff_throttle_adjust(throttle_control);
         return;
