@@ -335,13 +335,17 @@ TMODE_P2_XL_R_MX 162000
 TMODE_P2_XL_Y_MX 54000
 
 # z params for new vibe robust inertial nav method
-PSC_ACCZ_FILT    6
-PSC_ACCZ_I       0.7
-PSC_ACCZ_IMAX    800
-PSC_ACCZ_P       0.35
-PSC_POSZ_P       1.0
-PSC_VELZ_P       1.5
+#PSC_ACCZ_FILT    6
+#PSC_ACCZ_I       0.7
+#PSC_ACCZ_IMAX    800
+#PSC_ACCZ_P       0.35
+#PSC_POSZ_P       1.0
+#PSC_VELZ_P       1.5
 
-# default to streaming, overridden by release script
-SYSID_SW_TYPE 101
+PSC_ACCZ_I       0.75
+PSC_ACCZ_P       0.38
+PSC_VELZ_P       2.0
+
+SYSID_SW_TYPE 102
+
 
