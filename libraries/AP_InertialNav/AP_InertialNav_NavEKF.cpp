@@ -57,7 +57,7 @@ void AP_InertialNav_NavEKF::update(float dt)
 
     update_baro(dt);
     
-    if (_ahrs_ekf.get_ekf_type() == 0) {
+    if (_ahrs_ekf.get_ekf_type() == 0 || _inav_baro_enabled) {
         _velocity_cm.z = _velocity_z;
         _relpos_cm.z = _position_z;
     }
@@ -256,8 +256,9 @@ void AP_InertialNav_NavEKF::update_baro_gains()
 }
 
 // update gain constants
-void AP_InertialNav_NavEKF::set_tc_z(float tc_z, float k1, float k2, float k3)
+void AP_InertialNav_NavEKF::set_tc_z(bool enable, float tc_z, float k1, float k2, float k3)
 {
+    _inav_baro_enabled = enable;
     _time_constant_z = tc_z;
     
     // Z axis time constant

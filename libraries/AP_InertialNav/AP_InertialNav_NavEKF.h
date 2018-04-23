@@ -103,7 +103,7 @@ public:
      */
     float       get_velocity_z() const;
 
-    void set_tc_z(float tc_z, float k1, float k2, float k3);
+    void set_tc_z(bool enable, float tc_z, float k1, float k2, float k3);
     
 private:
     Vector3f _relpos_cm;   // NEU
@@ -124,6 +124,7 @@ private:
     void update_baro_gains();
     void update_baro(float dt);
 
+    bool _inav_baro_enabled;
     float _position_error_z;
     float accel_correction_z;
     float _time_constant_z = 1.0;
