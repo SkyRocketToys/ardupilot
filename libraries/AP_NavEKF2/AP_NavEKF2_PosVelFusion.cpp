@@ -171,27 +171,30 @@ void NavEKF2_core::ResetHeight(void)
     // set the variances to the measurement variance
     P[8][8] = posDownObsNoise;
 
+    // reset vertical velocity state
+
     // Reset the vertical velocity state using GPS vertical velocity or baro height rate if we are airborne
     // Check that GPS vertical velocity data is available and can be used
+    // Also reset state covariances and set state variance using the measurement uncertainty
+    zeroRows(P,5,5);
+    zeroCols(P,5,5);
     if (inFlight && !gpsNotAvailable && frontend->_fusionModeGPS == 0 && !frontend->inhibitGpsVertVelUse) {
         stateStruct.velocity.z =  gpsDataNew.vel.z;
+        P[5][5] = sq(frontend->_gpsVertVelNoise);
     } else if (!useGpsVertVel && (frontend->_altSource == 0)) {
         stateStruct.velocity.z = -baroDataDelayed.hgtRate;
+        P[5][5] = sq(frontend->_baroAltNoise);
     } else if (onGround) {
         stateStruct.velocity.z = 0.0f;
+        P[5][5] = 1.0f;
     }
+
     for (uint8_t i=0; i<imu_buffer_length; i++) {
         storedOutput[i].velocity.z = stateStruct.velocity.z;
     }
+
     outputDataNew.velocity.z = stateStruct.velocity.z;
     outputDataDelayed.velocity.z = stateStruct.velocity.z;
-
-    // reset the corresponding covariances
-    zeroRows(P,5,5);
-    zeroCols(P,5,5);
-
-    // set the variances to the measurement variance
-    P[5][5] = sq(frontend->_gpsVertVelNoise);
 
 }
 
