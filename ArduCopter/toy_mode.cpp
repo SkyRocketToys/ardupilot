@@ -302,6 +302,38 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 10
     // @User: Advanced
     AP_GROUPINFO("_SLOW_THR", 39, ToyMode, slow_thr, 300),
+
+    // @Param: _INAV_TC_Z
+    // @DisplayName: INAV time constant
+    // @Description: Set INAV baro time constant. Lower values trust the barometer more for height
+    // @Range: 0.1 10
+    // @Increment: 0.05
+    // @User: Advanced
+    AP_GROUPINFO("_INAV_TC_Z", 40, ToyMode, inav_tc_z, 1),
+
+    // @Param: _INAV_K1
+    // @DisplayName: INAV time constant, K1
+    // @Description: First level constant for inav state estimator
+    // @Range: 0.1 10
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_INAV_K1", 41, ToyMode, inav_k1, 3),
+
+    // @Param: _INAV_K2
+    // @DisplayName: INAV time constant, K2
+    // @Description: Second level constant for inav state estimator
+    // @Range: 0.1 10
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_INAV_K2", 42, ToyMode, inav_k2, 3),
+
+    // @Param: _INAV_K3
+    // @DisplayName: INAV time constant, K3
+    // @Description: Third level constant for inav state estimator
+    // @Range: 0.1 10
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("_INAV_K3", 43, ToyMode, inav_k3, 1),
     
     AP_GROUPEND
 };
@@ -923,6 +955,8 @@ void ToyMode::update()
     } else {
         pitch_input_start_ms = 0;
     }
+
+    copter.inertial_nav.set_tc_z(inav_tc_z, inav_k1, inav_k2, inav_k3);
 }
 
 /*

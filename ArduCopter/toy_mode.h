@@ -171,6 +171,10 @@ private:
     AP_Float slow_height;
     AP_Float slow_ramp;
     AP_Float slow_thr;
+    AP_Float inav_tc_z;
+    AP_Float inav_k1;
+    AP_Float inav_k2;
+    AP_Float inav_k3;
     int8_t last_profile_id = -1;
     bool leds_off;
 
