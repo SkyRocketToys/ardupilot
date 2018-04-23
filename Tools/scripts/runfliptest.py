@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import pexpect, time, sys
+import pexpect, time, sys, os
 from pymavlink import mavutil
 
 def wait_heartbeat(mav, timeout=10):
@@ -35,7 +35,9 @@ def wait_time(mav, simtime):
         if t2 - t1 > simtime:
             break
 
-cmd = 'sim_vehicle.py -j4 -D -L KSFO -S5'
+sim_vehicle = os.path.join(os.path.dirname(__file__), '../autotest/sim_vehicle.py')
+
+cmd = '%s -j4 -D -L KSFO -S5' % sim_vehicle
 mavproxy = pexpect.spawn(cmd, logfile=sys.stdout, timeout=30)
 mavproxy.expect("Ready to FLY")
 
@@ -46,10 +48,19 @@ mavproxy.send('arm throttle\n')
 mavproxy.expect('ARMED')
 mavproxy.send('alt_hold\n')
 wait_mode(mav, ['ALT_HOLD'])
-mavproxy.send('rc 3 1800\n')
-mavproxy.send('param set CH7_OPT 2\n')
-mavproxy.send('repeat add 2 rc 7 2000\n')
-wait_time(mav, 1)
-mavproxy.send('repeat add 2 rc 7 1000\n')
+mavproxy.send('rc 3 2000\n')
+wait_time(mav,5)
+mavproxy.send('rc 3 1500\n')
+mavproxy.send('rc 1 1800\n')
+wait_time(mav,3)
+mavproxy.send('rc 1 1500\n')
+mavproxy.send('rc 2 1800\n')
+wait_time(mav,3)
+mavproxy.send('rc 2 1500\n')
+wait_time(mav,3)
+mavproxy.send('mode flip\n')
+wait_time(mav,3)
+mavproxy.send('mode land\n')
+wait_time(mav,10)
 mavproxy.logfile = None
-mavproxy.interact()
+#mavproxy.interact()
