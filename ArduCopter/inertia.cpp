@@ -10,10 +10,12 @@ void Copter::read_inertia()
     current_loc.lng = inertial_nav.get_longitude();
     current_loc.lat = inertial_nav.get_latitude();
 
+#if 0
     // exit immediately if we do not have an altitude estimate
     if (!inertial_nav.get_filter_status().flags.vert_pos) {
         return;
     }
+#endif
 
     // without home return alt above the EKF origin
     if (ap.home_state == HOME_UNSET) {
