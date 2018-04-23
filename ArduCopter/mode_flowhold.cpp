@@ -87,6 +87,8 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
         return false;
     }
 
+    in_landing = false;
+    
     // initialize vertical speeds and leash lengths
     copter.pos_control->set_speed_z(-get_pilot_speed_dn(), copter.g.pilot_speed_up);
     copter.pos_control->set_accel_z(copter.g.pilot_accel_z);
@@ -259,6 +261,10 @@ void Copter::ModeFlowHold::run()
     float target_climb_rate = copter.get_pilot_desired_climb_rate(copter.channel_throttle->get_control_in());
     target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), copter.g.pilot_speed_up);
 
+    if (in_landing) {
+        target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), -get_pilot_speed_dn()/3);
+    }
+        
     // get pilot's desired yaw rate
     float target_yaw_rate = copter.get_pilot_desired_yaw_rate(copter.channel_yaw->get_control_in());
     
@@ -553,6 +559,13 @@ void Copter::ModeFlowHold::update_height_estimate(void)
     mavlink_msg_named_value_float_send(MAVLINK_COMM_1, AP_HAL::millis(), "HEST", height_estimate);
     delta_velocity_ne.zero();
     last_ins_height = ins_height;
+}
+
+// run in landing mode
+void Copter::ModeFlowHold::run_land()
+{
+    in_landing = true;
+    run();
 }
 
 #endif // OPTFLOW == ENABLED

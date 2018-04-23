@@ -617,6 +617,7 @@ public:
 
     bool init(bool ignore_checks) override;
     void run(void) override;
+    void run_land(void);
 
     bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
@@ -687,6 +688,8 @@ private:
 
     // last time there was significant stick input
     uint32_t last_stick_input_ms;
+
+    bool in_landing;
 };
 #endif // OPTFLOW
 
@@ -804,6 +807,7 @@ private:
 
     void gps_run();
     void nogps_run();
+    void flowhold_run();
 };
 
 
