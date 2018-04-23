@@ -584,14 +584,10 @@ AP_AHRS_DCM::drift_correction(float deltat)
               accel value is sampled over the right time delta for
               each sensor, which prevents an aliasing effect
              */
-            Vector3f delta_velocity;
-            _ins.get_delta_velocity(i, delta_velocity);
-            const float delta_velocity_dt = _ins.get_delta_velocity_dt(i);
-            if (delta_velocity_dt > 0) {
-                _accel_ef[i] = _dcm_matrix * (delta_velocity / delta_velocity_dt);
-                // integrate the accel vector in the earth frame between GPS readings
-                _ra_sum[i] += _accel_ef[i] * deltat;
-            }
+            const Vector3f &accel = _ins.get_accel(i);
+            _accel_ef[i] = _dcm_matrix * accel;
+            // integrate the accel vector in the earth frame between GPS readings
+            _ra_sum[i] += _accel_ef[i] * deltat;
         }
     }
 
