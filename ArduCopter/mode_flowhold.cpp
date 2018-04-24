@@ -62,6 +62,14 @@ const AP_Param::GroupInfo Copter::ModeFlowHold::var_info[] = {
     // @User: Standard
     // @Units: deg/s
     AP_GROUPINFO("_BRAKE_RATE", 6, Copter::ModeFlowHold, brake_rate_dps, 8),
+
+    // @Param: _HGT_OFS
+    // @DisplayName: FlowHold height offset
+    // @Description: This height offset is added to height estimate to account for barometric disturbance from motors
+    // @Range: -2 2
+    // @User: Standard
+    // @Units: m
+    AP_GROUPINFO("_HGT_OFS", 7, Copter::ModeFlowHold, height_adjustment, 8),
     
     AP_GROUPEND
 };
@@ -147,7 +155,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
 
     // scale by height estimate, limiting it to height_min to height_max
     float ins_height = copter.inertial_nav.get_altitude() * 0.01;
-    float height_estimate = ins_height + height_offset;
+    float height_estimate = ins_height + height_offset + height_adjustment;
 
     // compensate for height, this converts to (approx) m/s
     sensor_flow *= constrain_float(height_estimate, height_min, height_max);
@@ -264,7 +272,7 @@ void Copter::ModeFlowHold::run()
     if (in_landing) {
         float descent_speed = get_pilot_speed_dn() * 0.66;
         float ins_height = copter.inertial_nav.get_altitude() * 0.01;
-        float height = ins_height + height_offset;
+        float height = ins_height + height_offset + height_adjustment;
         target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 3, 8);
         copter.pos_control->set_accel_z_limit_max(50);
     }

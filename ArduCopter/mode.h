@@ -661,6 +661,7 @@ private:
     AP_Float flow_filter_hz;
     AP_Int8  flow_min_quality;
     AP_Int8  brake_rate_dps;
+    AP_Float height_adjustment;
 
     float quality_filtered;
 
