@@ -154,8 +154,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     Vector2f sensor_flow = flow_filter.apply(raw_flow);
 
     // scale by height estimate, limiting it to height_min to height_max
-    float ins_height = copter.inertial_nav.get_altitude() * 0.01;
-    float height_estimate = ins_height + height_offset + height_adjustment;
+    float height_estimate = get_height_estimate();
 
     // compensate for height, this converts to (approx) m/s
     sensor_flow *= constrain_float(height_estimate, height_min, height_max);
@@ -244,6 +243,19 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     }
 }
 
+float Copter::ModeFlowHold::get_height_estimate(void)
+{
+    float ins_height = copter.inertial_nav.get_altitude() * 0.01;
+    float height_estimate = ins_height + height_offset;
+    uint32_t now = AP_HAL::millis();
+    if (copter.motors->armed() && now - copter.arm_time_ms < 10000) {
+        float dt = (now - copter.arm_time_ms) * 0.001;
+        float adjust = linear_interpolate(height_adjustment, 0, dt, 5, 10);
+        height_estimate += adjust;
+    }
+    return height_estimate;
+}
+
 // flowhold_run - runs the flowhold controller
 // should be called at 100hz or more
 void Copter::ModeFlowHold::run()
@@ -271,8 +283,7 @@ void Copter::ModeFlowHold::run()
 
     if (in_landing) {
         float descent_speed = get_pilot_speed_dn() * 0.66;
-        float ins_height = copter.inertial_nav.get_altitude() * 0.01;
-        float height = ins_height + height_offset + height_adjustment;
+        float height = get_height_estimate();
         target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 3, 8);
         copter.pos_control->set_accel_z_limit_max(50);
     }

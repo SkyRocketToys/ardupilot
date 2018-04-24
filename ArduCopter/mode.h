@@ -649,6 +649,7 @@ private:
     void flowhold_run();
     void flowhold_flow_to_angle(Vector2f &angle, bool stick_input);
     void update_height_estimate(void);
+    float get_height_estimate(void);
 
     // minimum assumed height
     const float height_min = 0.1;
