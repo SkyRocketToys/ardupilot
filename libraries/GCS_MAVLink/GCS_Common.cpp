@@ -45,7 +45,7 @@ uint8_t GCS_MAVLINK::mavlink_active = 0;
 uint8_t GCS_MAVLINK::chan_is_streaming = 0;
 uint32_t GCS_MAVLINK::reserve_param_space_start_ms;
 
-const uint32_t GCS_MAVLINK::autobaud_rates[] = {625000, 921600, 115200, 57600};
+const uint32_t GCS_MAVLINK::autobaud_rates[] = {625000, 921600};
 
 GCS *GCS::_singleton = nullptr;
 
