@@ -191,6 +191,9 @@ void Copter::ModeFlip::run()
             }
         }
     }
+
+    // ensure Z controller is active when returning to old mode
+    copter.pos_control->set_active_z();
     
     // try to zero vertical velocity
     pos_control->accel_to_throttle(- pos_control->get_vel_z_p().kP() * inertial_nav.get_velocity_z());
@@ -331,5 +334,4 @@ void Copter::ModeFlip::stop(void)
 {
     attitude_control->set_accel_pitch_max_slew(orig_pitch_accel);
     attitude_control->set_accel_roll_max_slew(orig_roll_accel);
-    copter.pos_control->set_active_z();
 }
