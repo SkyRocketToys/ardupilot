@@ -236,7 +236,7 @@ void Copter::ModeFlip::run()
 
     case Flip_Start: {
         uint16_t flip_ramp_ms = constrain_int16(ramp_ms.get(), 100, 3000);
-        uint16_t flip_ramp_angle_cd = constrain_int16(ramp_cd.get(), 100, 2000);
+        int16_t flip_ramp_angle_cd = constrain_int16(ramp_cd.get(), -2000, 2000);
         
         // calculate rotation rate and send to attitude controller
         rotation_rate_cd = 1000.0f*(-flip_ramp_angle_cd-flip_orig_angle)/uint16_t(flip_ramp_ms);
