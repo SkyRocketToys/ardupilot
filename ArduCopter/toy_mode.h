@@ -178,6 +178,7 @@ private:
     AP_Float inav_k3;
     int8_t last_profile_id = -1;
     bool leds_off;
+    uint32_t last_flip_ms;
 
     // record start of large pitch input for purposes of choosing flip
     // direction in mode FLIP
