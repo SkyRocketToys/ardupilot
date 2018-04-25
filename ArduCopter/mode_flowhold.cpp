@@ -105,9 +105,6 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
     if (copter.control_mode == FLIP) {
         last_stick_input_ms = millis();
         last_ins_height = copter.inertial_nav.get_altitude() * 0.01;
-        height_offset = 0;
-        quality_filtered = 0;
-        flow_pi_xy.reset_I();
         braking = true;
     } else {
         if (!copter.pos_control->is_active_z()) {
