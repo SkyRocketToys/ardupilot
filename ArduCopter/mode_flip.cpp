@@ -331,4 +331,5 @@ void Copter::ModeFlip::stop(void)
 {
     attitude_control->set_accel_pitch_max_slew(orig_pitch_accel);
     attitude_control->set_accel_roll_max_slew(orig_roll_accel);
+    copter.pos_control->set_active_z();
 }
