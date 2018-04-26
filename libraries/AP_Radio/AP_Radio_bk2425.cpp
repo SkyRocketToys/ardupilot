@@ -1202,7 +1202,7 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
             uint32_t dt = when - synctm.rx_time_us;
             if (dt > 50*d) // We have lost sync (missed 50 packets) so slow down the channel hopping until we resync
             {
-                d *= 4;
+                d *= 5; // 3 or 5 are relatively prime to the table size of 16.
                 DebugPrintf(2, "C");
             }
             else
