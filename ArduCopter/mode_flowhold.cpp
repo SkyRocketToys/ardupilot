@@ -111,6 +111,11 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
     }
 
     in_landing = false;
+
+    if (copter.control_mode == FLOWHOLD) {
+        // no need to re-init. This is probably a flow landing
+        return true;
+    }
     
     // initialize vertical speeds and leash lengths
     copter.pos_control->set_speed_z(-get_pilot_speed_dn(), copter.g.pilot_speed_up);
