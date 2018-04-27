@@ -267,7 +267,6 @@ private:
 
     // are we in a user takeoff?
     uint32_t takeoff_start_ms;
-    float takeoff_start_alt_cm;
 
     struct {
         AP_Float throttle_threshold;
