@@ -70,6 +70,21 @@ const AP_Param::GroupInfo Copter::ModeFlowHold::var_info[] = {
     // @User: Standard
     // @Units: m
     AP_GROUPINFO("_HGT_OFS", 7, Copter::ModeFlowHold, height_adjustment, 8),
+
+    // @Param: _LAND_BSPK
+    // @DisplayName: FlowHold land baro spike threshold
+    // @Description: This is the threshold for barometer spike for landing detection
+    // @Range: 0 2
+    // @User: Standard
+    // @Units: m
+    AP_GROUPINFO("_LAND_BSPK", 8, Copter::ModeFlowHold, land_baro_spike, 0.5),
+
+    // @Param: _LAND_FSPK
+    // @DisplayName: FlowHold land flow spike threshold
+    // @Description: This is the threshold for flow rate spike for landing detection. The flow rate must spike above this limit at the same time as the baro spikes above the baro limit to detect landing
+    // @Range: 0 2
+    // @User: Standard
+    AP_GROUPINFO("_LAND_FSPK", 9, Copter::ModeFlowHold, land_flow_spike, 1.0),
     
     AP_GROUPEND
 };
@@ -225,7 +240,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     bf_angles.y = constrain_float(bf_angles.y, -copter.aparm.angle_max, copter.aparm.angle_max);
 
     if (log_counter++ % 20 == 0) {
-        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy,R,P,AM", "Qffffffffffff",
+        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy,R,P,AM,FC,Bmin", "Qffffffffffffff",
                                                AP_HAL::micros64(),
                                                (double)sensor_flow.x, (double)sensor_flow.y,
                                                (double)bf_angles.x, (double)bf_angles.y,
@@ -233,7 +248,9 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
                                                (double)xy_I.x, (double)xy_I.y,
                                                (double)copter.ahrs.roll_sensor,
                                                (double)copter.ahrs.pitch_sensor,
-                                               (double)copter.attitude_control->get_althold_lean_angle_max());
+                                               (double)copter.attitude_control->get_althold_lean_angle_max(),
+                                               flow_check,
+                                               baro_min_alt);
     }
 }
 
@@ -274,12 +291,19 @@ void Copter::ModeFlowHold::run()
     // get pilot desired climb rate
     float target_climb_rate = copter.get_pilot_desired_climb_rate(copter.channel_throttle->get_control_in());
     target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), copter.g.pilot_speed_up);
+    if (fabsf(target_climb_rate) > 0.001) {
+        changing_alt = true;
+    } else if (changing_alt) {
+        changing_alt = false;
+        //copter.pos_control->set_alt_target_to_current_alt();
+        //copter.pos_control->set_desired_velocity_z(0);
+    }
 
     if (in_landing) {
         float descent_speed = get_pilot_speed_dn() * 0.66;
         float height = get_height_estimate();
         target_climb_rate = -linear_interpolate(descent_speed/3, descent_speed, height, 3, 8);
-        copter.pos_control->set_accel_z_limit_max(50);
+        copter.pos_control->set_accel_z_limit_max(25);
     }
         
     // get pilot's desired yaw rate
@@ -421,6 +445,9 @@ void Copter::ModeFlowHold::run()
         copter.pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, copter.G_Dt, false);
         copter.pos_control->update_z_controller();
         break;
+    }
+    if (in_landing) {
+        flow_land_detector();
     }
 }
 
@@ -576,6 +603,10 @@ void Copter::ModeFlowHold::update_height_estimate(void)
     mavlink_msg_named_value_float_send(MAVLINK_COMM_1, AP_HAL::millis(), "HEST", height_estimate);
     delta_velocity_ne.zero();
     last_ins_height = ins_height;
+
+    // flow rate spike detector. The flow rate rises very rapidly close to the ground
+    float flow_rate_check = (copter.optflow.flowRate().length() / (copter.optflow.bodyRate().length()+1));
+    flow_check = flow_check * 0.90 + flow_rate_check * 0.1;
 }
 
 // run in landing mode
@@ -583,6 +614,38 @@ void Copter::ModeFlowHold::run_land()
 {
     in_landing = true;
     run();
+}
+
+/*
+  a flowhold specific landing detector. This uses the distinctive
+  spike in optical flow data when very close to the ground along with
+  a rise in barometric altitude due to ground effect to trigger
+  landing
+ */
+void Copter::ModeFlowHold::flow_land_detector()
+{
+    uint32_t now = millis();
+    float balt = copter.barometer.get_altitude();
+    if (now - last_land_check_ms > 1000 ||
+        now - baro_min_alt_ms > 3000) {
+        baro_min_alt = balt;
+        baro_min_alt_ms = now;
+    }
+    last_land_check_ms = now;
+    if (balt < baro_min_alt) {
+        baro_min_alt = balt;
+    }
+
+    bool stick_input = copter.channel_roll->get_control_in() ||
+        copter.channel_pitch->get_control_in() ||
+        copter.channel_yaw->get_control_in();
+
+    if (!stick_input && !ap.land_complete) {
+        if (balt - baro_min_alt > land_baro_spike && flow_check > land_flow_spike) {
+            gcs().send_text(MAV_SEVERITY_INFO, "FHLD: land detect %.1 %.1\n", balt - baro_min_alt, flow_check);
+            set_land_complete(true);        
+        }
+    }
 }
 
 #endif // OPTFLOW == ENABLED

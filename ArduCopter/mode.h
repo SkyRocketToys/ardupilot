@@ -650,6 +650,7 @@ private:
     void flowhold_flow_to_angle(Vector2f &angle, bool stick_input);
     void update_height_estimate(void);
     float get_height_estimate(void);
+    void flow_land_detector();
 
     // minimum assumed height
     const float height_min = 0.1;
@@ -663,6 +664,8 @@ private:
     AP_Int8  flow_min_quality;
     AP_Int8  brake_rate_dps;
     AP_Float height_adjustment;
+    AP_Float land_baro_spike;
+    AP_Float land_flow_spike;
 
     float quality_filtered;
 
@@ -692,6 +695,13 @@ private:
     uint32_t last_stick_input_ms;
 
     bool in_landing;
+    bool changing_alt;
+
+    // flow landing detector variables
+    uint32_t last_land_check_ms;
+    float baro_min_alt;
+    uint32_t baro_min_alt_ms;
+    float flow_check;
 };
 #endif // OPTFLOW
 
