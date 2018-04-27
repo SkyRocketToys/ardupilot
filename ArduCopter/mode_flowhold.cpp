@@ -607,6 +607,10 @@ void Copter::ModeFlowHold::update_height_estimate(void)
     // flow rate spike detector. The flow rate rises very rapidly close to the ground
     float flow_rate_check = (copter.optflow.flowRate().length() / (copter.optflow.bodyRate().length()+1));
     flow_check = flow_check * 0.90 + flow_rate_check * 0.1;
+    if (braking) {
+        // zero when braking to prevent false landing
+        flow_check = 0;
+    }
 }
 
 // run in landing mode
@@ -640,7 +644,7 @@ void Copter::ModeFlowHold::flow_land_detector()
         copter.channel_pitch->get_control_in() ||
         copter.channel_yaw->get_control_in();
 
-    if (!stick_input && !ap.land_complete) {
+    if (!stick_input && !ap.land_complete && !braking) {
         if (balt - baro_min_alt > land_baro_spike && flow_check > land_flow_spike) {
             gcs().send_text(MAV_SEVERITY_INFO, "FHLD: land detect %.1 %.1\n", balt - baro_min_alt, flow_check);
             set_land_complete(true);        
