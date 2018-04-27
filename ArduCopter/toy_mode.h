@@ -89,6 +89,7 @@ private:
     void thrust_limiting(float *thrust, uint8_t num_motors);
     void arm_check_compass(void);
     void play_tune(const char *tune);
+    bool takeoff_complete(void);
 
     // work out type of button setup
     bool is_v2450_buttons(void) const {
@@ -164,6 +165,7 @@ private:
     AP_Int8 profile_id;
     AP_Int16 flags;
     AP_Float takeoff_time;
+    AP_Float takeoff_height;
     AP_Float takeoff_delay;
     AP_Int16 land_throttle;
     AP_Int16 takeoff_min_acc;
@@ -265,6 +267,7 @@ private:
 
     // are we in a user takeoff?
     uint32_t takeoff_start_ms;
+    float takeoff_start_alt_cm;
 
     struct {
         AP_Float throttle_threshold;

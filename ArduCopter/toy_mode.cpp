@@ -180,11 +180,11 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _TOFF_TIME
     // @DisplayName: Takeoff time in seconds
-    // @Description: This sets the amount of time a takeoff takes in seconds
+    // @Description: This sets the mininum amount of time a takeoff takes in seconds
     // @Range: 0 5
     // @Increment: 0.1
     // @User: Advanced
-    AP_GROUPINFO("_TOFF_TIME", 25, ToyMode, takeoff_time, 3.0),
+    AP_GROUPINFO("_TOFF_TIME", 25, ToyMode, takeoff_time, 2.0),
 
     // @Param: _TOFF_DELAY
     // @DisplayName: Takeoff delay in seconds
@@ -341,6 +341,14 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
     AP_GROUPINFO("_INAV_EN", 44, ToyMode, inav_enable, 1),
+
+    // @Param: _TOFF_HGT
+    // @DisplayName: Takeoff height in meters
+    // @Description: This sets the minimum height change for takeoff completion
+    // @Range: 0 5
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_TOFF_HGT", 45, ToyMode, takeoff_height, 1.8),
     
     AP_GROUPEND
 };
@@ -435,8 +443,7 @@ void ToyMode::update()
         return;
     }
     
-    if (takeoff_start_ms != 0 && now - takeoff_start_ms > (takeoff_time + takeoff_delay)*1000U) {
-        gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete\n");
+    if (takeoff_start_ms != 0 && takeoff_complete()) {
         takeoff_start_ms = 0;
     }
 
@@ -875,6 +882,7 @@ void ToyMode::update()
             action_arm();
             takeoff_start_ms = AP_HAL::millis();
             gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
+            takeoff_start_alt_cm = copter.inertial_nav.get_altitude();
         } else {
             if (old_mode == LAND) {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
@@ -1243,6 +1251,7 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
     uint32_t now = AP_HAL::millis();
     if (now - takeoff_start_ms < takeoff_delay*1000) {
         // still in delay
+        takeoff_start_alt_cm = copter.inertial_nav.get_altitude();
         return;
     }
 
@@ -1252,6 +1261,25 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
 
     throttle_control = linear_interpolate(throttle_mid+100, 720, (now-takeoff_start_ms)-(takeoff_delay*1000),
                                           0, takeoff_time*750);
+}
+
+/*
+  see if user takeoff is complete
+ */
+bool ToyMode::takeoff_complete(void)
+{
+    if (takeoff_start_ms == 0) {
+        return true;
+    }
+    if (AP_HAL::millis() - takeoff_start_ms < (takeoff_time + takeoff_delay)*1000U) {
+        return false;
+    }
+    if (copter.inertial_nav.get_altitude() - takeoff_start_alt_cm < takeoff_height*100) {
+        return false;
+    }
+    gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete\n");
+    takeoff_start_ms = 0;
+    return true;
 }
 
 /*
