@@ -1236,13 +1236,10 @@ void ToyMode::throttle_adjust(float &throttle_control)
 */
 void ToyMode::takeoff_throttle_adjust(float &throttle_control)
 {
-    bool sticks_centered =
-        copter.channel_roll->get_control_in() == 0 &&
-        copter.channel_pitch->get_control_in() == 0 &&
-        copter.channel_yaw->get_control_in() == 0 &&
+    bool throttle_centered =
         fabsf(copter.channel_throttle->get_control_in() - throttle_mid) < 100;
 
-    if (!sticks_centered) {
+    if (!throttle_centered) {
         gcs().send_text(MAV_SEVERITY_INFO, "TMODE: auto takeoff cancelled\n");
         takeoff_start_ms = 0;
         return;
