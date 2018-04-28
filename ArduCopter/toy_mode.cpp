@@ -405,8 +405,9 @@ void ToyMode::update()
     if (!done_first_update) {
         done_first_update = true;
 
-        copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
         profile_id.set_and_notify(1);
+        control_mode_t new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+        copter.set_mode(new_mode, MODE_REASON_TMODE);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
         radio = AP_Radio::instance();
@@ -916,7 +917,11 @@ void ToyMode::update()
         } else {
             if (old_mode == LAND) {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
-                new_mode = FLOWHOLD;
+                if (profile_id > 0 && profile_id <= MAX_NUM_PROFILES) {
+                    new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+                } else {
+                    new_mode = FLOWHOLD;
+                }
             } else {
                 new_mode = LAND;
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land started\n");
@@ -950,7 +955,11 @@ void ToyMode::update()
 
     if (!copter.motors->armed() && (copter.control_mode == LAND || copter.control_mode == RTL)) {
         // revert back to last primary flight mode if disarmed after landing
-        new_mode = control_mode_t(primary_mode[last_mode_choice].get());
+        if (profile_id > 0 && profile_id <= MAX_NUM_PROFILES) {
+            new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+        } else {
+            new_mode = control_mode_t(primary_mode[last_mode_choice].get());
+        }
     }
     
     if (new_mode != copter.control_mode) {
