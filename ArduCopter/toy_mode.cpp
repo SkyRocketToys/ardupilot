@@ -406,7 +406,7 @@ void ToyMode::update()
         done_first_update = true;
 
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
-        profile_id.set_and_notify(0);
+        profile_id.set_and_notify(1);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
         radio = AP_Radio::instance();
@@ -538,12 +538,12 @@ void ToyMode::update()
           check for mode+yaw for switching profile banks
         */
         if (copter.channel_yaw->get_control_in() > 3500) {
-            if (profile_id.get() < 2) {
+            if (profile_id.get() < 3) {
                 profile_id.set_and_notify(profile_id.get() + 2);
                 play_tune(TUNE_ACK);
             }
         } else if (copter.channel_yaw->get_control_in() < -3500) {
-            if (profile_id.get() > 1) {
+            if (profile_id.get() > 2) {
                 profile_id.set_and_notify(profile_id.get() - 2);
                 play_tune(TUNE_ACK);
             }
@@ -875,10 +875,10 @@ void ToyMode::update()
         break;
         
     case ACTION_TOGGLE_PROFILE: {
-        if (profile_id >= MAX_NUM_PROFILES || profile_id < 0) {
+        if (profile_id > MAX_NUM_PROFILES || profile_id <= 0) {
             profile_id.set_and_notify(1);
         } else {
-            profile_id.set_and_notify(profile_id.get()^1);
+            profile_id.set_and_notify(((profile_id.get()-1)^1)+1);
         }
         new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
         break;
@@ -987,7 +987,9 @@ void ToyMode::update()
     // put profile ID in the top bit of the flight mode. This is
     // interpreted by the TX code
     uint8_t tx_mode = copter.control_mode;
-    AP_Notify::flags.flight_mode = tx_mode | ((uint8_t(profile_id.get())&3)<<6);
+    if (profile_id > 0 && profile_id <= MAX_NUM_PROFILES) {
+        AP_Notify::flags.flight_mode = tx_mode | ((uint8_t(profile_id.get()-1)&3)<<6);
+    }
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;
