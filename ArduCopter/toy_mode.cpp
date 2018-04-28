@@ -349,6 +349,14 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Increment: 0.01
     // @User: Advanced
     AP_GROUPINFO("_TOFF_HGT", 45, ToyMode, takeoff_height, 1.8),
+
+    // @Group: _P3_
+    // @Path: toy_mode_profile.cpp
+    AP_SUBGROUPINFO(_var_info_profile[2], "_P3_", 46, ToyMode, ToyMode::Profile),
+
+    // @Group: _P4_
+    // @Path: toy_mode_profile.cpp
+    AP_SUBGROUPINFO(_var_info_profile[3], "_P4_", 47, ToyMode, ToyMode::Profile),
     
     AP_GROUPEND
 };
@@ -398,6 +406,7 @@ void ToyMode::update()
         done_first_update = true;
 
         copter.set_mode(control_mode_t(primary_mode[0].get()), MODE_REASON_TMODE);
+        profile_id.set_and_notify(0);
         copter.motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&ToyMode::thrust_limiting, void, float *, uint8_t));
 #ifdef HAL_RCINPUT_WITH_AP_RADIO
         radio = AP_Radio::instance();
@@ -500,27 +509,48 @@ void ToyMode::update()
     }
 
     /*
-      check for mode+stunt button for TX based accel cal trigger
+      check for special combos with mode buttons while disarmed
      */
-    if (mode_button && right_action_button && !copter.motors->armed() && (flags & FLAG_ACCEL_CAL)) {
-        accel_cal_counter++;
-        if (accel_cal_counter >= TOY_ACCEL_CAL_COUNT) {
-            accel_cal_counter = -TOY_COMMAND_DELAY;
-            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal started\n");
-            MAV_RESULT result = copter.ins.simple_accel_cal(copter.ahrs);
-            accel_cal_time_ms = AP_HAL::millis();
-            if (result == MAV_RESULT_ACCEPTED) {
-                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
+    if (!copter.motors->armed() && mode_button) {
+        /*
+          check for mode+stunt button for TX based accel cal trigger
+        */
+        if (right_action_button && (flags & FLAG_ACCEL_CAL)) {
+            accel_cal_counter++;
+            if (accel_cal_counter >= TOY_ACCEL_CAL_COUNT) {
+                accel_cal_counter = -TOY_COMMAND_DELAY;
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal started\n");
+                MAV_RESULT result = copter.ins.simple_accel_cal(copter.ahrs);
+                accel_cal_time_ms = AP_HAL::millis();
+                if (result == MAV_RESULT_ACCEPTED) {
+                    gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal OK\n");
+                    play_tune(TUNE_ACK);
+                } else {
+                    gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal failed\n");
+                    play_tune(TUNE_NACK);
+                }
+            }
+        } else {
+            accel_cal_counter = 0;
+        }
+
+        /*
+          check for mode+yaw for switching profile banks
+        */
+        if (copter.channel_yaw->get_control_in() > 3500) {
+            if (profile_id.get() < 2) {
+                profile_id.set_and_notify(profile_id.get() + 2);
                 play_tune(TUNE_ACK);
-            } else {
-                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: accel cal failed\n");
-                play_tune(TUNE_NACK);
+            }
+        } else if (copter.channel_yaw->get_control_in() < -3500) {
+            if (profile_id.get() > 1) {
+                profile_id.set_and_notify(profile_id.get() - 2);
+                play_tune(TUNE_ACK);
             }
         }
-    } else {
-        accel_cal_counter = 0;
     }
 
+    
     /*
       check for mode+stunt button for change of TX input mode (Mode1 or Mode2 toggle)
      */
@@ -844,14 +874,15 @@ void ToyMode::update()
         leds_off = !leds_off;
         break;
         
-    case ACTION_TOGGLE_PROFILE:
-        if (profile_id == MAX_NUM_PROFILES || profile_id < 1) {
+    case ACTION_TOGGLE_PROFILE: {
+        if (profile_id >= MAX_NUM_PROFILES || profile_id < 0) {
             profile_id.set_and_notify(1);
         } else {
-            profile_id.set_and_notify(profile_id.get()+1);
+            profile_id.set_and_notify(profile_id.get()^1);
         }
         new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
         break;
+    }
         
     case ACTION_ARM_LAND_RTL:
         if (!copter.motors->armed()) {
@@ -956,7 +987,7 @@ void ToyMode::update()
     // put profile ID in the top bit of the flight mode. This is
     // interpreted by the TX code
     uint8_t tx_mode = copter.control_mode;
-    AP_Notify::flags.flight_mode = tx_mode | (profile_id.get()==2?0x80:0);
+    AP_Notify::flags.flight_mode = tx_mode | ((uint8_t(profile_id.get())&3)<<6);
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;

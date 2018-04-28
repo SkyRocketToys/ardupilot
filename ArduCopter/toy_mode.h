@@ -4,7 +4,8 @@
   class to support "toy" mode for simplified user interaction for
   large volume consumer vehicles
  */
-#define MAX_NUM_PROFILES 2
+#define MAX_NUM_PROFILES 4
+
 class ToyMode;
 class ToyMode
 {
