@@ -177,7 +177,12 @@ void Copter::ModeLand::flowhold_run()
         Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
         gcs().send_text(MAV_SEVERITY_INFO, "Land cancel\n");
         // exit land if throttle is high
-        if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
+        if (copter.prev_control_mode == ALT_HOLD || copter.prev_control_mode == FLOWHOLD) {
+            // try previous mode first
+            if (!copter.set_mode(copter.prev_control_mode, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
+                copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
+            }
+        } else if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
             copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
         }
     }
