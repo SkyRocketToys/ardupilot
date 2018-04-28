@@ -357,8 +357,10 @@ void Copter::ModeLand::do_not_use_GPS()
 //  this is always called from a failsafe so we trigger notification to pilot
 void Copter::set_mode_land_with_pause(mode_reason_t reason)
 {
-    set_mode(LAND, reason);
-    land_pause = true;
+    if (control_mode != LAND) {
+        set_mode(LAND, reason);
+        land_pause = true;
+    }
 
     // alert pilot to mode change
     AP_Notify::events.failsafe_mode_change = 1;
