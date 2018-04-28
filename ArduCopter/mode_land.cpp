@@ -105,8 +105,10 @@ void Copter::ModeLand::nogps_run()
         // obstruction detection
         if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
             copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
-            millis() - copter.crash.last_trigger_ms > 2000) {
+            millis() - copter.crash.last_trigger_ms > 2000 &&
+            copter.crash.obs_land_counter < 2) {
             Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
+            gcs().send_text(MAV_SEVERITY_INFO, "Land cancel\n");
             // exit land if throttle is high
             if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
                 copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
@@ -170,8 +172,10 @@ void Copter::ModeLand::flowhold_run()
     }
     if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 &&
         copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR &&
-        millis() - copter.crash.last_trigger_ms > 2000) {
+        millis() - copter.crash.last_trigger_ms > 2000 &&
+        copter.crash.obs_land_counter < 2) {
         Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
+        gcs().send_text(MAV_SEVERITY_INFO, "Land cancel\n");
         // exit land if throttle is high
         if (!copter.set_mode(FLOWHOLD, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
             copter.set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);

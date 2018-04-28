@@ -641,6 +641,7 @@ private:
         uint32_t climb_start_ms;
         float climb_start_alt;
         float filtered_alt;
+        uint8_t obs_land_counter;
     } crash;
 
     // set when we are upgrading parameters from 3.4

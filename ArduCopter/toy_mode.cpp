@@ -707,7 +707,7 @@ void ToyMode::update()
     /*
       arm if throttle is high for 1 second when landed
      */
-    if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed()) {
+    if ((flags & FLAG_THR_ARM) && throttle_near_max && !copter.motors->armed() && copter.crash.obs_land_counter == 0) {
         throttle_high_counter++;
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
             gcs().send_text(MAV_SEVERITY_INFO, "Tmode: throttle arm");
@@ -993,6 +993,9 @@ void ToyMode::update()
 
     if (!copter.motors->armed()) {
         takeoff_start_ms = 0;
+        if (!throttle_near_max) {
+            copter.crash.obs_land_counter = 0;
+        }
     }
 
     if (labs(copter.channel_pitch->get_control_in()) > 3000) {
@@ -1061,6 +1064,8 @@ void ToyMode::param_update()
         }
     }
     last_profile_id = profile_id;
+    control_mode_t new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+    copter.set_mode(new_mode, MODE_REASON_TMODE);
     gcs().send_text(MAV_SEVERITY_CRITICAL, "TMODE: switched to profile %u\n", unsigned(profile_id.get()));
 }
 

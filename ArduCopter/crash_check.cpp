@@ -143,11 +143,12 @@ void Copter::crash_check()
             // this could be a false positive due to inability to
             // climb at high throttle. This happens when battery is
             // low in wind. Go into LAND rather than disarming
-            gcs().send_text(MAV_SEVERITY_EMERGENCY,"Crash: obstruction landing");
+            gcs().send_text(MAV_SEVERITY_EMERGENCY,"Crash: obstruction landing (%u)", crash.obs_land_counter);
             set_mode(LAND, MODE_REASON_OBSTRUCTION);
             crash.counter = 0;
             crash.reset_reason = RESET_REASON_OBSLANDING;
             crash.last_trigger_ms = now;
+            crash.obs_land_counter++;
             return;
         }
         // log an error in the dataflash
