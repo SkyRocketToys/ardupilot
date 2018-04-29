@@ -164,18 +164,39 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     raw_flow.x = constrain_float(raw_flow.x, -flow_max, flow_max);
     raw_flow.y = constrain_float(raw_flow.y, -flow_max, flow_max);
 
+    // rotate controller input to earth frame
+    raw_flow = copter.ahrs.rotate_body_to_earth2D(raw_flow);
+    
     // filter the flow rate
     Vector2f sensor_flow = flow_filter.apply(raw_flow);
 
-    // scale by height estimate, limiting it to height_min to height_max
-    float height_estimate = get_height_estimate();
+    // get constrained height estimate
+    float height_estimate = constrain_float(get_height_estimate(), height_min, height_max);
 
-    // compensate for height, this converts to (approx) m/s
-    sensor_flow *= constrain_float(height_estimate, height_min, height_max);
+    // get body->NDE rotation matrix
+    const Matrix3f &rotmat = copter.ahrs.get_rotation_body_to_ned();
 
-    // rotate controller input to earth frame
-    Vector2f input_ef = copter.ahrs.rotate_body_to_earth2D(sensor_flow);
+    Vector2f input_ef;
+        
+    Vector2f lean_dir_unit(rotmat.a.z, rotmat.b.z);
+    float lean_dir_length = lean_dir_unit.length();
+    Vector2f lean_cross_unit(-rotmat.b.z, rotmat.a.z);
+    float lean_cross_length = lean_cross_unit.length();
 
+
+    if (lean_cross_length > 0.001 && lean_dir_length > 0.001 && rotmat.c.z > 0.01) {
+        // we are leaning over - apply the scaling factors to account
+        // for increased range and image projection length on the
+        // ground. (maths from Leonard)
+        lean_dir_unit /= lean_dir_length;
+        lean_cross_unit /= lean_cross_length;
+        
+        input_ef = lean_dir_unit * (sensor_flow * lean_dir_unit) * (height_estimate/(rotmat.c.z*rotmat.c.z));
+        input_ef += lean_cross_unit * (sensor_flow * lean_cross_unit) * (height_estimate/rotmat.c.z);
+    } else {
+        input_ef = sensor_flow * height_estimate;
+    }
+    
     // run PI controller
     flow_pi_xy.set_input(input_ef);
 
