@@ -95,7 +95,9 @@ uint8_t comm_receive_ch(mavlink_channel_t chan)
     if (!valid_channel(chan)) {
         return 0;
     }
-
+    if (mavlink_comm_port[chan] == nullptr) {
+        return 0;
+    }
     return (uint8_t)mavlink_comm_port[chan]->read();
 }
 
@@ -143,6 +145,9 @@ uint16_t comm_get_available(mavlink_channel_t chan)
 void comm_send_buffer(mavlink_channel_t chan, const uint8_t *buf, uint8_t len)
 {
     if (!valid_channel(chan)) {
+        return;
+    }
+    if (mavlink_comm_port[chan] == nullptr) {
         return;
     }
     mavlink_comm_port[chan]->write(buf, len);
