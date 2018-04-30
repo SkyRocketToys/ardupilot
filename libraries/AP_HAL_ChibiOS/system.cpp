@@ -52,18 +52,18 @@ void HardFault_Handler(void) {
     memcpy(&ctx, (void*)__get_PSP(), sizeof(struct port_extctx));
     (void)ctx;
     //Interrupt status register: Which interrupt have we encountered, e.g. HardFault?
-    FaultType faultType = (FaultType)__get_IPSR();
+    volatile FaultType faultType = (FaultType)__get_IPSR();
     (void)faultType;
     //For HardFault/BusFault this is the address that was accessed causing the error
-    uint32_t faultAddress = SCB->BFAR;
+    volatile uint32_t faultAddress = SCB->BFAR;
     (void)faultAddress;
     //Flags about hardfault / busfault
     //See http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0552a/Cihdjcfc.html for reference
-    bool isFaultPrecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 1) ? true : false);
-    bool isFaultImprecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 2) ? true : false);
-    bool isFaultOnUnstacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 3) ? true : false);
-    bool isFaultOnStacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 4) ? true : false);
-    bool isFaultAddressValid = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 7) ? true : false);
+    volatile bool isFaultPrecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 1) ? true : false);
+    volatile bool isFaultImprecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 2) ? true : false);
+    volatile bool isFaultOnUnstacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 3) ? true : false);
+    volatile bool isFaultOnStacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 4) ? true : false);
+    volatile bool isFaultAddressValid = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 7) ? true : false);
     (void)isFaultPrecise;
     (void)isFaultImprecise;
     (void)isFaultOnUnstacking;
