@@ -94,8 +94,6 @@ Copter::ModeFlowHold::ModeFlowHold(void) : Mode()
     AP_Param::setup_object_defaults(this, var_info);            
 }
 
-#define CONTROL_FLOWHOLD_EARTH_FRAME 0
-
 // flowhold_init - initialise flowhold controller
 bool Copter::ModeFlowHold::init(bool ignore_checks)
 {
@@ -137,6 +135,9 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
         quality_filtered = 0;
         flow_pi_xy.reset_I();
         limited = false;
+        outdoor_flight = false;
+        outdoor_start_ms = 0;
+        indoor_start_ms = 0;
     }
     
     flow_filter.set_cutoff_frequency(copter.scheduler.get_loop_rate_hz(), flow_filter_hz.get());
@@ -165,7 +166,9 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     raw_flow.y = constrain_float(raw_flow.y, -flow_max, flow_max);
 
     // rotate controller input to earth frame
-    raw_flow = copter.ahrs.rotate_body_to_earth2D(raw_flow);
+    if (outdoor_flight) {
+        raw_flow = copter.ahrs.rotate_body_to_earth2D(raw_flow);
+    }
     
     // filter the flow rate
     Vector2f sensor_flow = flow_filter.apply(raw_flow);
@@ -173,10 +176,11 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     // get constrained height estimate
     float height_estimate = constrain_float(get_height_estimate(), height_min, height_max);
 
-    // get body->NDE rotation matrix
+    // get body->NED rotation matrix
     const Matrix3f &rotmat = copter.ahrs.get_rotation_body_to_ned();
 
-    Vector2f input_ef;
+    // flow input in integrator frame (earth frame for outdoor flight, body frame for indoor flight)
+    Vector2f input_if;
         
     Vector2f lean_dir_unit(rotmat.a.z, rotmat.b.z);
     float lean_dir_length = lean_dir_unit.length();
@@ -191,20 +195,28 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
         lean_dir_unit /= lean_dir_length;
         lean_cross_unit /= lean_cross_length;
         
-        input_ef = lean_dir_unit * (sensor_flow * lean_dir_unit) * (height_estimate/(rotmat.c.z*rotmat.c.z));
-        input_ef += lean_cross_unit * (sensor_flow * lean_cross_unit) * (height_estimate/rotmat.c.z);
+        input_if = lean_dir_unit * (sensor_flow * lean_dir_unit) * (height_estimate/(rotmat.c.z*rotmat.c.z));
+        input_if += lean_cross_unit * (sensor_flow * lean_cross_unit) * (height_estimate/rotmat.c.z);
     } else {
-        input_ef = sensor_flow * height_estimate;
+        input_if = sensor_flow * height_estimate;
     }
     
     // run PI controller
-    flow_pi_xy.set_input(input_ef);
+    flow_pi_xy.set_input(input_if);
 
-    // get earth frame controller attitude in centi-degrees
-    Vector2f ef_output;
+    // get integrator frame controller attitude in
+    // centi-degrees. Integrator frame is earth frame for outdoor
+    // flight and body frame for indoor flight
+    Vector2f if_output;
 
     // get P term
-    ef_output = flow_pi_xy.get_p();
+    if (stick_input) {
+        if_output = last_P;
+        last_P *= 0.995;
+    } else {
+        if_output = flow_pi_xy.get_p();
+        last_P = if_output;
+    }
 
     if (stick_input) {
         last_stick_input_ms = now;
@@ -234,6 +246,37 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
             // normal I term operation
             xy_I = flow_pi_xy.get_pi();
         }
+        const float outdoor_lean_threshold = (300.0 / 4500.0);
+        float I_len = xy_I.length();
+        if (!outdoor_flight) {
+            // if we see 3 degree lean angle for more than 5 seconds continuously then we
+            // assume outdoor flight
+            if (I_len < outdoor_lean_threshold) {
+                outdoor_start_ms = 0;
+            } else if (outdoor_start_ms == 0) {
+                outdoor_start_ms = now;
+            } else if (now - outdoor_start_ms > 5000) {
+                gcs().send_text(MAV_SEVERITY_INFO, "FHLD: setting outdoor mode\n");
+                outdoor_flight = true;
+                indoor_start_ms = 0;
+                xy_I = copter.ahrs.rotate_body_to_earth2D(xy_I);
+                flow_pi_xy.set_integrator(xy_I);
+            }
+        } else {
+            // if we see under 3 degree lean angle for more than 5
+            // seconds continuously then we assume indoor flight
+            if (I_len > outdoor_lean_threshold) {
+                indoor_start_ms = 0;
+            } else if (indoor_start_ms == 0) {
+                indoor_start_ms = now;
+            } else if (now - indoor_start_ms > 5000) {
+                gcs().send_text(MAV_SEVERITY_INFO, "FHLD: setting indoor mode\n");
+                outdoor_flight = false;
+                outdoor_start_ms = 0;
+                xy_I = copter.ahrs.rotate_earth_to_body2D(xy_I);
+                flow_pi_xy.set_integrator(xy_I);
+            }
+        }
     }
 
     if (!stick_input && braking) {
@@ -248,15 +291,19 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
             }
             bf_angles[i] = lean_angle_cd;
         }
-        ef_output.zero();
+        if_output.zero();
     }
 
     
-    ef_output += xy_I;
-    ef_output *= 4500; // convert to centidegrees
+    if_output += xy_I;
+    if_output *= 4500; // convert to centidegrees
 
-    // convert to body frame
-    bf_angles += copter.ahrs.rotate_earth_to_body2D(ef_output);
+    // convert to body frame if we are in outdoor flight mode
+    if (outdoor_flight) {
+        bf_angles += copter.ahrs.rotate_earth_to_body2D(if_output);
+    } else {
+        bf_angles += if_output;
+    }
 
     // set limited flag to prevent integrator windup
     limited = fabsf(bf_angles.x) > copter.aparm.angle_max || fabsf(bf_angles.y) > copter.aparm.angle_max;
@@ -266,7 +313,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     bf_angles.y = constrain_float(bf_angles.y, -copter.aparm.angle_max, copter.aparm.angle_max);
 
     if (log_counter++ % 20 == 0) {
-        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy,R,P,AM,FC,Bmin", "Qffffffffffff",
+        DataFlash_Class::instance()->Log_Write("FHLD", "TimeUS,SFx,SFy,Ax,Ay,Qual,Ix,Iy,R,P,AM,FC,Bmin,Od", "QffffffffffffB",
                                                AP_HAL::micros64(),
                                                (double)sensor_flow.x, (double)sensor_flow.y,
                                                (double)bf_angles.x, (double)bf_angles.y,
@@ -276,7 +323,8 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
                                                (double)copter.ahrs.pitch_sensor,
                                                (double)copter.attitude_control->get_althold_lean_angle_max(),
                                                flow_check,
-                                               baro_min_alt);
+                                               baro_min_alt,
+                                               outdoor_flight);
     }
 }
 
@@ -373,6 +421,8 @@ void Copter::ModeFlowHold::run()
         flow_angles.x = constrain_float(flow_angles.x, -angle_max/2, angle_max/2);
         flow_angles.y = constrain_float(flow_angles.y, -angle_max/2, angle_max/2);
         bf_angles += flow_angles;
+    } else {
+        last_P.zero();
     }
     bf_angles.x = constrain_float(bf_angles.x, -angle_max, angle_max);
     bf_angles.y = constrain_float(bf_angles.y, -angle_max, angle_max);

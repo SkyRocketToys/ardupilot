@@ -702,6 +702,12 @@ private:
     float baro_min_alt;
     uint32_t baro_min_alt_ms;
     float flow_check;
+    Vector2f last_P;
+
+    // do we think we're flying outdoors? If so we integrate in earth frame
+    bool outdoor_flight;
+    uint32_t outdoor_start_ms;
+    uint32_t indoor_start_ms;
 };
 #endif // OPTFLOW
 
