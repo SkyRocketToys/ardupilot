@@ -41,7 +41,8 @@ static inline bool valid_channel(mavlink_channel_t chan)
 {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
-    return chan < MAVLINK_COMM_NUM_BUFFERS;
+    // Is the channel theoretically valid, and does it have a serial port assigned to it?
+    return chan < MAVLINK_COMM_NUM_BUFFERS && mavlink_comm_port[chan];
 #pragma clang diagnostic pop
 }
 
