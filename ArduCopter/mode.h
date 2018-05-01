@@ -659,7 +659,7 @@ private:
     const float height_max = 3.0;
 
     AP_Float flow_max;
-    AC_PI_2D flow_pi_xy{0.15, 0.6, 3000, 5, 0.0025};
+    AC_PID_2D flow_pi_xy{0.15, 0.6, 0, 3000, 5, 5, 0.0025};
     AP_Float flow_filter_hz;
     AP_Int8  flow_min_quality;
     AP_Int8  brake_rate_dps;
