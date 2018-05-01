@@ -118,7 +118,7 @@ void Copter::crash_check()
       longer term crash detection based on delta-altitude
      */
     if (crash.climb_start_ms != 0 &&
-        now - crash.climb_start_ms > g2.toy_mode.obs.climb_ms) {
+        now - crash.climb_start_ms > uint32_t(g2.toy_mode.obs.climb_ms)) {
         float delta_alt = crash.filtered_alt - crash.climb_start_alt;
         if (delta_alt < g2.toy_mode.obs.climb_alt) {
             climb_rate_error = true;
