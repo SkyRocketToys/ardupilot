@@ -30,7 +30,7 @@ const AP_Param::GroupInfo Copter::ModeFlowHold::var_info[] = {
     // @Increment: 10
     // @Units: cdeg
     // @User: Advanced
-    AP_SUBGROUPINFO(flow_pi_xy, "_XY_",  1, Copter::ModeFlowHold, AC_PI_2D),
+    AP_SUBGROUPINFO(flow_pi_xy, "_XY_",  1, Copter::ModeFlowHold, AC_PID_2D),
 
     // @Param: _FLOW_MAX
     // @DisplayName: FlowHold Flow Rate Max
@@ -201,8 +201,10 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
         input_if = sensor_flow * height_estimate;
     }
     
-    // run PI controller
-    flow_pi_xy.set_input(input_if);
+    if (!stick_input && !braking) {
+        // run PI controller
+        flow_pi_xy.set_input(input_if);
+    }
 
     // get integrator frame controller attitude in
     // centi-degrees. Integrator frame is earth frame for outdoor
@@ -210,11 +212,11 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
     Vector2f if_output;
 
     // get P term
-    if (stick_input) {
+    if (stick_input || braking) {
         if_output = last_P;
         last_P *= 0.995;
     } else {
-        if_output = flow_pi_xy.get_p();
+        if_output = flow_pi_xy.get_p() + flow_pi_xy.get_d();
         last_P = if_output;
     }
 
@@ -223,6 +225,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
         braking = true;
         braking_angle = atan2f(sensor_flow.y, sensor_flow.x);
     }
+
     if (!stick_input && braking) {
         // stop braking if either 3s has passed, or we have slowed below 0.3m/s
         float flow_angle = atan2f(sensor_flow.y, sensor_flow.x);
@@ -244,7 +247,7 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
             xy_I = flow_pi_xy.get_i_shrink();
         } else {
             // normal I term operation
-            xy_I = flow_pi_xy.get_pi();
+            xy_I = flow_pi_xy.get_i();
         }
         const float outdoor_lean_threshold = (300.0 / 4500.0);
         float I_len = xy_I.length();
@@ -294,7 +297,6 @@ void Copter::ModeFlowHold::flowhold_flow_to_angle(Vector2f &bf_angles, bool stic
         if_output.zero();
     }
 
-    
     if_output += xy_I;
     if_output *= 4500; // convert to centidegrees
 
@@ -451,6 +453,7 @@ void Copter::ModeFlowHold::run()
         copter.pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
 #endif
         flow_pi_xy.reset_I();
+        flow_pi_xy.reset_filter();
         copter.pos_control->update_z_controller();
         break;
 
