@@ -194,7 +194,7 @@ private:
     Radio_Beken beken; // The low level class for communicating to the Beken chip 
 	SyncChannel syncch; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
     static SyncTiming synctm; // Timing between packets, according to the local clock (not the tx clock).
-    bool already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
+    uint32_t already_bound; // True when we have received packets from a tx after bootup. Prevent auto-binding to something else.
 	FwUpload fwupload; // Support OTA upload
 	SyncAdaptive adaptive; // Support adaptive hopping
     struct {
@@ -213,9 +213,9 @@ private:
 	// Received
     struct telem_status t_status; // Keep track of certain data that can be sent as telemetry to the tx.
     uint32_t last_pps_ms; // Timestamp of the last PPS (packets per second) calculation, in milliseconds.
-	uint8_t tx_pps; // Last telemetry PPS received from Tx
-    uint8_t have_tx_pps; // 0=never received, 1=received at least one, 2=received recently
-    uint8_t valid_connection; // Take some time before admitting to ardupilot we have a connection
+	uint32_t tx_pps; // Last telemetry PPS received from Tx
+    uint32_t have_tx_pps; // 0=never received, 1=received at least one, 2=received recently
+    uint32_t valid_connection; // Take some time before admitting to ardupilot we have a connection
     uint32_t telem_send_count; // How many telemetry packets have i sent?
 
     // Parameters

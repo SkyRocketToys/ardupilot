@@ -416,7 +416,7 @@ void AP_Radio_beken::handle_data_packet(mavlink_channel_t chan, const mavlink_da
                 uint8_t pad[16] = {0};
                 fwupload.queue(&pad[0], fwupload.file_length_round - fwupload.file_length);
             }
-        } else {
+        } else { // m.type == 42
             // sending DFU
             uint32_t ofs=0;
             memcpy(&ofs, &m.data[0], 4); // Assumes the endianness of the data!
