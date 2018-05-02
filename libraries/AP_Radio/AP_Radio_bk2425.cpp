@@ -1380,6 +1380,11 @@ bool AP_Radio_beken::load_bind_info(void)
 // ----------------------------------------------------------------------------
 void AP_Radio_beken::BadDroneId(void)
 {
+	if (stats.recv_packets >= 1000) // We are already chatting to this TX for some time.
+	{
+		return; // Do not disconnect from it.
+	}
+	
     // clear the current bind information
     valid_connection = false;
     // with luck we will connect to another tx
@@ -1387,10 +1392,7 @@ void AP_Radio_beken::BadDroneId(void)
     beken.SetFactoryMode(0); // Reset the tx address
     adaptive.Invalidate();
     syncch.SetHopping(0,0);
-	if (stats.recv_packets < 1000)
-	{
-		already_bound = false; // Not already solidly bound to a drone
-	}
+	already_bound = false; // Not already solidly bound to a drone
     stats.recv_packets = 0;
     beken.WriteReg(BK_WRITE_REG|BK_EN_RXADDR, 0x02);
     have_tx_pps = false;
