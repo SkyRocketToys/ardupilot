@@ -47,7 +47,7 @@ Compass::_start_calibration(uint8_t i, bool retry, float delay)
     if (!healthy(i)) {
         return false;
     }
-    if (!use_for_yaw(i)) {
+    if (!enabled_for_yaw(i)) {
         return false;
     }
     if (!is_calibrating()) {

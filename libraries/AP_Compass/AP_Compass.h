@@ -184,10 +184,11 @@ public:
         set_and_save_offsets(i, Vector3f(x, y, z));
     }
 
-    // learn offsets accessor
-    bool learn_offsets_enabled() const { return _learn; }
+    // learn offsets accessor. This is true if we are doing in-flight compass learning
+    bool learn_offsets_enabled() const { return _learn == LEARN_INFLIGHT; }
 
     /// return true if the compass should be used for yaw calculations
+    bool enabled_for_yaw(uint8_t i) const;
     bool use_for_yaw(uint8_t i) const;
     bool use_for_yaw(void) const;
 
