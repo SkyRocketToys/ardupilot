@@ -482,7 +482,11 @@ void  NavEKF2_core::updateFilterStatus(void)
     bool someHorizRefData = !(velTimeout && posTimeout && tasTimeout) || doingFlowNav;
     bool optFlowNavPossible = flowDataValid && delAngBiasLearned;
     bool gpsNavPossible = !gpsNotAvailable && gpsGoodToAlign && delAngBiasLearned;
-    bool filterHealthy = healthy() && tiltAlignComplete && (yawAlignComplete || (!use_compass() && (PV_AidingMode == AID_NONE)));
+    bool yawOK = yawAlignComplete || (!use_compass() && (PV_AidingMode == AID_NONE));
+    if (!yawOK && _ahrs->get_compass() && _ahrs->get_compass()->get_learn_type() == Compass::LEARN_INFLIGHT) {
+        yawOK = true;
+    }
+    bool filterHealthy = healthy() && tiltAlignComplete && yawOK;
     // If GPS height usage is specified, height is considered to be inaccurate until the GPS passes all checks
     bool hgtNotAccurate = (frontend->_altSource == 2) && !validOrigin;
 
