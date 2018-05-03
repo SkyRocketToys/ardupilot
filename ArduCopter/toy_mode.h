@@ -91,6 +91,7 @@ private:
     void arm_check_compass(void);
     void play_tune(const char *tune);
     bool takeoff_complete(void);
+    bool arm_with_fallback(void);
 
     // work out type of button setup
     bool is_v2450_buttons(void) const {

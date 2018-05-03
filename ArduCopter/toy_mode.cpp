@@ -713,27 +713,7 @@ void ToyMode::update()
         if (throttle_high_counter >= TOY_LAND_ARM_COUNT) {
             gcs().send_text(MAV_SEVERITY_INFO, "Tmode: throttle arm");
             arm_check_compass();
-            if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
-                /*
-                  support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
-                 */
-                if (set_and_remember_mode(ALT_HOLD, MODE_REASON_TMODE)) {
-                    gcs().send_text(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
-#if AC_FENCE == ENABLED
-                    copter.fence.enable(false);
-#endif
-                    if (!copter.init_arm_motors(true)) {
-                        // go back to LOITER
-                        gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
-                        set_and_remember_mode(LOITER, MODE_REASON_TMODE);
-                    } else {
-                        upgrade_to_loiter = true;
-#if 0
-                        AP_Notify::flags.hybrid_loiter = true;
-#endif
-                    }
-                }
-            } else {
+            if (arm_with_fallback()) {
                 throttle_arm_ms = AP_HAL::millis();
             }
         }
@@ -911,9 +891,17 @@ void ToyMode::update()
 
     case ACTION_LAUNCH_LAND:
         if (!copter.motors->armed()) {
-            action_arm();
-            takeoff_start_ms = AP_HAL::millis();
-            gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
+            bool sticks_centered =
+                copter.channel_roll->get_control_in() == 0 &&
+                copter.channel_pitch->get_control_in() == 0 &&
+                copter.channel_yaw->get_control_in() == 0;
+            if (!sticks_centered) {
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: sticks not centered\n");
+            }
+            if (sticks_centered && arm_with_fallback()) {
+                takeoff_start_ms = AP_HAL::millis();
+                gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
+            }
         } else {
             if (old_mode == LAND) {
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: FLOW land cancel\n");
@@ -1573,6 +1561,37 @@ void ToyMode::play_tune(const char *tune)
         radio->play_tune(tune);
     }
 #endif
+}
+
+/*
+  arm motors, with fallback to secondary mode if it fails and we are
+  in LOITER mode
+ */
+bool ToyMode::arm_with_fallback(void)
+{
+    if (!copter.init_arm_motors(true) && (flags & FLAG_UPGRADE_LOITER) && copter.control_mode == LOITER) {
+        /*
+          support auto-switching to ALT_HOLD, then upgrade to LOITER once GPS available
+        */
+        if (set_and_remember_mode(ALT_HOLD, MODE_REASON_TMODE)) {
+            gcs().send_text(MAV_SEVERITY_INFO, "Tmode: ALT_HOLD update arm");
+#if AC_FENCE == ENABLED
+            copter.fence.enable(false);
+#endif
+            if (!copter.init_arm_motors(true)) {
+                // go back to LOITER
+                gcs().send_text(MAV_SEVERITY_ERROR, "Tmode: ALT_HOLD arm failed");
+                set_and_remember_mode(LOITER, MODE_REASON_TMODE);
+                return false;
+            } else {
+                upgrade_to_loiter = true;
+#if 0
+                AP_Notify::flags.hybrid_loiter = true;
+#endif
+            }
+        }
+    }
+    return true;
 }
 
 #endif // TOY_MODE_ENABLED
