@@ -61,6 +61,8 @@ private:
     static const RegData init_data_3900[];
     static const RegData init_data_3901_1[];
     static const RegData init_data_3901_2[];
+    static const RegData init_data_3901_3[];
+    static const RegData init_data_3901_4[];
     static const RegData enter_frame_capture[];
     static const RegData exit_frame_capture[];
     
@@ -78,6 +80,7 @@ private:
     void srom_download(void);
     void load_configuration(const RegData *init_data, uint16_t n);
     void load_configuration_unchecked(const RegData *init_data, uint16_t n);
+    bool load_configuration_3901(void);
 
     void timer(void);
     void motion_burst(void);
