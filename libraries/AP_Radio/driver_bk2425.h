@@ -392,7 +392,7 @@ public:
     
     // High-level Beken functions
     void SetPower(uint8_t power);
-    void SetChannel(uint8_t channel);
+    void SetChannel(uint8_t channel); // Sets the physical channel
     void SetCwMode(uint8_t cw);
     void SetCrcMode(uint8_t disable_crc); // non-zero means crc is ignored
 	void SetFactoryMode(uint8_t factory);

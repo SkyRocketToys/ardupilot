@@ -31,7 +31,7 @@ extern const AP_HAL::HAL& hal;
 #define Debug(level, fmt, args...)   do { if ((level) <= get_debug_level()) { hal.console->printf(fmt, ##args); }} while (0)
 // Output fast debug information on the UART, in raw format. MavLink should be disabled if you want to understand these messages.
 // This is for debugging issues with frequency hopping and synchronisation.
-#define DebugPrintf(level, fmt, args...)   do { if (radio_instance && ((level) <= radio_instance->get_debug_level())) { printf(fmt, ##args); }} while (0)
+#define DebugPrintf(level, fmt, args...)   do { if (AP_Radio_beken::radio_instance && ((level) <= AP_Radio_beken::radio_instance->get_debug_level())) { printf(fmt, ##args); }} while (0)
 // Output debug information on the mavlink to the UART connected to the WiFi, wrapped in MavLink packets
 #define DebugMavlink(level, fmt, args...)   do { if ((level) <= get_debug_level()) { gcs().send_text(MAV_SEVERITY_INFO, fmt, ##args); }} while (0)
 
@@ -685,7 +685,7 @@ uint8_t AP_Radio_beken::ProcessBindPacket(const packetFormatRx * rx)
 	}
 	
     // Set the address on which we are receiving the control data
-    syncch.SetChannel(rx->channel);
+    syncch.SetChannel(rx->channel); // Can be factory test channels if wanted
     if (get_factory_test() == 0) // Final check that we are not in factory mode
     {
         adaptive.Invalidate();
@@ -713,7 +713,7 @@ uint8_t AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
         // We haz data
         if (rxaddr == 0)
         {
-            syncch.SetChannel(rx->channel);
+            syncch.SetChannelIfSafe(rx->channel);
             synctm.packet_timer = AP_HAL::micros(); // This is essential for letting the channels update
             if (!already_bound)
             {
@@ -1204,6 +1204,11 @@ void AP_Radio_beken::irq_timeout(uint32_t when)
             {
                 d *= 5; // 3 or 5 are relatively prime to the table size of 16.
                 DebugPrintf(2, "C");
+                if (dt > 120*d) // We have missed 3 seconds - try the safe WiFi table
+                {
+					DebugPrintf(2, "S");
+					syncch.SafeTable();
+				}
             }
             else
             {
@@ -1449,7 +1454,8 @@ void SyncChannel::SafeTable(void)
     channel &= 0x7f;
     if (channel >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
     {
-        // We are in the factory test modes. Keep the channel as is.
+        // We are in the factory test modes. Reset to default table.
+        channel = 0;
     }
     else
     {
@@ -1460,6 +1466,33 @@ void SyncChannel::SafeTable(void)
             channel += CHANNEL_SAFE_TABLE * CHANNEL_COUNT_LOGICAL;
         }
     }
+}
+
+// Check if valid channel index; we have received a packet describing the current channel index
+void SyncChannel::SetChannelIfSafe(uint8_t chan)
+{
+	if (channel != chan)
+	{
+		DebugPrintf(2, "{{%d}} ", chan);
+	}
+    chan &= 0x7f; // Disregard hopping
+    if (chan >= CHANNEL_COUNT_LOGICAL*CHANNEL_NUM_TABLES)
+    {
+		if (chan == lastchan)
+		{
+			channel = chan; // Allow test mode channels if two in a row
+		}
+		else
+		{
+			chan = 0; // Disallow test mode tables unless followed by each other
+		}
+		lastchan = chan;
+	}
+	else
+	{
+		lastchan = 0;
+	}
+	channel = chan;
 }
 
 // We have received a packet on this channel
