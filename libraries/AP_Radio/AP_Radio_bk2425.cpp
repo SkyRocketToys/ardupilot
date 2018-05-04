@@ -779,7 +779,7 @@ uint8_t AP_Radio_beken::ProcessPacket(const uint8_t* packet, uint8_t rxaddr)
 						// than we have ever sent. There must be another RX sending
 						// telemetry packets. We will reset our mfg_id and go back waiting
 						// for a new bind packet, hopefully with the right TX
-						Debug(1, "Double-bind detected via PPS %d\n", tx_pps);
+						Debug(1, "Double-bind detected via PPS %d\n", (int) tx_pps);
 						BadDroneId();
 						result = 1;
 					}
