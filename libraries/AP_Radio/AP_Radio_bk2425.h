@@ -60,6 +60,7 @@ struct SyncTiming {
 struct SyncChannel {
 	enum { countdown_invalid = 0 }; // When countdown is this value, no change is pending
     uint8_t channel; // Index within the channel hopping sequence. Corresponds to txChannel on the button board
+    uint8_t lastchan; // Last requested index, if it is a factory test channel.
     uint8_t countdown; // How many packet slots until a pending table change occurs?
     uint8_t countdown_chan; // Which channel do we jump to when the table change happens?
     uint8_t hopping_current; // Which alternative channels are we on now
@@ -67,13 +68,15 @@ struct SyncChannel {
     uint8_t hopping_countdown; // How many packet slots until a pending table change occurs?
     SyncChannel() : // Constructor to setup sensible initial conditions
 		channel(0),
+		lastchan(0),
 		countdown(countdown_invalid),
 		countdown_chan(0),
 		hopping_current(0),
 		hopping_wanted(0),
 		hopping_countdown(countdown_invalid)
 		{}
-    void SetChannel(uint8_t chan) // We have received a packet describing the current channel index
+    void SetChannelIfSafe(uint8_t chan); // Check if valid channel index; we have received a packet describing the current channel index
+    void SetChannel(uint8_t chan) // Already safe. We have received a packet describing the current channel index
     { channel = chan; }
     void SetCountdown(uint8_t cnt, uint8_t nextCh) // We receive a countdown to a non-normal channel change in the future
     { countdown = cnt; countdown_chan = nextCh; }
@@ -174,6 +177,7 @@ private:
 	void check_fw_ack(void);
    
     // Static data, for interrupt support
+    friend class SyncChannel; // For DebugPrintf support
     static AP_Radio_beken *radio_instance; // Singleton pointer to the Beken radio instance
     static thread_t *_irq_handler_ctx;
     static virtual_timer_t timeout_vt;
