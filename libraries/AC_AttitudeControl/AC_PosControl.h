@@ -247,6 +247,11 @@ public:
     // is_active_xy - returns true if the xy position controller has been run very recently
     bool is_active_xy() const;
 
+    // force the XY controller as active, to prevent resets
+    void set_active_xy() {
+        _last_update_xy_ms = AP_HAL::millis();
+    }
+    
     /// update_xy_controller - run the horizontal position controller - should be called at 100hz or higher
     ///     when use_desired_velocity is true the desired velocity (i.e. feed forward) is incorporated at the pos_to_rate step
     void update_xy_controller(xy_mode mode, float ekfNavVelGainScaler, bool use_althold_lean_angle);
