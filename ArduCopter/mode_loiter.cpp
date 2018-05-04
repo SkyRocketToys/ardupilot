@@ -9,6 +9,13 @@ bool Copter::ModeLoiter::init(bool ignore_checks)
 {
     if (copter.position_ok() || ignore_checks) {
 
+        if (copter.control_mode == FLIP) {
+            // don't re-init on flip
+            pos_control->set_active_z();
+            pos_control->set_active_xy();
+            return true;
+        }
+        
         // set target to current position
         wp_nav->init_loiter_target();
 
