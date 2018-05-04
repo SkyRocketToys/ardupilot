@@ -161,9 +161,9 @@ bool AP_OpticalFlow_Pixart::setup_sensor(void)
     if (model == PIXART_3900) {
         load_configuration(init_data_3900, ARRAY_SIZE(init_data_3900));
     } else {
-        load_configuration(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
-        hal.scheduler->delay(100);
-        load_configuration(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
+        if (!load_configuration_3901()) {
+            goto failed;
+        }
     }
 
     hal.scheduler->delay(50);
@@ -184,6 +184,69 @@ bool AP_OpticalFlow_Pixart::setup_sensor(void)
 failed:
     _dev->get_semaphore()->give();
     return false;
+}
+
+// load config registers for the 3901. This is rather complex
+bool AP_OpticalFlow_Pixart::load_configuration_3901(void)
+{
+    load_configuration(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
+
+    // Read back from register 0x47 to confirm value is 0x08
+    uint8_t v, i = 0;
+    while (i < 3) {
+        reg_write(0x43, 0x10);
+        v = reg_read(0x47);
+        if (v == 0x08) {
+            break;
+        } else {
+            // Not successful, retry for 3 times, if still not, exit initialization routine
+            i++;
+            if (i == 3) {
+                return false;
+            }
+        }
+    }
+   
+    v = reg_read(0x67);
+    if (v & 0x80) {
+        reg_write(0x48, 0x04);
+    } else {
+        reg_write(0x48, 0x02);
+    }
+    
+    load_configuration(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
+
+    v = reg_read(0x73);
+    if (v == 0) {
+        uint8_t c1 = reg_read(0x70);
+        if (c1 <= 28) {
+            c1 = c1 + 14;
+        } else {
+            c1 = c1 + 11;
+        }
+	
+        if (c1 > 0x3F) {
+            c1 = 0x3F;
+        }
+        
+        uint8_t c2 = reg_read(0x71);
+        c2 = ((uint16_t)c2 * 45U)/100U;
+        
+        reg_write(0x7f, 0x00);
+        reg_write(0x61, 0xAD);
+        reg_write(0x51, 0x70);
+        reg_write(0x7f, 0x0e);
+        reg_write(0x70, c1);
+        reg_write(0x71, c2);
+    }
+
+    load_configuration(init_data_3901_3, ARRAY_SIZE(init_data_3901_3));
+
+    hal.scheduler->delay(10);
+    
+    load_configuration(init_data_3901_4, ARRAY_SIZE(init_data_3901_4));
+
+    return true;
 }
 
 
