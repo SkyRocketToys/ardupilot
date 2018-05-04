@@ -223,7 +223,14 @@ void Copter::gpsglitch_check()
 void Copter::set_mode_RTL_or_land_with_pause(mode_reason_t reason)
 {
     // attempt to switch to RTL, if this fails then switch to Land
-    if (!set_mode(RTL, reason)) {
+    bool try_rtl = true;
+#if TOY_MODE_ENABLED
+    if (control_mode == ALT_HOLD) {
+        // don't try RTL when coming from ALT_HOLD for TOY_MODE
+        try_rtl = false;
+    }
+#endif
+    if (try_rtl && !set_mode(RTL, reason)) {
         // set mode to land will trigger mode change notification to pilot
         set_mode_land_with_pause(reason);
     } else {
