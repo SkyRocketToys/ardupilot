@@ -137,6 +137,12 @@ void Copter::crash_check()
     // we may be crashing
     crash.counter++;
 
+    if (angle_error && (angle_error_deg > 2*CRASH_CHECK_ANGLE_DEVIATION_DEG) && control_mode != FLIP) {
+        // trigger 3x faster for really large angle error
+        crash.counter += 2;
+    }
+    
+
     // check if crashing for 2 seconds
     if (crash.counter >= (CRASH_CHECK_TRIGGER_SEC * scheduler.get_loop_rate_hz())) {
         if (!angle_error && climb_rate_error && !controls_saturated && control_mode != LAND) {
