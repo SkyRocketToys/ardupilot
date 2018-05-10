@@ -180,6 +180,7 @@ private:
     AP_Float inav_k1;
     AP_Float inav_k2;
     AP_Float inav_k3;
+    AP_Float batt_voltage_critical;
     int8_t last_profile_id = -1;
     bool leds_off;
     uint32_t last_flip_ms;

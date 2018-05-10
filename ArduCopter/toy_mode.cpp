@@ -357,6 +357,14 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
     // @Group: _P4_
     // @Path: toy_mode_profile.cpp
     AP_SUBGROUPINFO(_var_info_profile[3], "_P4_", 47, ToyMode, ToyMode::Profile),
+
+    // @Param: _CRIT_VOLT
+    // @DisplayName: Critical battery voltage
+    // @Description: If battery gets below this voltage then throttle up will no longer cancel land
+    // @Range: 0 15
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("_CRIT_VOLT", 48, ToyMode, batt_voltage_critical, 3.40),
     
     AP_GROUPEND
 };
@@ -398,6 +406,13 @@ void ToyMode::update()
 
     // keep filtered battery voltage for thrust limiting
     filtered_voltage = 0.99 * filtered_voltage + 0.01 * copter.battery.voltage();
+
+    if (filtered_voltage < batt_voltage_critical &&
+        AP_HAL::millis() > 20000 &&
+        (copter.g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND)) {
+        gcs().send_text(MAV_SEVERITY_INFO, "Tmode: Critical battery %.2f", filtered_voltage);
+        copter.g.throttle_behavior.set(copter.g.throttle_behavior.get() & ~THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND);
+    }
     
     // update LEDs
     blink_update();
