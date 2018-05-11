@@ -412,6 +412,9 @@ void ToyMode::update()
         (copter.g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND)) {
         gcs().send_text(MAV_SEVERITY_INFO, "Tmode: Critical battery %.2f", filtered_voltage);
         copter.g.throttle_behavior.set(copter.g.throttle_behavior.get() & ~THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND);
+        if (copter.control_mode != LAND && copter.control_mode != LAND) {
+            copter.set_mode_RTL_or_land_with_pause(MODE_REASON_BATTERY_FAILSAFE);
+        }
     }
     
     // update LEDs
