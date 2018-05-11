@@ -488,9 +488,7 @@ void AP_OpticalFlow_Pixart::raw_frame_capture(void)
     // reset sensor
     reg_write(PIXART_REG_POWER_RST, 0x5A);
     hal.scheduler->delay(50);
-    load_configuration(init_data_3901_1, ARRAY_SIZE(init_data_3901_1));
-    hal.scheduler->delay(100);
-    load_configuration(init_data_3901_2, ARRAY_SIZE(init_data_3901_2));
+    load_configuration_3901();
 }
 
 // update - read latest values from sensor and fill in x,y and totals.
