@@ -287,6 +287,7 @@ private:
     
     // low-pass voltage
     float filtered_voltage = 4.0;
+    bool critical_voltage_reached;
 
     uint8_t motor_log_counter;
 

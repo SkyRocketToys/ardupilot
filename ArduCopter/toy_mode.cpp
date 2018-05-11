@@ -411,6 +411,7 @@ void ToyMode::update()
         AP_HAL::millis() > 20000 &&
         (copter.g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND)) {
         gcs().send_text(MAV_SEVERITY_INFO, "Tmode: Critical battery %.2f", filtered_voltage);
+        critical_voltage_reached = true;
         copter.g.throttle_behavior.set(copter.g.throttle_behavior.get() & ~THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND);
         if (copter.control_mode != LAND && copter.control_mode != LAND) {
             copter.set_mode_RTL_or_land_with_pause(MODE_REASON_BATTERY_FAILSAFE);
@@ -879,7 +880,9 @@ void ToyMode::update()
         } else {
             profile_id.set_and_notify(((profile_id.get()-1)^1)+1);
         }
-        new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+        if (!critical_voltage_reached || old_mode != LAND) {
+            new_mode = control_mode_t(_var_info_profile[profile_id.get()-1].mode.get());
+        }
         break;
     }
         
