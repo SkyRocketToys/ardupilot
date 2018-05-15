@@ -606,6 +606,7 @@ void ToyMode::update()
         if (now - reset_turtle_start_ms > TOY_RESET_TURTLE_TIME) {
             gcs().send_text(MAV_SEVERITY_INFO, "Tmode: WiFi reset");
             reset_turtle_start_ms = 0;
+            copter.g.format_version.set_and_save(0);
             send_named_int("WIFIRESET", 1);
         }
     } else {
