@@ -928,6 +928,7 @@ void ToyMode::update()
             if (sticks_centered && arm_with_fallback()) {
                 takeoff_start_ms = AP_HAL::millis();
                 gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff started\n");
+                new_mode = copter.control_mode;
             }
         } else {
             if (old_mode == LAND) {
