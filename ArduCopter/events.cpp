@@ -230,7 +230,9 @@ void Copter::set_mode_RTL_or_land_with_pause(mode_reason_t reason)
         try_rtl = false;
     }
 #endif
-    if (try_rtl && !set_mode(RTL, reason)) {
+    if (!try_rtl) {
+        set_mode_land_with_pause(reason);
+    } else if (!set_mode(RTL, reason)) {
         // set mode to land will trigger mode change notification to pilot
         set_mode_land_with_pause(reason);
     } else {
