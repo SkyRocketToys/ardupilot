@@ -608,6 +608,11 @@ void ToyMode::update()
             reset_turtle_start_ms = 0;
             copter.g.format_version.set_and_save(0);
             send_named_int("WIFIRESET", 1);
+            play_tune(TUNE_ACK);
+            green_blink_pattern = BLINK_8;
+            red_blink_pattern = BLINK_8;
+            green_blink_count = 1;
+            red_blink_count = 1;
         }
     } else {
         reset_turtle_start_ms = 0;
