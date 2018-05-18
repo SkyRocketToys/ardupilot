@@ -682,25 +682,27 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
         bindHopData[i] = val;
     }
 
-    // additional loop to fix any close channels
-    for (i=0; i<NUM_CHANNELS; i++) {
-        // first loop only accepts channels that are outside wifi band
-        if (have_channel(bindHopData[i], i, 0)) {
-            uint8_t c;
-            for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
-                if ((channel <= cc_wifi_low || channel >= cc_wifi_high) && !have_channel(c, i, 0)) {
-                    bindHopData[i] = c;
-                    break;
+    if (get_protocol() != AP_Radio::PROTOCOL_CC2500_GFSK) {
+        // additional loop to fix any close channels
+        for (i=0; i<NUM_CHANNELS; i++) {
+            // first loop only accepts channels that are outside wifi band
+            if (have_channel(bindHopData[i], i, 0)) {
+                uint8_t c;
+                for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
+                    if ((channel <= cc_wifi_low || channel >= cc_wifi_high) && !have_channel(c, i, 0)) {
+                        bindHopData[i] = c;
+                        break;
+                    }
                 }
             }
-        }
-        // if that fails then accept channels within the wifi band
-        if (have_channel(bindHopData[i], i, 0)) {
-            uint8_t c;
-            for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
-                if (!have_channel(c, i, 0)) {
-                    bindHopData[i] = c;
-                    break;
+            // if that fails then accept channels within the wifi band
+            if (have_channel(bindHopData[i], i, 0)) {
+                uint8_t c;
+                for (c = 0; c<MAX_CHANNEL_NUMBER; c++) {
+                    if (!have_channel(c, i, 0)) {
+                        bindHopData[i] = c;
+                        break;
+                    }
                 }
             }
         }
@@ -720,7 +722,7 @@ void AP_Radio_cc2500::setup_hopping_table_SRT(void)
 /*
   handle a autobind packet
  */
-bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
+bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet, uint8_t lqi)
 {
     if (get_factory_test() != 0) {
         // no autobind in factory test mode
@@ -737,9 +739,10 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
         pkt->magic2 != 0xA2 ||
         pkt->txid[0] != uint8_t(~pkt->txid_inverse[0]) ||
         pkt->txid[1] != uint8_t(~pkt->txid_inverse[1])) {
-        Debug(3, "AB len=%u elen=%u m1=0x%02x m2=0x%02x 0x%02x:0x%02x 0x%02x:0x%02x\n",
+        Debug(3, "AB l=%u el=%u m1=%02x m2=%02x %02x:%02x %02x:%02x %02x:%02x\n",
               pkt->length, sizeof(struct autobind_packet_cc2500)-1, pkt->magic1, pkt->magic2,
-              pkt->txid[0], pkt->txid[1], uint8_t(~pkt->txid_inverse[0]), uint8_t(~pkt->txid_inverse[1]));
+              pkt->txid[0], pkt->txid[1], uint8_t(~pkt->txid_inverse[0]), uint8_t(~pkt->txid_inverse[1]),
+              pkt->crc[0], pkt->crc[1]);
         // not a valid autobind packet
         return false;
     }
@@ -754,22 +757,24 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet)
         Debug(3, "AB bad CRC\n");
         return false;
     }
-
+    
     uint8_t rssi_raw = packet[sizeof(struct autobind_packet_cc2500)];
     uint8_t rssi_dbm = map_RSSI_to_dBm(rssi_raw);
 
+    if (lqi >= 50) {
+        Debug(3,"autobind bad LQI %u\n", lqi);
+        return false;
+    }
+    
     if (rssi_dbm < get_autobind_rssi()) {
         Debug(1,"autobind RSSI %u needs %u\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi());
         return false;
     }
-    Debug(1,"autobind at RSSI %u above %u\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi());
+    Debug(1,"autobind RSSI %u above %u lqi=%u bofs=%d\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi(), lqi, bindOffset);
     
     bindTxId[0] = pkt->txid[0];
     bindTxId[1] = pkt->txid[1];
 
-    // we have no way to get the bind offset with autobind, so use 0
-    // as best guess
-    bindOffset = 0;
     listLength = NUM_CHANNELS;
     t_status.wifi_chan = pkt->wifi_chan;
 
@@ -891,7 +896,8 @@ void AP_Radio_cc2500::irq_handler(void)
         } else if (ccLen == sizeof(srt_packet)+2) {
             ok = handle_SRT_packet(packet);
             if (!ok) {
-                ok = handle_autobind_packet(packet);
+                uint8_t Lqi = packet[ccLen - 1] & 0x7F;
+                ok = handle_autobind_packet(packet, Lqi);
             }
         }
         if (ok) {
@@ -1024,7 +1030,8 @@ void AP_Radio_cc2500::irq_timeout(void)
         break;
     }
 
-    case STATE_SEARCH:
+    case STATE_SEARCH: {
+        uint32_t now = AP_HAL::millis();
         search_count++;
         if (stats.recv_packets == 0 &&
             get_autobind_time() != 0 &&
@@ -1033,15 +1040,25 @@ void AP_Radio_cc2500::irq_timeout(void)
             (search_count & 1) == 0) {
             // try for an autobind packet every 2nd packet, waiting 3 packet delays
             static uint32_t cc;
-            Debug(4,"ab recv %u", cc);
+            bindOffset += 5;
+            if (bindOffset >= 126) {
+                bindOffset = -126;
+            }
+            Debug(4,"ab recv %u boffset=%d", cc, bindOffset);
             cc++;
+            cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
             setChannelRX(AUTOBIND_CHANNEL);
-            chVTSet(&timeout_vt, MS2ST(30), trigger_timeout_event, nullptr);
+            autobind_start_recv_ms = now;
+            chVTSet(&timeout_vt, MS2ST(60), trigger_timeout_event, nullptr);
         } else {
             // shift by one channel at a time when searching
-            nextChannel(1);
+            if (autobind_start_recv_ms == 0 || now - autobind_start_recv_ms > 50) {
+                autobind_start_recv_ms = 0;
+                nextChannel(1);
+            }
         }
         break;
+    }
             
     case STATE_FCCTEST: {
         if (get_fcc_test() == 0) {

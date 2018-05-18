@@ -123,6 +123,7 @@ private:
     uint8_t last_wifi_channel;
 
     uint32_t timeTunedMs;
+    uint32_t autobind_start_recv_ms;
 
     void initTuneRx(void);
     void initialiseData(uint8_t adr);
@@ -207,7 +208,7 @@ private:
 
     bool handle_D16_packet(const uint8_t *packet);
     bool handle_SRT_packet(const uint8_t *packet);
-    bool handle_autobind_packet(const uint8_t *packet);
+    bool handle_autobind_packet(const uint8_t *packet, uint8_t lqi);
     bool have_channel(uint8_t channel, uint8_t count, uint8_t loop);
     void setup_hopping_table_SRT(void);
     uint8_t map_RSSI_to_dBm(uint8_t rssi_raw);
