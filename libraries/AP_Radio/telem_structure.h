@@ -52,6 +52,20 @@ struct PACKED telem_packet_cypress {
 };
 
 /*
+  cc2500 specific protocol structures
+ */
+struct PACKED telem_status_cc2500 {
+    uint8_t pps; // packets per second received
+    uint8_t rssi; // lowpass rssi
+    uint8_t flags; // TELEM_FLAG_*
+    uint8_t flight_mode; // flight mode (with profile number in high bit)
+    uint8_t wifi_chan; // wifi channel number on Sonix
+    uint8_t tx_max;  // max TX power
+    uint8_t note_adjust; // buzzer tone adjustment
+    uint8_t rxid[2]; // 16 bit ID for cc2500 to prevent double binds
+};
+
+/*
   telemetry packet from RX to TX for cc2500
  */
 struct PACKED telem_packet_cc2500 {
@@ -60,7 +74,7 @@ struct PACKED telem_packet_cc2500 {
     uint8_t txid[2];
     union {
         uint8_t pkt[9];
-        struct telem_status status;
+        struct telem_status_cc2500 status;
         struct telem_firmware fw;
     } payload;
 };
@@ -92,11 +106,13 @@ enum packet_type {
     PKTYPE_TELEM_PPS  = 5,
     PKTYPE_BL_VERSION = 6,
     PKTYPE_FW_ACK     = 7,
-    PKTYPE_NUM_TYPES  = 8 // used for modulus
+    PKTYPE_RXID1      = 8,
+    PKTYPE_RXID2      = 9,
+    PKTYPE_NUM_TYPES  = 10 // used for modulus
 };
 
 /*
-  skyrocket specific packet for cc2500
+  skyrocket specific packet from TX to RX for cc2500
  */
 struct PACKED srt_packet {
     uint8_t length;     // required for cc2500 FIFO

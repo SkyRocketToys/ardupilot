@@ -199,7 +199,7 @@ private:
         uint8_t firmware_day;
     } tx_date;
         
-    struct telem_status t_status;
+    struct telem_status_cc2500 t_status;
     uint32_t last_pps_ms;
     uint8_t tx_rssi;
     uint8_t tx_pps;

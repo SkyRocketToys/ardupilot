@@ -371,6 +371,16 @@ void AP_Radio_cc2500::radio_init(void)
     hal.gpio->attach_interrupt(HAL_GPIO_RADIO_IRQ, trigger_irq_radio_event, HAL_GPIO_INTERRUPT_RISING);
 #endif
 
+    // fill in rxid for use in double bind prevention
+    char sysid[40] {};
+    hal.util->get_system_id(sysid);
+    uint16_t sysid_crc = calc_crc((const uint8_t *)sysid, strnlen(sysid, sizeof(sysid)));
+    if (sysid_crc == 0) {
+        sysid_crc = 1;
+    }
+    t_status.rxid[0] = sysid_crc & 0xFF;
+    t_status.rxid[1] = sysid_crc >> 8;
+
     initTuneRx();
 
     if (load_bind_info()) {
@@ -564,6 +574,18 @@ bool AP_Radio_cc2500::handle_SRT_packet(const uint8_t *packet)
         break;
     case PKTYPE_BL_VERSION:
         // unused so far for cc2500
+        break;
+    case PKTYPE_RXID1:
+        if (data != t_status.rxid[0]) {
+            Debug(4, "Double bind1 - disconnecting\n");
+            start_recv_bind();
+        }
+        break;
+    case PKTYPE_RXID2:
+        if (data != t_status.rxid[1]) {
+            Debug(4, "Double bind2 - disconnecting\n");
+            start_recv_bind();
+        }
         break;
     case PKTYPE_FW_ACK: {
             // got an fw upload ack 
