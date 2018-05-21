@@ -119,6 +119,7 @@ private:
     uint64_t bind_mask;
     uint8_t best_lqi;
     int8_t best_bindOffset;
+    int8_t auto_bindOffset;
     uint8_t search_count;
     uint8_t last_wifi_channel;
 

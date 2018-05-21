@@ -770,7 +770,9 @@ bool AP_Radio_cc2500::handle_autobind_packet(const uint8_t *packet, uint8_t lqi)
         Debug(1,"autobind RSSI %u needs %u\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi());
         return false;
     }
-    Debug(1,"autobind RSSI %u above %u lqi=%u bofs=%d\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi(), lqi, bindOffset);
+    Debug(1,"autobind RSSI %u above %u lqi=%u bofs=%d\n", (unsigned)rssi_dbm, (unsigned)get_autobind_rssi(), lqi, auto_bindOffset);
+
+    bindOffset = auto_bindOffset;
     
     bindTxId[0] = pkt->txid[0];
     bindTxId[1] = pkt->txid[1];
@@ -1040,13 +1042,13 @@ void AP_Radio_cc2500::irq_timeout(void)
             (search_count & 1) == 0) {
             // try for an autobind packet every 2nd packet, waiting 3 packet delays
             static uint32_t cc;
-            bindOffset += 5;
-            if (bindOffset >= 126) {
-                bindOffset = -126;
+            auto_bindOffset += 5;
+            if (auto_bindOffset >= 126) {
+                auto_bindOffset = -126;
             }
-            Debug(4,"ab recv %u boffset=%d", cc, bindOffset);
+            Debug(4,"ab recv %u boffset=%d", cc, auto_bindOffset);
             cc++;
-            cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
+            cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, (uint8_t)auto_bindOffset);
             setChannelRX(AUTOBIND_CHANNEL);
             autobind_start_recv_ms = now;
             chVTSet(&timeout_vt, MS2ST(60), trigger_timeout_event, nullptr);
@@ -1054,6 +1056,7 @@ void AP_Radio_cc2500::irq_timeout(void)
             // shift by one channel at a time when searching
             if (autobind_start_recv_ms == 0 || now - autobind_start_recv_ms > 50) {
                 autobind_start_recv_ms = 0;
+                cc2500.WriteRegCheck(CC2500_0C_FSCTRL0, (uint8_t)bindOffset);
                 nextChannel(1);
             }
         }
