@@ -58,3 +58,5 @@ PA1 UART4_RX UART4 NODMA
 define CHIBIOS_SHORT_BOARD_NAME "SRT-v2450GPS"
 
 env DEFAULT_PARAMETERS '../../Tools/Frame_params/SkyViper-2450GPS/defaults.parm'
+
+define ALLOW_ARM_NO_COMPASS 1
