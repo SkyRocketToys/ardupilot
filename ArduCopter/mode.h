@@ -666,6 +666,7 @@ private:
     AP_Float height_adjustment;
     AP_Float land_baro_spike;
     AP_Float land_flow_spike;
+    AP_Float height_estimate_limit;
 
     float quality_filtered;
 

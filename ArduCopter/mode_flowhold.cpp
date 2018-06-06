@@ -85,6 +85,14 @@ const AP_Param::GroupInfo Copter::ModeFlowHold::var_info[] = {
     // @Range: 0 2
     // @User: Standard
     AP_GROUPINFO("_LAND_FSPK", 9, Copter::ModeFlowHold, land_flow_spike, 1.0),
+
+    // @Param: _HGT_ESTLIM
+    // @DisplayName: FlowHold height offset limit
+    // @Description: This is a limit on the difference between barometric height and the flow height estimate
+    // @Range: 0 20
+    // @User: Standard
+    // @Units: m
+    AP_GROUPINFO("_HGT_ESTLIM", 10, Copter::ModeFlowHold, height_estimate_limit, 3),
     
     AP_GROUPEND
 };
@@ -583,7 +591,10 @@ void Copter::ModeFlowHold::update_height_estimate(void)
 
     // apply a simple filter
     height_offset = 0.8 * height_offset + 0.2 * new_offset;
-    
+
+    // apply constraint on difference from baro height
+    height_offset = constrain_float(height_offset, -height_estimate_limit, height_estimate_limit);
+
     if (ins_height + height_offset < height_min) {
         // height estimate is never allowed below the minimum
         height_offset = height_min - ins_height;
