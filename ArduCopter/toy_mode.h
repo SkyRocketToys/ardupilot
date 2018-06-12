@@ -142,6 +142,7 @@ private:
         FLAG_RTL_CANCEL     = 1<<3,  // cancel RTL on large stick input
         FLAG_ACCEL_CAL      = 1<<4,  // accel cal on mode+stunt for 2s
         FLAG_TXMODE_CHANGE  = 1<<5,  // change TX mode on mode+stick for 2s
+        FLAG_FLOW_YAW_COMP  = 1<<6,  // enable flow yaw compensation
     };
 
     enum blink_patterns {

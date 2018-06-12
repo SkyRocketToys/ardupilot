@@ -119,10 +119,10 @@ const AP_Param::GroupInfo ToyMode::var_info[] = {
 
     // @Param: _FLAGS
     // @DisplayName: Tmode flags
-    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged
-    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel,4:AccelCalEnable,5:TXModeChangeEnable
+    // @Description: Bitmask of flags to change the behaviour of tmode. DisarmOnLowThrottle means to disarm if throttle is held down for 1 second when landed. ArmOnHighThrottle means to arm if throttle is above 80% for 1 second. UpgradeToLoiter means to allow takeoff in LOITER mode by switching to ALT_HOLD, then auto-upgrading to LOITER once GPS is available. RTLStickCancel means that on large stick inputs in RTL mode that LOITER mode is engaged. FlowYawCompensation means to adjust optical flow sensor handling when actively yawing
+    // @Bitmask: 0:DisarmOnLowThrottle,1:ArmOnHighThrottle,2:UpgradeToLoiter,3:RTLStickCancel,4:AccelCalEnable,5:TXModeChangeEnable,6:FlowYawCompensation
     // @User: Standard
-    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM | FLAG_ACCEL_CAL | FLAG_TXMODE_CHANGE),
+    AP_GROUPINFO("_FLAGS", 14, ToyMode, flags, FLAG_THR_DISARM | FLAG_ACCEL_CAL | FLAG_TXMODE_CHANGE | FLAG_FLOW_YAW_COMP),
 
     // @Param: _VMIN
     // @DisplayName: Min voltage for output limiting
@@ -708,6 +708,10 @@ void ToyMode::update()
         last_action_ms = now;
     }
 
+    if (copter.control_mode == FLOWHOLD && (flags & FLAG_FLOW_YAW_COMP)) {
+        copter.optflow.set_yaw_compensation(copter.channel_yaw->get_control_in() != 0);
+    }
+    
     // we use 150 for throttle_at_min to cope with varying stick throws
     bool throttle_at_min =
         copter.channel_throttle->get_control_in() < 150;
