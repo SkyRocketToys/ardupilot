@@ -78,12 +78,20 @@ public:
     // parameter var info table
     static const struct AP_Param::GroupInfo var_info[];
 
+    // set a flag to indicate that an active yaw is in progress. This
+    // can be used by the sensor driver to change parameters to ones
+    // that are more suitable for yaw
+    void set_yaw_compensation(bool yawing) {
+        _flags.yawing = yawing;
+    }
+
 private:
     AP_AHRS_NavEKF &_ahrs;
     OpticalFlow_backend *backend;
 
     struct AP_OpticalFlow_Flags {
         uint8_t healthy     : 1;    // true if sensor is healthy
+        bool yawing         : 1;    // actively yawing
     } _flags;
 
     // parameters

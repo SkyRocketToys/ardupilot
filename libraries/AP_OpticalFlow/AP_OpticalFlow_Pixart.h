@@ -90,4 +90,7 @@ private:
 
     uint32_t last_burst_us;
     uint32_t last_update_ms;
+
+    void setup_yaw_handling(void);
+    bool last_yaw_flag;
 };

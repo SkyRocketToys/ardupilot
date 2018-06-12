@@ -59,6 +59,11 @@ protected:
 
     // check if image view enabled
     bool get_image_view(void) const { return frontend._image_view != 0; }
+
+    // return yawing flag, which indicates if the vehicle is actively yawing
+    bool get_yawing_flag(void) {
+        return frontend._flags.yawing;
+    }
     
     // semaphore for access to shared frontend data
     AP_HAL::Semaphore *_sem;

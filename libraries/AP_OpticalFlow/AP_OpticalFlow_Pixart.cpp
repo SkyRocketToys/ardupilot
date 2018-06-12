@@ -393,6 +393,8 @@ void AP_OpticalFlow_Pixart::timer(void)
         raw_frame_capture();
         return;
     }
+
+    setup_yaw_handling();
     
     motion_burst();
     last_burst_us = AP_HAL::micros();
@@ -530,4 +532,27 @@ void AP_OpticalFlow_Pixart::update(void)
 
     // copy results to front end
     _update_frontend(state);
+}
+
+/*
+  cope better with yaw by changing capture parameters during active vehicle yaw.
+ */
+void AP_OpticalFlow_Pixart::setup_yaw_handling(void)
+{
+    bool yaw_flag = get_yawing_flag();
+    if (last_yaw_flag == yaw_flag) {
+        // no change
+        return;
+    }
+    last_yaw_flag = yaw_flag;
+    
+    reg_write(0x7f, 0x05);
+    if (get_yawing_flag()) {
+        reg_write(0x5b, 0x11);
+        reg_write(0x6d, 0x11);
+    } else {
+        reg_write(0x5b, 0x32);
+        reg_write(0x6d, 0x32);
+    }
+    reg_write(0x7f, 0x00);
 }
