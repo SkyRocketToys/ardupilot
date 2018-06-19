@@ -1323,17 +1323,6 @@ void ToyMode::takeoff_throttle_adjust(float &throttle_control)
         throttle_control = linear_interpolate(throttle_mid+100, 720, (now-takeoff_start_ms)-(takeoff_delay*1000),
                                               0, takeoff_time*750);
     }
-    static uint8_t counter;
-    if (counter++ == 10) {
-        DataFlash_Class::instance()->Log_Write("TOF", "TimeUS,Tms,Tcon,CAlt,Balt,TAlt", "QIffff",
-                                               AP_HAL::micros64(),
-                                               now - takeoff_start_ms,
-                                               throttle_control,
-                                               copter.inertial_nav.get_altitude()*0.01,
-                                               copter.barometer.get_altitude(),
-                                               copter.pos_control->get_alt_target()*0.01);
-        counter = 0;
-    }
 }
 
 /*
@@ -1344,13 +1333,19 @@ bool ToyMode::takeoff_complete(void)
     if (takeoff_start_ms == 0) {
         return true;
     }
-    if ((AP_HAL::millis() - takeoff_start_ms)*0.001 < (takeoff_time + takeoff_delay)) {
-        return false;
-    }
-    if (copter.inertial_nav.get_altitude()*0.01 < takeoff_height) {
+    uint32_t ttime = AP_HAL::millis() - takeoff_start_ms;
+    DataFlash_Class::instance()->Log_Write("TOF", "TimeUS,Tms,Tt,TAlt,Th", "QIfff",
+                                           AP_HAL::micros64(),
+                                           ttime,
+                                           takeoff_time + takeoff_delay,
+                                           copter.inertial_nav.get_altitude()*0.01,
+                                           takeoff_height.get());
+    if ((AP_HAL::millis() - takeoff_start_ms)*0.001 < (takeoff_time + takeoff_delay) &&
+        copter.inertial_nav.get_altitude()*0.01 < takeoff_height.get()) {
         return false;
     }
     gcs().send_text(MAV_SEVERITY_INFO, "TMODE: takeoff complete at %.1f\n", copter.inertial_nav.get_altitude());
+    copter.pos_control->set_alt_target_to_current_alt();
     takeoff_start_ms = 0;
     return true;
 }
