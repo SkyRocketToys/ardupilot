@@ -662,7 +662,7 @@ void Copter::ModeFlowHold::flow_land_detector()
 
     if (!stick_input && !ap.land_complete && !braking) {
         if (balt - baro_min_alt > land_baro_spike && flow_check > land_flow_spike) {
-            gcs().send_text(MAV_SEVERITY_INFO, "FHLD: land detect %.1 %.1\n", balt - baro_min_alt, flow_check);
+            gcs().send_text(MAV_SEVERITY_INFO, "FHLD: land detect %.1f %.1f\n", balt - baro_min_alt, flow_check);
             set_land_complete(true);        
         }
     }
