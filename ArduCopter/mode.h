@@ -702,6 +702,7 @@ private:
     uint32_t last_land_check_ms;
     float baro_min_alt;
     uint32_t baro_min_alt_ms;
+    uint32_t mode_started_ms;
     float flow_check;
 };
 #endif // OPTFLOW

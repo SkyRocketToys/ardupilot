@@ -119,6 +119,7 @@ bool Copter::ModeFlowHold::init(bool ignore_checks)
     }
 
     in_landing = false;
+    mode_started_ms = AP_HAL::millis();
 
     if (copter.control_mode == FLOWHOLD) {
         // no need to re-init. This is probably a flow landing
@@ -661,7 +662,9 @@ void Copter::ModeFlowHold::flow_land_detector()
         copter.channel_yaw->get_control_in();
 
     if (!stick_input && !ap.land_complete && !braking) {
-        if (balt - baro_min_alt > land_baro_spike && flow_check > land_flow_spike) {
+        if (balt - baro_min_alt > land_baro_spike &&
+            flow_check > land_flow_spike &&
+            now - mode_started_ms >= 2000) {
             gcs().send_text(MAV_SEVERITY_INFO, "FHLD: land detect %.1f %.1f\n", balt - baro_min_alt, flow_check);
             set_land_complete(true);        
         }
